@@ -5,7 +5,9 @@
 Build a working graduation-project website for October 6 University, with a delivery target of approximately two months. Academic reports and presentation materials are outside the current delivery scope.
 
 - Provide a responsive website with Arabic and English interfaces, including right-to-left Arabic layouts. A separate mobile application is outside scope.
-- Use React/TypeScript, a managed backend, and a separate Python AI service. Use pretrained models for real inference and evaluate their results.
+- Use plain JavaScript for application code: React/Vite for the website and Node.js with Express for the backend. Use Supabase for managed database, authentication, and storage, and Transformers.js for pretrained-model inference through Node.js. Do not require Python or TypeScript application code.
+- Keep the implementation easy for the team to study, explain, and defend. Prefer small, clearly named functions and modules and a minimal dependency set. Do not introduce additional backend frameworks or independently deployed application services without a demonstrated need and discussion with the team.
+- Use pretrained models for real inference and evaluate their results. Simplicity must preserve the required maintenance, lost-and-found, and decision-support capabilities.
 - Support maintenance reports with text and images, classification, priority/risk recommendations, assignment, and status tracking.
 - Support lost-and-found reports, visual similarity recommendations, and staff verification of ownership claims.
 - Provide decision-support dashboards for recurring faults, service performance, and issue distribution across campus locations.

@@ -31,6 +31,12 @@ After the user removed the previous GitHub connection, CLI authentication with t
 
 Private repository: <https://github.com/mohamed23013292/smart-campus>. Vercel's repository-link API confirmed the same owner and repository. Git identity is configured locally for this repository as `mohamed23013292` with the required owner email.
 
+## Hugging Face
+
+- User-provided account name: `MohamedTamerh`. Account ownership was not independently verified.
+- On 2026-10-23, GitHub's secret-list command confirmed the repository secret `HF_TOKEN` exists. Its value was not retrieved, and token validity and permissions have not been tested.
+- The GitHub Actions secret does not automatically configure cloud-task or application-server credentials. AI hosting and model memory requirements remain unverified.
+
 ## Credentials and remaining setup
 
 No credentials are included in this file. Privileged credentials were not committed, added to frontend configuration, or configured as managed cloud secret bindings. The frontend configuration contains only the intended public connection URL and publishable key. Store replacement privileged credentials in the cloud environment's secret configuration before relying on a new runtime. The user reported a 30-day token lifetime; expiration dates were not independently verified.

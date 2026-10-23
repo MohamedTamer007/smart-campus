@@ -9,6 +9,13 @@ Read [SPEC.md](SPEC.md) and [SETUP.md](SETUP.md) before changing the project. Th
 - Keep credentials out of Git, documentation, frontend bundles, and command output. The frontend may use its intended Supabase publishable key.
 - Keep local environment files and service-link metadata excluded through `.gitignore`.
 
+## Implementation simplicity
+
+- Write application code in plain JavaScript. Use Node.js and Express for the backend and React/Vite for the frontend. Do not introduce a Python service or TypeScript application code.
+- Prioritize code the team can study and explain during its graduation defense: small named functions, clear modules, and dependencies with a concrete purpose. Discuss additional backend frameworks or independently deployed services before introducing them.
+- Use pretrained AI models through Node.js; retain genuine inference and evaluation. Do not replace required AI behavior with canned results to simplify the implementation.
+- Keep the required typecheck gate when JavaScript tooling is introduced; use checking compatible with JavaScript source.
+
 ## Mandatory skills
 
 Use the installed skills from `amElnagdy/guard-skills`: `clean-code-guard`, `test-guard`, and `docs-guard`. Use `code-review` from `mattpocock/skills` for phase reviews. Install missing skills before working on their matching surface.
