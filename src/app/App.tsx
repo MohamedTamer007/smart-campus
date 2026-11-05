@@ -61,12 +61,6 @@ function Shell() {
         {t("انتقل للمحتوى", "Skip to content")}
       </a>
       <div className="demo-bar">
-        <span>
-          {t(
-            "وضع تجريبي · بيانات توضيحية فقط · لا يوجد اتصال بالباك إند",
-            "DEMO · Illustrative data only · No backend connected",
-          )}
-        </span>
         <details>
           <summary>{t("أدوات التجربة", "Demo controls")}</summary>
           <div className="demo-tools">

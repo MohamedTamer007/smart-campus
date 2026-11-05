@@ -1,4 +1,15 @@
 import { test, expect } from "@playwright/test";
+test("demo controls stay available without the demo-mode banner", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".demo-bar")).not.toContainText("وضع تجريبي");
+  await expect(page.getByText("أدوات التجربة", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(page.locator(".demo-bar")).not.toContainText("DEMO");
+  await expect(page.getByText("Demo controls", { exact: true })).toBeVisible();
+});
+
 test("keyboard users can see focus and switch direction without a mouse", async ({
   page,
 }) => {

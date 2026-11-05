@@ -9,14 +9,15 @@ afterEach(() => {
   localStorage.clear();
 });
 describe("bilingual guest shell", () => {
-  it("starts Arabic, labels the demo and gates service actions behind login", async () => {
+  it("starts Arabic, hides the demo disclaimer and gates service actions behind login", async () => {
     render(
       <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
     expect(document.documentElement.dir).toBe("rtl");
-    expect(screen.getByText(/بيانات توضيحية/)).toBeTruthy();
+    expect(screen.queryByText(/بيانات توضيحية/)).toBeNull();
+    expect(screen.getByText("أدوات التجربة")).toBeTruthy();
     await userEvent.click(screen.getByRole("link", { name: "الإبلاغ عن عطل" }));
     expect(screen.getByRole("heading", { name: "تسجيل الدخول" })).toBeTruthy();
   });
