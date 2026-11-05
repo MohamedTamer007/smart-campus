@@ -2,7 +2,7 @@
 
 Arabic-first React demo of maintenance and lost-and-found workflows for users, staff and administrators. The demo is deliberately isolated from real authentication, storage, email and AI services. Its records and accounts exist only in browser memory and reset when the page reloads. Language preference is stored in browser local storage.
 
-The demo controls in the top bar switch simulated actors and failure scenarios. To sign in, use `ahmed@o6u.edu.eg` or another listed demo actor's email and the demo password `demo`. New registrations are simulated in memory; their sign-in password is also `demo`. Registration passwords are not retained. These controls and role checks do not provide production authorization.
+To sign in, use `ahmed@o6u.edu.eg` or another demo actor's email and the demo password `demo`. New registrations are simulated in memory; their sign-in password is also `demo`. Registration passwords are not retained. These simulated accounts and role checks do not provide production authorization.
 
 ## Run locally
 
@@ -25,7 +25,7 @@ npm run build
 npm run test:e2e
 ```
 
-The Playwright configuration uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if provided, otherwise `/usr/bin/chromium` if present, otherwise Playwright's installed browser. Install the Playwright Chromium browser if the machine has neither an executable override nor the system browser. Browser tests use a local Vite server and illustrative records. `npm run preview` serves the built output locally.
+The Playwright configuration uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if provided, otherwise `/usr/bin/chromium` if present, otherwise Playwright's installed browser. Install the Playwright Chromium browser if the machine has neither an executable override nor the system browser. Browser tests start an isolated test-mode server with test-only scenario controls and a production preview; the controls are excluded from the production build. `npm run preview` serves the built output locally.
 
 ## Cloudflare Pages deployment
 
@@ -33,7 +33,7 @@ Production site: <https://smart-campus-o6u.pages.dev>. The Cloudflare Pages proj
 
 ## Backend handoff
 
-There is no live API adapter yet. Proposed operation families, integration decisions and missing inputs are in `docs/API_HANDOFF.md`; the authoritative behavioral reference is `docs/SMART_CAMPUS_REQUIREMENTS.md`. Do not use demo role switching as authorization in a real system.
+There is no live API adapter yet. Proposed operation families, integration decisions and missing inputs are in `docs/API_HANDOFF.md`; the authoritative behavioral reference is `docs/SMART_CAMPUS_REQUIREMENTS.md`. Simulated roles do not provide authorization in a real system.
 
 `npm run build` produces `dist/`. The current deployment is a static frontend demo; it does not provide real persistence, authentication or backend authorization.
 

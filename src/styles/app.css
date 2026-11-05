@@ -67,40 +67,6 @@ p {
   line-height: 1.8;
   color: var(--muted);
 }
-.demo-bar {
-  background: #142b54;
-  color: #fff;
-  padding: 9px max(24px, calc((100vw - 1180px) / 2));
-  font-size: 0.75rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  position: relative;
-  z-index: 5;
-}
-.demo-bar summary {
-  cursor: pointer;
-  white-space: nowrap;
-}
-.demo-tools {
-  position: absolute;
-  inset-inline-end: 24px;
-  top: 40px;
-  background: #fff;
-  color: var(--navy);
-  padding: 20px;
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 30px #142b5425;
-  min-width: 260px;
-  border-radius: 12px;
-  display: grid;
-  gap: 14px;
-}
-.demo-tools label {
-  display: grid;
-  gap: 8px;
-}
 .header {
   max-width: 1236px;
   margin: auto;
@@ -625,8 +591,8 @@ dialog::backdrop {
 @media (max-width: 760px) {
   .header {
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 14px 18px;
+    gap: 8px;
+    padding: 12px;
     min-height: 100px;
   }
   .brand {
@@ -634,7 +600,10 @@ dialog::backdrop {
   }
   .header-actions {
     margin-inline-start: auto;
-    gap: 12px;
+    gap: 4px;
+  }
+  .header-actions .account-link {
+    padding-inline-start: 8px;
   }
   .header nav {
     order: 3;
@@ -647,16 +616,6 @@ dialog::backdrop {
   .header nav a {
     white-space: nowrap;
     padding: 6px 0;
-  }
-  .demo-bar {
-    padding: 8px 16px;
-    font-size: 0.65rem;
-    gap: 10px;
-    align-items: flex-start;
-  }
-  .demo-tools {
-    inset-inline-end: 8px;
-    top: 50px;
   }
   .services {
     grid-template-columns: 1fr;

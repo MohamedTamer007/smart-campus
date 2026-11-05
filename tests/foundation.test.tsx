@@ -17,7 +17,7 @@ describe("bilingual guest shell", () => {
     );
     expect(document.documentElement.dir).toBe("rtl");
     expect(screen.queryByText(/بيانات توضيحية/)).toBeNull();
-    expect(screen.getByText("أدوات التجربة")).toBeTruthy();
+    expect(screen.queryByText("أدوات التجربة")).toBeNull();
     await userEvent.click(screen.getByRole("link", { name: "الإبلاغ عن عطل" }));
     expect(screen.getByRole("heading", { name: "تسجيل الدخول" })).toBeTruthy();
   });
@@ -27,12 +27,11 @@ describe("bilingual guest shell", () => {
         <App />
       </MemoryRouter>,
     );
-    await userEvent.click(screen.getByText("أدوات التجربة"));
-    await userEvent.selectOptions(
-      screen.getByLabelText("محاكاة الحساب"),
-      "maintenance",
-    );
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(
+    await userEvent.click(screen.getByRole("link", { name: "تسجيل الدخول" }));
+    await userEvent.type(screen.getByLabelText(/البريد الجامعي/), "mona@o6u.edu.eg");
+    await userEvent.type(screen.getByLabelText(/^كلمة المرور/), "demo");
+    await userEvent.click(screen.getByRole("button", { name: "تسجيل الدخول" }));
+    expect((await screen.findByRole("heading", { level: 1, name: /منى/ })).textContent).toContain(
       "منى",
     );
   });

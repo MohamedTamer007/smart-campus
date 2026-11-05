@@ -1,13 +1,15 @@
 import { test, expect } from "@playwright/test";
-test("demo controls stay available without the demo-mode banner", async ({
+test("production build does not expose demo controls in either language", async ({
   page,
 }) => {
-  await page.goto("/");
-  await expect(page.locator(".demo-bar")).not.toContainText("وضع تجريبي");
-  await expect(page.getByText("أدوات التجربة", { exact: true })).toBeVisible();
+  await page.goto("http://127.0.0.1:4174/");
+  await expect(page.getByText("أدوات التجربة", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("محاكاة الحساب")).toHaveCount(0);
   await page.getByRole("button", { name: "English", exact: true }).click();
-  await expect(page.locator(".demo-bar")).not.toContainText("DEMO");
-  await expect(page.getByText("Demo controls", { exact: true })).toBeVisible();
+  await expect(page.getByText("Demo controls", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Simulate account")).toHaveCount(0);
+  await expect(page.getByLabel("Simulate response", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Simulate action response")).toHaveCount(0);
 });
 
 test("keyboard users can see focus and switch direction without a mouse", async ({

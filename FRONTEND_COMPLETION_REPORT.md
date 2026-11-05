@@ -14,7 +14,7 @@ The design PDF page is board number + 2. The screenshots in `docs/screenshots/` 
 
 | Board | Frontend coverage and qualification |
 | --- | --- |
-| 01 | Signed-in home, greeting and two services; neutral image placeholder. |
+| 01 | Signed-in home, greeting and two services; supplied campus photo. |
 | 02 | Required maintenance location/description, optional image and demo location list. |
 | 03 | Demo acknowledgement, history, tracking, edit and cancellation; no live server. |
 | 04 | Personal dashboard and lists for maintenance, claims and found items. |
@@ -31,7 +31,7 @@ The design PDF page is board number + 2. The screenshots in `docs/screenshots/` 
 | 15 | Departmental custody/receipt queue, pending claims and record-derived counts. |
 | 16 | Admin overview with status/location counts and date/scope filters derived from demo records. |
 | 17 | Demo account/role/scope editor; real directory management requires backend integration. |
-| 18 | Guest home and sign-in/register actions; neutral image placeholder. |
+| 18 | Guest home and sign-in/register actions; supplied campus photo. |
 
 ## Requirements acceptance checklist
 
@@ -66,7 +66,7 @@ The numbered items correspond to section 17 of `docs/SMART_CAMPUS_REQUIREMENTS.m
 
 ## Integration handoff
 
-`docs/API_HANDOFF.md` lists proposed operation families and open questions, not implemented endpoints. Missing inputs include the API/OpenAPI contract, session mechanism, CORS, upload policy, private media access, real departments and locations, role/scope grants, matching behavior, approval cancellation and metric definitions. The frontend cannot establish production authorization, atomicity, persistence, email delivery, AI quality or uptime. The original photo and final brand artwork remain needed for visual completion.
+`docs/API_HANDOFF.md` lists proposed operation families and open questions, not implemented endpoints. Missing inputs include the API/OpenAPI contract, session mechanism, CORS, upload policy, private media access, real departments and locations, role/scope grants, matching behavior, approval cancellation and metric definitions. The frontend cannot establish production authorization, atomicity, persistence, email delivery, AI quality or uptime.
 
 The demo allows registered accounts and grants only during the current page session. It uses a disclosed fixed demo-only sign-in password and does not retain the password entered in the registration form. An active approved recovery prevents a demo role change that would make completion impossible; the real policy needs backend agreement.
 
@@ -89,15 +89,15 @@ The approved six-phase implementation plan is in `docs/superpowers/plans/2026-11
 | TypeScript | `npm run typecheck` | 0 | No errors. |
 | ESLint | `npm run lint` | 0 | No findings. |
 | Production build | `npm run build` | 0 | Vite generated `dist/`. |
-| End-to-end browser suite | `npm run test:e2e` | 0 | 25 browser tests passed, including the demo-banner removal, keyboard/direction, account, admin, recovery, maintenance, and 390/768/1440 px layouts. |
+| End-to-end browser suite | `npm run test:e2e` | 0 | 26 browser tests cover production controls removal, the sign-in link at 320–1440 px, keyboard/direction, account, admin, recovery and maintenance. |
 | Focused selector regression | `npm run test:e2e -- --grep 'promoted demo admin edits'` | 0 | 1 test passed after adding the pre-save assertion. |
-| Development server | `npm run dev -- --port 5173` (Playwright web server) | Started | Browser suite used the Vite development server; this is not a production deployment. |
-| Production preview | `npm run preview -- --port 4173` | Started | Local `curl` checks returned HTTP 200 for `/` and `/maintenance/new`. Render was not used. |
+| Development server | `npm run dev -- --mode e2e --port 5174 --strictPort` | Started | Browser suite uses a dedicated test-mode server with test-only scenario controls. |
+| Production preview | `npm run preview -- --port 4174 --strictPort` | Started | Playwright checks the built production app separately from the test-mode server. |
 | Cloudflare Pages production deployment | Cloudflare Pages API deployment for `main` | Success | `https://smart-campus-o6u.pages.dev`; homepage, `/maintenance/new`, emblem and compiled campus image returned HTTP 200 via `curl`. Live Playwright was blocked by this workspace's network connection, so no browser interaction check ran against production. |
-| Responsive screenshots | `node work/capture.cjs` | 0 | 18 representative screenshots captured at 390, 768 and 1440 px; inspected home, maintenance, search and admin at all three widths. |
+| Responsive screenshots | `node scripts/capture-screenshots.mjs` | 0 | 18 screenshots captured from production preview on port 4175 at 390, 768 and 1440 px; no horizontal overflow detected. |
 | Secret scan | Credential-pattern scan over source/docs/tests | 0 | No credential-shaped values found in repository files. Cloud credentials were not committed. |
 
-Regression evidence includes browser and domain checks for session expiry, private record scope, failed submissions, stale updates, keyboard focus, bilingual layout, pending/confirmed custody, recovery approval and delivery confirmation. All 57 unit tests and 25 browser tests passed after removing the demo-mode banner. The new browser assertion verifies its absence in Arabic and English while keeping controls available. The earlier browser test initially failed because it hard-coded a seeded account name; that was corrected without weakening its assertion.
+Regression evidence includes browser and domain checks for session expiry, private record scope, failed submissions, stale updates, keyboard focus, bilingual layout, pending/confirmed custody, recovery approval and delivery confirmation. The production-preview browser test verifies that demo controls are absent in Arabic and English. A separate test-only harness retains role and failure-scenario coverage and is excluded from the production build. The earlier browser test initially failed because it hard-coded a seeded account name; that was corrected without weakening its assertion.
 
 Skills used: `frontend-design` before UI implementation; `clean-code-guard`, `test-guard` and `docs-guard` at phase/final checkpoints; `impeccable` guidance and screenshot-based audit; and the planning, TDD, debugging and verification skills. Guard reviews covered credentials, input validation, authorization boundaries, mutation failures, accessible controls, test purpose and source-checked documentation. The clean-code reference `references/ai-failure-modes.md` could not be retrieved through the skills interface; its main skill instructions were applied. The Impeccable launcher was unavailable, so its dedicated automated audit did not run; representative screenshots and the accessible-state checklist were reviewed manually. No unresolved high-severity review findings remain. The remaining limits are production backend integration and pending campus data/workflow decisions.
 
