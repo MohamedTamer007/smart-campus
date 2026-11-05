@@ -121,6 +121,13 @@ p {
   white-space: nowrap;
   color: var(--navy);
 }
+.brand-mark {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
 .brand-symbol {
   font-size: 2rem;
   color: #e15307;
@@ -175,50 +182,43 @@ main {
 }
 .hero {
   min-height: 310px;
-  background: #e5edf5;
+  background-color: #142b54;
+  background-image:
+    linear-gradient(rgba(12, 29, 61, 0.62), rgba(12, 29, 61, 0.62)),
+    url("../assets/campus-photo.webp");
+  background-position: center 54%;
+  background-size: cover;
   position: relative;
   padding: 48px 8%;
   overflow: hidden;
-  border: 1px solid #d2deec;
+  border: 1px solid #263e65;
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
-}
-.hero:before,
-.hero:after {
-  content: "";
-  position: absolute;
-  bottom: -100px;
-  width: 320px;
-  height: 240px;
-  border: 1px solid #b6c7dc;
-  border-radius: 50%;
-  pointer-events: none;
-}
-.hero:before {
-  left: -110px;
-}
-.hero:after {
-  right: -110px;
+  color: #fff;
 }
 .hero h1 {
   margin: 12px 0 4px;
+  color: inherit;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 .hero p {
   font-size: 1.1rem;
   margin-bottom: 28px;
+  color: inherit;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+.hero .text-link {
+  align-self: center;
+  color: inherit;
 }
 .eyebrow {
   font-size: 0.69rem;
   letter-spacing: 0.08em;
   font-weight: 800;
   color: #315a88;
-}
-.photo-note {
-  font-size: 0.7rem;
-  color: #52647c;
 }
 .services {
   display: grid;
@@ -722,10 +722,6 @@ dialog::backdrop {
   .actions .button {
     flex: 1;
   }
-  .hero .photo-note {
-    max-width: 240px;
-    margin: auto;
-  }
   .page-title h1 {
     font-size: 1.6rem;
   }
@@ -766,13 +762,6 @@ textarea {
 .stat strong,
 .data-table {
   font-variant-numeric: tabular-nums;
-}
-.hero:before,
-.hero:after {
-  display: none;
-}
-.hero .text-link {
-  align-self: center;
 }
 .auth-links {
   display: grid;

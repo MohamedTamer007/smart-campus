@@ -19,12 +19,6 @@ export function Home() {
             "Report a fault or find something you lost",
           )}
         </p>
-        <span className="photo-note">
-          {t(
-            "مساحة مؤقتة — صورة الجامعة الأصلية لم تُرفق بعد",
-            "Temporary space — original university photo not yet supplied",
-          )}
-        </span>
         {account.role === "guest" && (
           <Link className="text-link" to="/register">
             {t("إنشاء حساب", "Create account")}

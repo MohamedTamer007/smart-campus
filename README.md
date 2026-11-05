@@ -29,7 +29,7 @@ The Playwright configuration uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if provi
 
 ## Cloudflare Pages deployment
 
-Production site: <https://smart-campus-frontend.pages.dev>. The Cloudflare Pages project is connected to this GitHub repository and deploys from `main`. Build command: `npm ci && npm run build`; output directory: `dist`; root directory: repository root. No build environment variables are required. Direct refresh of `/maintenance/new` was verified after deployment.
+Production site: <https://smart-campus-o6u.pages.dev>. The Cloudflare Pages project is connected to this GitHub repository and deploys from `main`. Build command: `npm ci && npm run build`; output directory: `dist`; root directory: repository root. No build environment variables are required. Direct refresh of `/maintenance/new` was verified after deployment.
 
 ## Backend handoff
 
@@ -37,4 +37,4 @@ There is no live API adapter yet. Proposed operation families, integration decis
 
 `npm run build` produces `dist/`. The current deployment is a static frontend demo; it does not provide real persistence, authentication or backend authorization.
 
-The real university photograph, final logo, production locations and departments, backend contract, session/upload policies and some workflow decisions remain outstanding. Demo locations, departments and statistics are illustrative. See `FRONTEND_COMPLETION_REPORT.md` for tested coverage and limitations.
+The supplied campus photograph and O6U emblem are now used in the homepage hero and site branding. Production locations and departments, backend contract, session/upload policies and some workflow decisions remain outstanding. Demo locations, departments and statistics are illustrative. See `FRONTEND_COMPLETION_REPORT.md` for tested coverage and limitations.

@@ -93,7 +93,7 @@ The approved six-phase implementation plan is in `docs/superpowers/plans/2026-11
 | Focused selector regression | `npm run test:e2e -- --grep 'promoted demo admin edits'` | 0 | 1 test passed after adding the pre-save assertion. |
 | Development server | `npm run dev -- --port 5173` (Playwright web server) | Started | Browser suite used the Vite development server; this is not a production deployment. |
 | Production preview | `npm run preview -- --port 4173` | Started | Local `curl` checks returned HTTP 200 for `/` and `/maintenance/new`. Render was not used. |
-| Cloudflare Pages production deployment | Cloudflare Pages API deployment for `main` | Success | `https://smart-campus-frontend.pages.dev`; homepage and `/maintenance/new` returned HTTP 200. Playwright rendered the Arabic homepage and loaded the nested route with no page errors. |
+| Cloudflare Pages production deployment | Cloudflare Pages API deployment for `main` | Success | `https://smart-campus-o6u.pages.dev`; homepage and `/maintenance/new` returned HTTP 200. Playwright rendered the Arabic homepage and loaded the nested route with no page errors. |
 | Responsive screenshots | `node work/capture.cjs` | 0 | 18 representative screenshots captured at 390, 768 and 1440 px; inspected home, maintenance, search and admin at all three widths. |
 | Secret scan | Credential-pattern scan over source/docs/tests | 0 | No credential-shaped values found in repository files. Cloud credentials were not committed. |
 

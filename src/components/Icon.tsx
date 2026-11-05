@@ -24,9 +24,13 @@ export function Icon({ name }: { name: keyof typeof paths }) {
 }
 export function BrandMark() {
   return (
-    <svg aria-hidden="true" width="28" height="28" viewBox="0 0 32 32">
-      <path d="M3 20 16 5l13 15v7L16 12 3 27z" fill="#e15307" />
-      <path d="m5 28 11-10 11 10-11-5z" fill="#144caa" />
-    </svg>
+    <img
+      className="brand-mark"
+      src="/o6u-mark.png"
+      alt=""
+      aria-hidden="true"
+      width="28"
+      height="28"
+    />
   );
 }
