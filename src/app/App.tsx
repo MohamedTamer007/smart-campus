@@ -29,7 +29,6 @@ import { AppProvider, useApp } from "./context";
 import { BrandMark, Icon } from "../components/Icon";
 import { Home } from "./Home";
 import { Feedback, Page } from "../components/ui";
-import { TestControls } from "../../e2e/TestControls";
 function Shell() {
   const {
     t,
@@ -43,7 +42,6 @@ function Shell() {
       <a className="skip-link" href="#main">
         {t("انتقل للمحتوى", "Skip to content")}
       </a>
-      {import.meta.env.MODE === "e2e" && <TestControls />}
       <header className="header">
         <Link className="brand" to="/">
           <BrandMark />

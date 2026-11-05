@@ -14,7 +14,7 @@ import {
   type MaintenanceStatus,
 } from "../../services/maintenance";
 import { lostFound, currentCustodian } from "../../services/lostFound";
-import { actors, type Role } from "../../services/contracts";
+import { ServiceError, type Role } from "../../services/contracts";
 const labels: Record<MaintenanceStatus, [string, string]> = {
   submitted: ["تم الإرسال", "Submitted"],
   review: ["قيد المراجعة", "Under review"],
@@ -28,8 +28,6 @@ function roleName(role: Role, t: (ar: string, en: string) => string) {
     guest: ["زائر", "Guest"],
     unverified: ["غير موثق", "Unverified"],
     user: ["مستخدم", "User"],
-    finder: ["مستخدم", "User"],
-    other: ["مستخدم", "User"],
     maintenance: ["موظف صيانة", "Maintenance staff"],
     department: ["موظف جهة", "Department staff"],
     secretariat: ["موظف جهة", "Department staff"],
@@ -50,12 +48,12 @@ function scopeName(
         : "—";
 }
 export function Requests() {
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const load = useCallback(async () => {
     const [reports, items, claims] = await Promise.all([
-      maintenance.list(account, scenario),
-      lostFound.itemsFor(account, scenario),
-      lostFound.claims(account, scenario),
+      maintenance.list(account),
+      lostFound.itemsFor(account),
+      lostFound.claims(account),
     ]);
     return {
       reports: reports.filter((report) => report.ownerId === account.id),
@@ -66,7 +64,7 @@ export function Requests() {
       ),
       claims,
     };
-  }, [account, scenario]);
+  }, [account]);
   return (
     <Page
       title={t("طلباتي", "My requests")}
@@ -75,7 +73,7 @@ export function Requests() {
         "Track your reports, items and recovery requests.",
       )}
     >
-      <AsyncView key={`${account.id}-${scenario}`} load={load}>
+      <AsyncView key={`${account.id}`} load={load}>
         {(data) => (
           <>
             <div className="stats">
@@ -133,24 +131,24 @@ export function Requests() {
   );
 }
 export function AdminOverview() {
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [scope, setScope] = useState<DashboardScope>("all");
   const load = useCallback(async () => {
     const [reports, items, claims] = await Promise.all([
-      maintenance.list(account, scenario),
-      lostFound.itemsFor(account, scenario),
-      lostFound.claims(account, scenario),
+      maintenance.list(account),
+      lostFound.itemsFor(account),
+      lostFound.claims(account),
     ]);
     return { reports, items, claims };
-  }, [account, scenario]);
+  }, [account]);
   return (
     <Page
       title={t("لوحة الإدارة", "Admin overview")}
       subtitle={t(
-        "إحصاءات توضيحية من سجلات التجربة فقط.",
-        "Illustrative statistics derived from demo records only.",
+        "إحصاءات البلاغات والأغراض المسجلة.",
+        "Statistics for recorded reports and items.",
       )}
     >
       <div className="panel">
@@ -210,7 +208,7 @@ export function AdminOverview() {
         </Link>
       </div>
       <div className="spacer" />
-      <AsyncView key={`${account.id}-${scenario}`} load={load}>
+      <AsyncView key={`${account.id}`} load={load}>
         {(data) => {
           const stats = calculateStats(data.reports, data.items, data.claims, {
             from,
@@ -271,10 +269,7 @@ export function AdminOverview() {
                   {Object.entries(stats.locations).length ? (
                     Object.entries(stats.locations).map(([location, count]) => (
                       <p key={location}>
-                        {location === "demo-faculty"
-                          ? t("مرفق تجريبي", "Demo facility")
-                          : location}
-                        : {count}
+                        {location}: {count}
                       </p>
                     ))
                   ) : (
@@ -310,35 +305,28 @@ export function AdminOverview() {
   );
 }
 export function AdminAccounts() {
-  const { t, account, scenario, actionScenario } = useApp();
+  const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
-  const [key, setKey] = useState<string>(
-    () =>
-      (Object.keys(actors) as Role[]).find(
-        (candidate) =>
-          !["guest", "unverified"].includes(candidate) &&
-          actors[candidate].id !== account.id,
-      ) ?? "finder",
-  );
+  const [key, setKey] = useState("");
   const [role, setRole] = useState<AssignableRole | "">("");
   const load = useCallback(
-    () => directory.list(account, scenario),
-    [account, scenario],
+    () => directory.list(account),
+    [account],
   );
   return (
     <Page
       title={t("المستخدمون والصلاحيات", "Accounts and permissions")}
       subtitle={t(
-        "التغييرات هنا محاكاة فقط ولا تمنح صلاحيات حقيقية.",
-        "Changes here are simulated and grant no real permissions.",
+        "إدارة حسابات المستخدمين وصلاحياتهم.",
+        "Manage user accounts and permissions.",
       )}
     >
-      <AsyncView key={`${account.id}-${scenario}-${revision}`} load={load}>
+      <AsyncView key={`${account.id}-${revision}`} load={load}>
         {(entries) => (
           <>
             <div className="split">
               <div className="panel table-wrap">
-                <h2>{t("الحسابات التجريبية", "Demo accounts")}</h2>
+                <h2>{t("الحسابات", "Accounts")}</h2>
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -363,28 +351,31 @@ export function AdminAccounts() {
               <div className="panel">
                 <h2>{t("تعديل صلاحيات حساب", "Edit account access")}</h2>
                 <ActionForm
-                  label={t("حفظ الصلاحيات التجريبية", "Save demo permissions")}
+                  label={t("حفظ الصلاحيات", "Save permissions")}
                   onSubmit={async (data) => {
-                    if (!role) return;
+                    if (!role || !key) throw new ServiceError("invalid");
                     await directory.assign(
                       account,
-                      key,
-                      role,
-                      String(data.get("scope") ?? ""),
-                      data.get("confirmAdmin") === "on",
-                      actionScenario,
+                      {
+                        key,
+                        role,
+                        scope: String(data.get("scope") ?? ""),
+                        confirmAdmin: data.get("confirmAdmin") === "on",
+                      },
                     );
                     setRevision((v) => v + 1);
                   }}
                 >
                   <Field label={t("الحساب", "Account")} required>
                     <select
+                      required
                       value={key}
                       onChange={(e) => {
                         setKey(e.target.value);
                         setRole("");
                       }}
                     >
+                      <option value="">{t("اختر الحساب", "Choose account")}</option>
                       {entries
                         .filter(
                           (entry) =>
@@ -444,24 +435,13 @@ export function AdminAccounts() {
                     <label className="check">
                       <input type="checkbox" name="confirmAdmin" required />
                       {t(
-                        "أؤكد منح صلاحيات مدير تجريبية.",
-                        "I confirm granting simulated administrator access.",
+                        "أؤكد منح صلاحيات مدير.",
+                        "I confirm granting administrator access.",
                       )}
                     </label>
                   )}
                 </ActionForm>
               </div>
-            </div>
-            <div className="panel">
-              <h2>
-                {t("الجهات المسجلة في التجربة", "Registered demo departments")}
-              </h2>
-              <p>
-                {t(
-                  "الأمن والسكرتارية أمثلة فقط؛ الدليل الفعلي لم يُقدّم بعد.",
-                  "Security and Secretariat are illustrative; the real directory has not been supplied.",
-                )}
-              </p>
             </div>
           </>
         )}

@@ -113,8 +113,14 @@ function FoundCard({ item }: { item: FoundItem }) {
   );
 }
 export function RegisterFound() {
-  const { t, account, actionScenario } = useApp();
+  const { t, account } = useApp();
   const navigate = useNavigate();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Cairo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
   const [photo, setPhoto] = useState<File>();
   const [draft, setDraft] = useState<FoundDraft>(
     () => foundDrafts.get(account.id) ?? emptyDraft(),
@@ -138,7 +144,13 @@ export function RegisterFound() {
         <ActionForm
           label={t("تسجيل الغرض", "Register item")}
           onSubmit={async () => {
-            if (draft.destination === "other")
+            if (
+              !draft.description.trim() ||
+              !draft.place.trim() ||
+              !draft.storage.trim() ||
+              draft.destination === "other" ||
+              (draft.destination !== "" && !draft.office.trim())
+            )
               throw new ServiceError("invalid");
             const item = await lostFound.register(
               account,
@@ -153,7 +165,6 @@ export function RegisterFound() {
                   : undefined,
                 office: draft.office,
               },
-              actionScenario,
             );
             foundDrafts.delete(account.id);
             navigate(`/found/${item.id}`);
@@ -188,6 +199,7 @@ export function RegisterFound() {
               required
               name="date"
               type="date"
+              max={today}
               value={draft.date}
               onChange={(e) => change({ date: e.target.value })}
             />
@@ -263,7 +275,7 @@ export function RegisterFound() {
   );
 }
 export function SearchItems() {
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const [items, setItems] = useState<FoundItem[] | null>(null);
   const [photo, setPhoto] = useState<File>();
   return (
@@ -279,10 +291,12 @@ export function SearchItems() {
           label={t("البحث عن تطابق", "Search for matches")}
           onSubmit={async (data) => {
             setItems(null);
+            if (!String(data.get("description") ?? "").trim())
+              throw new ServiceError("invalid");
             const result = await lostFound.search(
               account,
               String(data.get("description")),
-              scenario,
+              photo,
             );
             setItems(result);
           }}
@@ -300,8 +314,8 @@ export function SearchItems() {
           />
           <Feedback>
             {t(
-              "في التجربة، البحث يطابق النص فقط ولا يحلل الصورة. النتائج المحتملة لا تثبت الملكية.",
-              "In the demo, search matches text only and does not analyze the image. A potential match does not prove ownership.",
+              "النتائج المحتملة لا تثبت الملكية.",
+              "A potential match does not prove ownership.",
             )}
           </Feedback>
         </ActionForm>
@@ -334,14 +348,14 @@ export function FoundList({
   department?: boolean;
   all?: boolean;
 }) {
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const load = useCallback(async () => {
     const [items, claims] = await Promise.all([
-      lostFound.itemsFor(account, scenario),
-      department ? lostFound.claims(account, scenario) : Promise.resolve([]),
+      lostFound.itemsFor(account),
+      department ? lostFound.claims(account) : Promise.resolve([]),
     ]);
     return { items, claims };
-  }, [account, scenario, department]);
+  }, [account, department]);
   return (
     <Page
       title={
@@ -362,7 +376,7 @@ export function FoundList({
       </div>
       <div className="spacer" />
       <AsyncView
-        key={`${account.id}-${scenario}-${department}-${all}`}
+        key={`${account.id}-${department}-${all}`}
         load={load}
       >
         {({ items, claims }) => {
@@ -431,7 +445,7 @@ function HandoverPanel({
   item: FoundItem;
   changed: () => void;
 }) {
-  const { t, account, actionScenario } = useApp();
+  const { t, account } = useApp();
   const owner = isCustodian(item, account);
   const recipient =
     ["department", "secretariat"].includes(account.role) &&
@@ -476,7 +490,6 @@ function HandoverPanel({
               account,
               item.id,
               item.version,
-              actionScenario,
             );
             changed();
           }}
@@ -498,7 +511,6 @@ function HandoverPanel({
                 account,
                 item.id,
                 item.version,
-                actionScenario,
               );
               changed();
             }}
@@ -517,7 +529,6 @@ function HandoverPanel({
                 account,
                 item.id,
                 item.version,
-                actionScenario,
               );
               changed();
             }}
@@ -532,13 +543,16 @@ function HandoverPanel({
         <ActionForm
           label={t("طلب تسليم لجهة", "Request departmental handover")}
           onSubmit={async (data) => {
+            const office = String(data.get("office") ?? "");
+            if (!office.trim()) throw new ServiceError("invalid");
             await lostFound.requestHandover(
               account,
-              item.id,
-              String(data.get("department")) as Department,
-              String(data.get("office")),
-              item.version,
-              actionScenario,
+              {
+                id: item.id,
+                department: String(data.get("department")) as Department,
+                office,
+                expectedVersion: item.version,
+              },
             );
             changed();
           }}
@@ -566,7 +580,7 @@ function ItemDetail({
   item: FoundItem;
   changed: () => void;
 }) {
-  const { t, account, actionScenario } = useApp();
+  const { t, account } = useApp();
   const navigate = useNavigate();
   const owner = isCustodian(item, account);
   return (
@@ -633,7 +647,6 @@ function ItemDetail({
                 account,
                 item.id,
                 String(data.get("message")),
-                actionScenario,
               );
               navigate(`/claims/${claim.id}`);
             }}
@@ -659,16 +672,16 @@ function ItemDetail({
 }
 export function FoundDetail() {
   const { id = "" } = useParams();
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
   const load = useCallback(
-    () => lostFound.detail(account, id, scenario),
-    [account, id, scenario],
+    () => lostFound.detail(account, id),
+    [account, id],
   );
   return (
     <Page title={t("تفاصيل الغرض", "Item details")}>
       <AsyncView
-        key={`${id}-${account.id}-${scenario}-${revision}`}
+        key={`${id}-${account.id}-${revision}`}
         load={load}
       >
         {(item) => (
@@ -685,14 +698,14 @@ export function FoundDetail() {
   );
 }
 export function ClaimsList() {
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const load = useCallback(
-    () => lostFound.claims(account, scenario),
-    [account, scenario],
+    () => lostFound.claims(account),
+    [account],
   );
   return (
     <Page title={t("طلبات الاسترداد", "Recovery requests")}>
-      <AsyncView key={`${account.id}-${scenario}`} load={load}>
+      <AsyncView key={`${account.id}`} load={load}>
         {(claims) =>
           claims.length ? (
             <div className="list">
@@ -731,7 +744,7 @@ function ClaimView({
   item: FoundItem;
   changed: () => void;
 }) {
-  const { t, account, actionScenario } = useApp();
+  const { t, account } = useApp();
   const { pending, message, run } = useAction();
   const [confirm, setConfirm] = useState(false);
   const custodian = isCustodian(item, account);
@@ -771,15 +784,19 @@ function ClaimView({
             <ActionForm
               label={t("الموافقة على الطلب", "Approve request")}
               onSubmit={async (data) => {
+                const phone = String(data.get("phone") ?? "");
+                const place = String(data.get("place") ?? "");
+                const instructions = String(data.get("instructions") ?? "");
+                if (item.custodianDepartment ? !place.trim() || !instructions.trim() : !phone.trim())
+                  throw new ServiceError("invalid");
                 await lostFound.approve(
                   account,
                   claim.id,
                   {
-                    phone: String(data.get("phone") ?? ""),
-                    place: String(data.get("place") ?? ""),
-                    instructions: String(data.get("instructions") ?? ""),
+                    phone,
+                    place,
+                    instructions,
                   },
-                  actionScenario,
                 );
                 changed();
               }}
@@ -810,7 +827,7 @@ function ClaimView({
             <ActionForm
               label={t("رفض الطلب", "Reject request")}
               onSubmit={async () => {
-                await lostFound.reject(account, claim.id, actionScenario);
+                await lostFound.reject(account, claim.id);
                 changed();
               }}
             >
@@ -866,7 +883,6 @@ function ClaimView({
                               await lostFound.confirmDelivery(
                                 account,
                                 claim.id,
-                                actionScenario,
                               );
                               setConfirm(false);
                               changed();
@@ -893,16 +909,16 @@ function ClaimView({
 }
 export function ClaimDetail() {
   const { id = "" } = useParams();
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
   const load = useCallback(
-    () => lostFound.claimDetail(account, id, scenario),
-    [account, id, scenario],
+    () => lostFound.claimDetail(account, id),
+    [account, id],
   );
   return (
     <Page title={t("تفاصيل طلب الاسترداد", "Recovery request details")}>
       <AsyncView
-        key={`${id}-${account.id}-${scenario}-${revision}`}
+        key={`${id}-${account.id}-${revision}`}
         load={load}
       >
         {(result) => (

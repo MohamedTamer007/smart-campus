@@ -9,8 +9,8 @@ import {
   Password,
 } from "../../components/ui";
 import { AsyncView } from "../../components/AsyncView";
-import { boundary, campus } from "../../services/demo";
-import { ServiceError } from "../../services/contracts";
+import { accountService } from "../../services/frontend";
+import { guestAccount, ServiceError } from "../../services/contracts";
 export function Settings() {
   const {
     t,
@@ -18,8 +18,6 @@ export function Settings() {
     updateAccount,
     language,
     changeLanguage,
-    setActor,
-    actionScenario,
   } = useApp();
   const [saved, setSaved] = useState(false);
   const navigate = useNavigate();
@@ -30,10 +28,9 @@ export function Settings() {
           label={t("حفظ التغييرات", "Save changes")}
           onSubmit={async (data) => {
             updateAccount(
-              await campus.saveName(
+              await accountService.saveName(
                 account,
                 String(data.get("name")),
-                actionScenario,
               ),
             );
             setSaved(true);
@@ -57,8 +54,8 @@ export function Settings() {
           {saved && (
             <Feedback kind="success">
               {t(
-                "حُفظت التغييرات في هذه التجربة.",
-                "Changes saved in this demo.",
+                "حُفظت التغييرات.",
+                "Changes saved.",
               )}
             </Feedback>
           )}
@@ -67,11 +64,15 @@ export function Settings() {
       <div className="panel narrow">
         <h2>{t("تغيير كلمة المرور", "Change password")}</h2>
         <ActionForm
-          label={t("محاكاة تغيير كلمة المرور", "Simulate password change")}
+          label={t("تغيير كلمة المرور", "Change password")}
           onSubmit={async (data) => {
             if (data.get("password") !== data.get("confirmation"))
               throw new ServiceError("invalid");
-            await boundary(actionScenario, account);
+            await accountService.changePassword(
+              account,
+              String(data.get("currentPassword") ?? ""),
+              String(data.get("password") ?? ""),
+            );
             setSaved(true);
           }}
         >
@@ -90,7 +91,7 @@ export function Settings() {
         <button
           className="button danger"
           onClick={() => {
-            setActor("guest");
+            updateAccount(guestAccount);
             navigate("/login");
           }}
         >
@@ -101,18 +102,18 @@ export function Settings() {
   );
 }
 export function Notifications() {
-  const { t, account, scenario, actionScenario } = useApp();
+  const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
   const load = useCallback(
-    () => campus.notifications(account, scenario),
-    [account, scenario],
+    () => accountService.notifications(account),
+    [account],
   );
   return (
     <Page
       title={t("الإشعارات", "Notifications")}
       subtitle={t("تحديثات داخل الموقع فقط.", "Updates stay inside the site.")}
     >
-      <AsyncView key={`${account.id}-${scenario}-${revision}`} load={load}>
+      <AsyncView key={`${account.id}-${revision}`} load={load}>
         {(notices) =>
           notices.length ? (
             <div className="list">
@@ -130,7 +131,7 @@ export function Notifications() {
                       <ActionForm
                         label={t("تحديد كمقروء", "Mark as read")}
                         onSubmit={async () => {
-                          await campus.markRead(account, n.id, actionScenario);
+                          await accountService.markRead(account, n.id);
                           setRevision(revision + 1);
                         }}
                       >

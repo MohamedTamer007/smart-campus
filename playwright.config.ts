@@ -8,23 +8,16 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:5174",
+    baseURL: "http://127.0.0.1:4174",
     launchOptions: {
       executablePath,
       args: ["--no-sandbox"],
     },
     trace: "retain-on-failure",
   },
-  webServer: [
-    {
-      command: "npm run dev -- --mode e2e --port 5174 --strictPort",
-      url: "http://127.0.0.1:5174",
-      reuseExistingServer: false,
-    },
-    {
-      command: "npm run build && npm run preview -- --port 4174 --strictPort",
-      url: "http://127.0.0.1:4174",
-      reuseExistingServer: false,
-    },
-  ],
+  webServer: {
+    command: "npm run build && npm run preview -- --port 4174 --strictPort",
+    url: "http://127.0.0.1:4174",
+    reuseExistingServer: false,
+  },
 });

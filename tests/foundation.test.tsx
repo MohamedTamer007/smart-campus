@@ -21,19 +21,15 @@ describe("bilingual guest shell", () => {
     await userEvent.click(screen.getByRole("link", { name: "الإبلاغ عن عطل" }));
     expect(screen.getByRole("heading", { name: "تسجيل الدخول" })).toBeTruthy();
   });
-  it("greets the simulated actor rather than a fixed example name", async () => {
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>,
-    );
+  it("keeps sign-in inputs and reports unavailable without granting a session", async () => {
+    render(<MemoryRouter><App /></MemoryRouter>);
     await userEvent.click(screen.getByRole("link", { name: "تسجيل الدخول" }));
-    await userEvent.type(screen.getByLabelText(/البريد الجامعي/), "mona@o6u.edu.eg");
-    await userEvent.type(screen.getByLabelText(/^كلمة المرور/), "demo");
+    await userEvent.type(screen.getByLabelText(/البريد الجامعي/), "student@o6u.edu.eg");
+    await userEvent.type(screen.getByLabelText(/^كلمة المرور/), "example-password");
     await userEvent.click(screen.getByRole("button", { name: "تسجيل الدخول" }));
-    expect((await screen.findByRole("heading", { level: 1, name: /منى/ })).textContent).toContain(
-      "منى",
-    );
+    expect((await screen.findByRole("alert")).textContent).toContain("غير متاحة");
+    expect((screen.getByLabelText(/البريد الجامعي/) as HTMLInputElement).value).toBe("student@o6u.edu.eg");
+    expect(screen.getByRole("heading", { name: "تسجيل الدخول" })).toBeTruthy();
   });
   it("offers guests an account creation path", () => {
     render(

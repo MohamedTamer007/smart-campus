@@ -39,7 +39,10 @@ export function AsyncView<T>({
                 "انتهت الجلسة. سجل الدخول مجدداً.",
                 "Session expired. Sign in again.",
               )
-            : t(
+            : state.error === "unavailable" ? t(
+                "البيانات غير متاحة حتى ربط الخدمة بالنظام الخلفي.",
+                "Data is unavailable until the backend service is connected.",
+              ) : t(
                 "تعذر تحميل البيانات. حاول مجدداً.",
                 "Could not load data. Please retry.",
               )}

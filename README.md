@@ -1,8 +1,8 @@
 # Smart Campus frontend
 
-Arabic-first React demo of maintenance and lost-and-found workflows for users, staff and administrators. The demo is deliberately isolated from real authentication, storage, email and AI services. Its records and accounts exist only in browser memory and reset when the page reloads. Language preference is stored in browser local storage.
+Arabic-first React frontend for campus maintenance and lost-and-found workflows. The project contains screens, navigation and client-side validation; it has no connected backend, sample accounts or simulated records. Backend-dependent actions currently report that the service is unavailable. Private screens remain behind the client-side sign-in gate until a real session is connected.
 
-To sign in, use `ahmed@o6u.edu.eg` or another demo actor's email and the demo password `demo`. New registrations are simulated in memory; their sign-in password is also `demo`. Registration passwords are not retained. These simulated accounts and role checks do not provide production authorization.
+The gate is a presentation aid, not authorization. The backend must enforce access, data privacy and workflow rules. The only persisted browser preference is the selected language. Unsubmitted drafts can remain in page memory while navigating.
 
 ## Run locally
 
@@ -25,16 +25,16 @@ npm run build
 npm run test:e2e
 ```
 
-The Playwright configuration uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if provided, otherwise `/usr/bin/chromium` if present, otherwise Playwright's installed browser. Install the Playwright Chromium browser if the machine has neither an executable override nor the system browser. Browser tests start an isolated test-mode server with test-only scenario controls and a production preview; the controls are excluded from the production build. `npm run preview` serves the built output locally.
+The Playwright configuration uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if provided, otherwise `/usr/bin/chromium` if present, otherwise Playwright's installed browser. Install the Playwright Chromium browser if the machine has neither an executable override nor the system browser. Browser tests build the project and start a production preview. `npm run preview` also serves an existing build locally.
+
+For the public-screen screenshots, start `npm run preview -- --port 4175 --strictPort`, then run `node scripts/capture-screenshots.mjs` from the repository root.
 
 ## Cloudflare Pages deployment
 
-Production site: <https://smart-campus-o6u.pages.dev>. The Cloudflare Pages project is connected to this GitHub repository and deploys from `main`. Build command: `npm ci && npm run build`; output directory: `dist`; root directory: repository root. No build environment variables are required. Direct refresh of `/maintenance/new` was verified after deployment.
+Production site: <https://smart-campus-o6u.pages.dev>. The Cloudflare Pages project is connected to this GitHub repository and deploys from `main`. Build command: `npm ci && npm run build`; output directory: `dist`; root directory: repository root. No build environment variables are required.
 
 ## Backend handoff
 
-There is no live API adapter yet. Proposed operation families, integration decisions and missing inputs are in `docs/API_HANDOFF.md`; the authoritative behavioral reference is `docs/SMART_CAMPUS_REQUIREMENTS.md`. Simulated roles do not provide authorization in a real system.
+There is no live API adapter yet. The frontend's unavailable service boundaries and integration questions are described in `docs/API_HANDOFF.md`; the behavioral requirements are in `docs/SMART_CAMPUS_REQUIREMENTS.md`. Actual endpoint paths, DTOs, session transport and error contracts must be agreed with the backend team. Until then, signing in, registering, changing account data, submitting reports and using lost-and-found operations cannot succeed.
 
-`npm run build` produces `dist/`. The current deployment is a static frontend demo; it does not provide real persistence, authentication or backend authorization.
-
-The supplied campus photograph and O6U emblem are now used in the homepage hero and site branding. Production locations and departments, backend contract, session/upload policies and some workflow decisions remain outstanding. Demo locations, departments and statistics are illustrative. See `FRONTEND_COMPLETION_REPORT.md` for tested coverage and limitations.
+`npm run build` produces `dist/`. The campus photograph and O6U emblem are used in the homepage and branding. Actual locations, departments and operational policies require backend integration.

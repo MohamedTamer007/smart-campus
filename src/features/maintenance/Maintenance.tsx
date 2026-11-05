@@ -8,12 +8,11 @@ import {
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
 import { ActionForm, Feedback, Field, Page } from "../../components/ui";
-import { boundary, campus } from "../../services/demo";
-import { actors } from "../../services/contracts";
+import { ServiceError } from "../../services/contracts";
 import {
-  demoLocations,
   maintenance,
   maintenanceInput,
+  type LocationOption,
   type MaintenanceInput,
   type MaintenanceReport,
   type MaintenanceStatus,
@@ -94,8 +93,8 @@ export function ImageField({
         }
         required={required}
         hint={t(
-          "المعاينة تجربة محلية؛ قواعد الرفع الفعلية يحددها فريق الباك إند.",
-          "Preview is local to the demo; upload rules will be supplied by the backend.",
+          "تظهر المعاينة على جهازك قبل الإرسال.",
+          "The image is previewed on your device before submission.",
         )}
       >
         <input
@@ -129,14 +128,16 @@ export function ImageField({
 }
 function ReportForm({
   initial,
+  locations,
   report,
   onSaved,
 }: {
   initial: MaintenanceInput;
+  locations: LocationOption[];
   report?: MaintenanceReport;
   onSaved?: () => void;
 }) {
-  const { t, account, actionScenario } = useApp();
+  const { t, account } = useApp();
   const navigate = useNavigate();
   const key = `${account.id}:${report?.id ?? "new"}`;
   const [values, setValues] = useState<MaintenanceInput>(
@@ -149,18 +150,19 @@ function ReportForm({
       return value;
     });
   }
-  const faculty = demoLocations.find((item) => item.id === values.faculty);
+  const faculty = locations.find((item) => item.id === values.faculty);
   const building = faculty?.buildings.find(
     (item) => item.id === values.building,
   );
   async function submit() {
+    if (!values.description.trim() || !values.details.trim())
+      throw new ServiceError("invalid");
     const result = report
       ? await maintenance.edit(
           account,
           { id: report.id, version: report.version, input: values },
-          actionScenario,
         )
-      : await maintenance.create(account, values, actionScenario);
+      : await maintenance.create(account, values);
     drafts.delete(key);
     if (report && onSaved) onSaved();
     else navigate(`/maintenance/${result.id}?saved=1`);
@@ -191,7 +193,7 @@ function ReportForm({
             }
           >
             <option value="">{t("اختر المرفق", "Choose facility")}</option>
-            {demoLocations.map((f) => (
+            {locations.map((f) => (
               <option value={f.id} key={f.id}>
                 {t(f.ar, f.en)}
               </option>
@@ -242,11 +244,8 @@ function ReportForm({
   );
 }
 export function NewMaintenance() {
-  const { t, account, scenario } = useApp();
-  const load = useCallback(async () => {
-    await boundary(scenario, account);
-    return demoLocations;
-  }, [scenario, account]);
+  const { t, account } = useApp();
+  const load = useCallback(() => maintenance.locations(account), [account]);
   return (
     <Page
       title={t("أبلغ عن عطل", "Report a fault")}
@@ -256,15 +255,9 @@ export function NewMaintenance() {
       )}
     >
       <div className="panel narrow">
-        <Feedback>
-          {t(
-            "المواقع التالية أمثلة تجريبية وليست دليلاً جامعياً.",
-            "The locations below are illustrative demo data, not a campus directory.",
-          )}
-        </Feedback>
-        <AsyncView key={`${account.id}-${scenario}`} load={load}>
+        <AsyncView key={`${account.id}`} load={load}>
           {(locations) =>
-            scenario === "empty" || !locations.length ? (
+            !locations.length ? (
               <Feedback>
                 {t(
                   "بيانات المواقع غير متاحة حالياً.",
@@ -272,7 +265,7 @@ export function NewMaintenance() {
                 )}
               </Feedback>
             ) : (
-              <ReportForm initial={emptyInput()} />
+              <ReportForm initial={emptyInput()} locations={locations} />
             )
           }
         </AsyncView>
@@ -281,10 +274,10 @@ export function NewMaintenance() {
   );
 }
 export function MaintenanceList({ staff = false }: { staff?: boolean }) {
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const load = useCallback(
-    () => maintenance.list(account, scenario),
-    [account, scenario],
+    () => maintenance.list(account),
+    [account],
   );
   return (
     <Page
@@ -303,7 +296,7 @@ export function MaintenanceList({ staff = false }: { staff?: boolean }) {
         </Link>
       </div>
       <div className="spacer" />
-      <AsyncView key={`${account.id}-${scenario}-${staff}`} load={load}>
+      <AsyncView key={`${account.id}-${staff}`} load={load}>
         {(records) =>
           (staff
             ? records
@@ -350,20 +343,13 @@ function StaffActions({
   report: MaintenanceReport;
   onChanged: () => void;
 }) {
-  const { t, account, actionScenario } = useApp();
+  const { t, account } = useApp();
   const options: Partial<Record<MaintenanceStatus, MaintenanceStatus[]>> = {
     submitted: ["review", "rejected"],
     review: ["review", "repair", "rejected"],
     repair: ["repair", "resolved", "rejected"],
   };
   const allowed = options[report.status] ?? [];
-  const assignees = [
-    ...Object.values(actors),
-    ...campus.registeredAccounts(),
-  ].filter(
-    (actor) =>
-      actor.role === "maintenance" && actor.department === "maintenance",
-  );
   const [status, setStatus] = useState<MaintenanceStatus>(
     allowed[0] ?? report.status,
   );
@@ -374,6 +360,9 @@ function StaffActions({
       <ActionForm
         label={t("حفظ التحديث", "Save update")}
         onSubmit={async (data) => {
+          const note = String(data.get("note") ?? "");
+          if (status === "rejected" && !note.trim())
+            throw new ServiceError("invalid");
           await maintenance.update(
             account,
             {
@@ -381,14 +370,13 @@ function StaffActions({
               version: report.version,
               status,
               assignee: String(data.get("assignee")),
-              note: String(data.get("note")),
+              note,
               decision: {
                 type: String(data.get("type")),
                 priority: String(data.get("priority")),
                 risk: String(data.get("risk")),
               },
             },
-            actionScenario,
           );
           onChanged();
         }}
@@ -406,23 +394,7 @@ function StaffActions({
           </select>
         </Field>
         <Field label={t("إسناد إلى", "Assign to")}>
-          <select name="assignee" defaultValue={report.assignee}>
-            <option value="">{t("غير مسند", "Unassigned")}</option>
-            {report.assignee &&
-              !assignees.some((actor) => actor.id === report.assignee) && (
-                <option value={report.assignee} disabled>
-                  {t(
-                    "المسؤول السابق لم يعد مخولاً",
-                    "Previous assignee no longer authorized",
-                  )}
-                </option>
-              )}
-            {assignees.map((actor) => (
-              <option key={actor.id} value={actor.id}>
-                {actor.name}
-              </option>
-            ))}
-          </select>
+          <input name="assignee" value={report.assignee} readOnly />
         </Field>
         <p>
           {t(
@@ -465,23 +437,19 @@ function Detail({
   report: MaintenanceReport;
   onChanged: () => void;
 }) {
-  const { t, account, language, actionScenario } = useApp();
+  const { t, account, language } = useApp();
   const [editing, setEditing] = useState(false);
   const [params] = useSearchParams();
+  const loadLocations = useCallback(() => maintenance.locations(account), [account]);
   const owner = report.ownerId === account.id;
   const staff = !!report.assessment;
   if (editing)
     return (
       <div className="panel">
         <h2>{t("تعديل البلاغ", "Edit report")}</h2>
-        <ReportForm
-          initial={report}
-          report={report}
-          onSaved={() => {
-            setEditing(false);
-            onChanged();
-          }}
-        />
+        <AsyncView load={loadLocations}>
+          {(locations) => <ReportForm initial={report} locations={locations} report={report} onSaved={() => { setEditing(false); onChanged(); }} />}
+        </AsyncView>
         <button
           className="button"
           onClick={() => {
@@ -497,7 +465,7 @@ function Detail({
     <>
       {params.has("saved") && (
         <Feedback kind="success">
-          {t("تم حفظ البلاغ في التجربة.", "Report saved in the demo.")}
+          {t("تم حفظ البلاغ.", "Report saved.")}
         </Feedback>
       )}
       <div className="panel">
@@ -511,11 +479,7 @@ function Detail({
           <div>
             <dt>{t("الموقع", "Location")}</dt>
             <dd>
-              {t("مرفق تجريبي", "Demo facility")} ·{" "}
-              {t("مبنى تجريبي", "Demo building")} ·{" "}
-              {report.floor === "ground"
-                ? t("الأرضي", "Ground floor")
-                : t("الأول", "First floor")}
+              {report.faculty} · {report.building} · {report.floor}
             </dd>
             <dd>{report.details}</dd>
           </div>
@@ -539,7 +503,6 @@ function Detail({
                 await maintenance.cancel(
                   account,
                   { id: report.id, version: report.version },
-                  actionScenario,
                 );
                 onChanged();
               }}
@@ -581,8 +544,8 @@ function Detail({
             </h2>
             <Feedback>
               {t(
-                "التحليل غير متاح في التجربة؛ لم يتم تقدير النوع أو الأولوية أو الخطورة.",
-                "Analysis is unavailable in the demo; type, priority and risk have not been estimated.",
+                "التحليل غير متاح حالياً.",
+                "Analysis is currently unavailable.",
               )}
             </Feedback>
           </div>
@@ -598,16 +561,16 @@ function Detail({
 }
 export function MaintenanceDetail() {
   const { id = "" } = useParams();
-  const { t, account, scenario } = useApp();
+  const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
   const load = useCallback(
-    () => maintenance.detail(account, id, scenario),
-    [account, id, scenario],
+    () => maintenance.detail(account, id),
+    [account, id],
   );
   return (
     <Page title={t("متابعة البلاغ", "Track report")}>
       <AsyncView
-        key={`${id}-${account.id}-${scenario}-${revision}`}
+        key={`${id}-${account.id}-${revision}`}
         load={load}
       >
         {(report) => (

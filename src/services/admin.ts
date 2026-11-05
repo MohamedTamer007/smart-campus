@@ -1,100 +1,30 @@
-import {
-  actors,
-  currentDemoAccount,
-  type Account,
-  type Role,
-  type Scenario,
-  ServiceError,
-} from "./contracts";
-import { boundary, campus, type DemoCampus } from "./demo";
-import { type MaintenanceReport, type MaintenanceStatus } from "./maintenance";
-import { lostFound, type FoundItem, type Claim } from "./lostFound";
+import type { Account } from "./contracts";
+import type { MaintenanceReport, MaintenanceStatus } from "./maintenance";
+import type { FoundItem, Claim } from "./lostFound";
+import { backendUnavailable } from "./unavailable";
 
 export type AssignableRole = "user" | "maintenance" | "department" | "admin";
 export interface DirectoryEntry {
   key: string;
   account: Account;
 }
-type Registrations = Pick<
-  DemoCampus,
-  "registeredAccounts" | "updateRegistration"
->;
-export class AdminDirectory {
-  constructor(
-    private records: Record<Role, Account> = structuredClone(actors),
-    private canAssign: (account: Account) => boolean = () => true,
-    private registrations?: Registrations,
-  ) {}
-  private accounts() {
-    return [
-      ...Object.values(this.records),
-      ...(this.registrations?.registeredAccounts() ?? []),
-    ];
-  }
-  actor(key: Role) {
-    return { ...this.records[key] };
-  }
-  async list(
+interface DirectoryService {
+  list(actor: Account): Promise<DirectoryEntry[]>;
+  assign(
     actor: Account,
-    scenario: Scenario = "normal",
-  ): Promise<DirectoryEntry[]> {
-    await boundary(scenario);
-    actor = currentDemoAccount(actor, this.accounts());
-    if (actor.role !== "admin") throw new ServiceError("forbidden");
-    const seeded = (Object.keys(this.records) as Role[])
-      .filter((key) => !["guest", "unverified"].includes(key))
-      .map((key) => ({ key, account: { ...this.records[key] } }));
-    const registered = (this.registrations?.registeredAccounts() ?? []).map(
-      (account) => ({ key: account.id, account }),
-    );
-    return [...seeded, ...registered];
-  }
-  async assign(
-    actor: Account,
-    key: string,
-    role: AssignableRole,
-    scope: string,
-    confirmAdmin: boolean,
-    scenario: Scenario = "normal",
-  ) {
-    await boundary(scenario);
-    actor = currentDemoAccount(actor, this.accounts());
-    const seededKey = (Object.keys(this.records) as Role[]).find(
-      (candidate) =>
-        candidate === key && !["guest", "unverified"].includes(candidate),
-    );
-    const target = seededKey
-      ? this.records[seededKey]
-      : this.registrations
-          ?.registeredAccounts()
-          .find((account) => account.id === key);
-    if (
-      actor.role !== "admin" ||
-      !target ||
-      target.role === "unverified" ||
-      target.id === actor.id
-    )
-      throw new ServiceError("forbidden");
-    if (
-      !["user", "maintenance", "department", "admin"].includes(role) ||
-      (role === "maintenance" && scope !== "maintenance") ||
-      (role === "department" && !["security", "secretariat"].includes(scope)) ||
-      (["user", "admin"].includes(role) && scope !== "") ||
-      (role === "admin" && !confirmAdmin)
-    )
-      throw new ServiceError("invalid");
-    const proposed = { ...target, role, department: scope || undefined };
-    if (!this.canAssign(proposed)) throw new ServiceError("conflict");
-    if (seededKey) this.records[seededKey] = proposed;
-    else this.registrations?.updateRegistration(proposed);
-    return { ...proposed };
-  }
+    request: {
+      key: string;
+      role: AssignableRole;
+      scope: string;
+      confirmAdmin: boolean;
+    },
+  ): Promise<Account>;
 }
-export const directory = new AdminDirectory(
-  actors,
-  (account) => lostFound.canAssign(account),
-  campus,
-);
+export const directory: DirectoryService = {
+  list: backendUnavailable,
+  assign: backendUnavailable,
+};
+
 export interface Stats {
   totalReports: number;
   byStatus: Record<MaintenanceStatus, number>;

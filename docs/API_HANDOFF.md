@@ -1,17 +1,18 @@
 # Frontend integration boundary
 
-Status: proposals for the teammate, not existing endpoints. This app is explicitly demo-only until a live contract is supplied. It makes no authentication, email, AI-provider, Supabase or backend requests.
+The project is frontend-only. No authentication, directory, maintenance, lost-and-found, email, upload or AI service is connected. No endpoint paths or transport contracts are assumed. Backend-dependent operations currently reject with an unavailable state rather than fabricate success or records.
 
-The frontend's domain operations use asynchronous typed methods. The demo boundary can return unavailable, expired, conflict, forbidden or invalid failures. Failed requests never fall back to successful fixture records. Demo actors and role controls are simulation only.
+## Current frontend boundaries
 
-The backend must own authorization on every operation, session transport/expiry, verification/recovery delivery, private image access, upload validation, assignment scope, reservation concurrency, custody transitions and final delivery closure.
+- `src/features/auth/Auth.tsx` contains the sign-in, registration, verification, recovery and reset screens. Its backend-dependent actions call `backendUnavailable` from `src/services/unavailable.ts` after applicable local validation. Verification and reset links do not establish a session.
+- `src/services/frontend.ts`, `src/services/maintenance.ts`, `src/services/lostFound.ts` and `src/services/admin.ts` contain provisional typed frontend operations for account settings, notifications, locations, reports, items, claims and account administration. They reject as unavailable until replaced by an agreed adapter.
+- `src/app/context.tsx` starts as a guest; `src/app/access.tsx` gates private screens in the UI. These client-side gates are not security controls. A real session adapter must populate and clear account state, and the backend must authorize each operation.
+- `src/services/validation.ts` validates the currently specified university-email domain locally. The backend team should confirm email and password policies. Image previews are local to the browser; upload handling is not connected.
 
-Before a live adapter is written, agree on OpenAPI/DTOs, API base/CORS, cookie-or-token handling, machine-readable field errors, authoritative allowed actions, version tokens, cancellation flags, notification mechanism, pagination, location IDs, upload types/sizes/counts and text/password policies. No numerical policies or endpoint paths are assumed here.
+Before implementing an adapter, agree on OpenAPI/DTOs, API base and CORS, session transport and expiry, verification/recovery delivery, machine-readable errors, authoritative allowed actions, version tokens, private media access, upload limits, directory/location identifiers, notification delivery and pagination. The backend must enforce ownership, role/scope access, reservation concurrency, custody transitions and delivery closure.
 
-Open business decisions remain: claims while reserved; who may cancel approval; transfer while approval is active. The demo will block ambiguous transitions rather than invent expiry or forced closure.
+Open business decisions remain: claims while reserved, who may cancel approval, and transfers while approval is active. Do not infer endpoint paths or production policy from the frontend's provisional types.
 
-Demo records and location choices are illustrative, held in memory and reset by browser reload. Language preference alone is stored locally. Never put service credentials into browser-exposed environment variables.
+The selected language is stored in browser local storage. Unsaved form drafts may remain in page memory during navigation; no records or credentials are persisted by a backend in this project. Never put service credentials in browser-exposed variables.
 
-Demo account grants are resolved from current in-memory records for each maintenance, lost-and-found and administration operation. Role changes that would make an approved recovery impossible are blocked in the demo. These are interaction examples, not backend enforcement or an agreed endpoint contract.
-
-A saved registration, verified state, demo role/scope, display name, report, image, claim, notification or handover is lost on browser reload. Non-sensitive unsent maintenance and found-item text is retained only in page memory while navigating during that same page session. A simulated account's registration password is not retained; known and simulated registered accounts use the disclosed demo-only sign-in password.
+The former in-memory service tests exercised a removed simulation and cannot verify a real backend. Backend integration tests must cover authentication, authorization, ownership, privacy, stale writes, custody, concurrency and delivery once the backend exists.

@@ -69,8 +69,8 @@ export function useAction() {
   const [errorCode, setErrorCode] = useState<ServiceError["code"] | null>(null);
   const messages = {
     unavailable: t(
-      "الخدمة غير متاحة. احتُفظ بمدخلاتك؛ حاول مجدداً.",
-      "Service unavailable. Your input is kept; please retry.",
+      "الخدمة غير متاحة حتى ربطها بالنظام الخلفي. احتُفظ بمدخلاتك.",
+      "This service is unavailable until the backend is connected. Your input is kept.",
     ),
     expired: t(
       "انتهت الجلسة. سجل الدخول مجدداً.",
