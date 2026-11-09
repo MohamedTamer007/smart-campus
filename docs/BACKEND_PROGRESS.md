@@ -70,3 +70,5 @@ Final local verification completed:
 Acceptance gates and remaining unimplemented checks are in ACCEPTANCE.md. This is not certified deployment-ready.
 
 CI update: run 42685171210 passed full-history scan, PostgreSQL 17 backend tests and isolated storage-policy proof. Actual encrypted dump/restore completed, but expanded all-row/constraint comparison failed. Constraint ordering was made deterministic by table plus constraint name (names can repeat across tables), and fixed validation reasons are now reported without row/credential data. Rerun required. Real pinned model inference already passed in run 42683987444 (768 dimensions). Manual updated administrator sign-in/live operational counts verified; screenshot admin-operations.png.
+
+The restore comparison failure was reproduced locally and traced to PostgreSQL deparser cast normalization, not lost rows. A narrowly bounded canonicalizer plus four regression cases now passes the real local restored-copy comparison (26 tables, 42 rows, constraints/indexes/history). CI must rerun the revised verifier. No source/live records were overwritten.

@@ -3,8 +3,24 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
+
+
+def canonical_definition(value):
+    """Normalize PostgreSQL's equivalent text casts on arrays of string literals only."""
+    literal = r"'(?:[^']|'')*'::(?:character varying|text)"
+    element = r"(?:\(" + literal + r"\)::text|" + literal + r")"
+    items = element + r"(?:, " + element + r")*"
+    array = r"\(ARRAY\[(?P<cast_items>" + items + r")\]\)::text\[\]|ARRAY\[(?P<items>" + items + r")\]"
+
+    def replace(match):
+        content = match.group("cast_items") or match.group("items")
+        values = re.findall(r"'(?:[^']|'')*'", content)
+        return "ARRAY[" + ", ".join(item + "::text" for item in values) + "]"
+
+    return re.sub(array, replace, value)
 
 
 def main():
@@ -41,7 +57,7 @@ def main():
         "SELECT conrelid::regclass::text,conname,contype,pg_get_constraintdef(oid) FROM pg_constraint WHERE connamespace='smart_campus'::regnamespace ORDER BY conrelid::regclass::text,conname,contype;",
         "SELECT tablename,indexname,indexdef FROM pg_indexes WHERE schemaname='smart_campus' ORDER BY tablename,indexname;",
     ):
-        if query(args.source, sql) != query(args.restored, sql):
+        if canonical_definition(query(args.source, sql).decode()) != canonical_definition(query(args.restored, sql).decode()):
             raise ValueError("Restored constraints or indexes differ")
     if total == 0:
         raise ValueError("Empty fixtures do not establish recovery of application data")

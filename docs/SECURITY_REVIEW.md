@@ -53,3 +53,5 @@ The current 90 backend tests and 47 frontend cases passed; provider test doubles
 
 CI run 42683987364 reported one Gitleaks false positive: `AI__OpenRouterKey=` followed by the empty `AI__NvidiaKey=` setting. The generic rule crossed the newline and extracted a configuration name. Reviewed exact commit/file/rule/line fingerprint is the only exception in `.gitleaksignore`; every new commit value and all other findings remain scanned. Empty template values are quoted to prevent recurrence. Actual pinned-model CI 42683987444 passed; calibration and public-host evidence remain separate gates.
 
+
+Restore-verifier follow-up: canonicalization applies only to arrays composed entirely of string literals cast to unbounded varchar/text. It does not strip arbitrary SQL, column expressions or bounded-length casts. Regression cases prove changed allowed values remain failures. Real source/restored row bytes still compare exactly. Local isolated restored-copy verification passes; hosted/complete recovery is not inferred.
