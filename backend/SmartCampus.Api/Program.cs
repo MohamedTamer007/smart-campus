@@ -85,7 +85,7 @@ builder.Services.AddRateLimiter(options => {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "local", _ =>
             new FixedWindowRateLimiterOptions { PermitLimit = builder.Configuration.GetValue("RateLimits:PerMinute", 120), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
-    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+    options.AddPolicy("auth", context => HttpMethods.IsGet(context.Request.Method) ? RateLimitPartition.GetNoLimiter("auth-read") : RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "local", _ => new FixedWindowRateLimiterOptions {
             PermitLimit = builder.Configuration.GetValue("RateLimits:AuthPerMinute", 15), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
