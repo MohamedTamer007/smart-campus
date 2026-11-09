@@ -56,3 +56,5 @@ Five backup safety tests passed: `test_backup_refuses_repository_destination_bef
 The Linux CI workflow is configured for PostgreSQL 17, Chromium/Firefox/WebKit, frontend checks, worker boundary tests, dependency/history scans, real encrypted database backup/isolated restore and an API Docker build. Discovery found 36 static and six integrated browser cases across the three engines. A configured workflow or discovered test is not an executed result. GitHub execution, real email, hosted storage/database, real model inference, performance and restore verification remain pending.
 
 TRX evidence is generated under the parent task's non-versioned `work/test-results`; selected sanitized reports are copied into `docs/evidence` when delivering a verified milestone.
+
+Scanner follow-up: run 42684914405 matched the same next-setting name even with quoted empty values. The second exact historical fingerprint was reviewed; both empty key assignments are now omitted from the template, which instead instructs secure injection. No actual credential or scanner rule is exempted.
