@@ -8,6 +8,8 @@ import { AdminAccounts } from "../src/features/admin/Admin";
 import { ClaimDetail, FoundDetail, RegisterFound, SearchItems } from "../src/features/lost-found/LostFound";
 import { MaintenanceDetail, NewMaintenance } from "../src/features/maintenance/Maintenance";
 import { directory } from "../src/services/admin";
+import * as adminServices from "../src/services/admin";
+import { OperationsStatus } from "../src/features/admin/OperationsStatus";
 import type { Account } from "../src/services/contracts";
 import { lostFound, type Claim, type FoundItem } from "../src/services/lostFound";
 import { maintenance, type MaintenanceReport } from "../src/services/maintenance";
@@ -34,6 +36,18 @@ function renderForActor(actor: Account, children: ReactNode) {
   localStorage.setItem("smart-campus-language", "en");
   return render(<MemoryRouter><AppProvider><TestSession actor={actor}>{children}</TestSession></AppProvider></MemoryRouter>);
 }
+
+it("renders API operational counts and truthful worker unavailability", async () => {
+  vi.spyOn(adminServices, "operations").mockResolvedValue({ sampledAt: "2026-11-09T12:00:00Z", deployment: "test-only",
+    workingSetBytes: 64 * 1024 * 1024, worker: "unavailable", calibrationApproved: false,
+    quotas: [{ provider: "openrouter", used: 7, dailyLimit: 50 }],
+    jobs: [{ kind: "maintenance", state: "pending", count: 2, maximumAttempts: 1 }] });
+  renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
+  expect(await screen.findByText("Matching worker: Unavailable")).toBeTruthy();
+  expect(screen.getByText("Search calibration: Awaiting approval")).toBeTruthy();
+  expect(screen.getByText("Maintenance assessment · Pending: 2")).toBeTruthy();
+  expect(screen.getByText(/7 \/ 50/)).toBeTruthy();
+});
 
 it("requires a selected account before requesting a permission change", async () => {
   const actor: Account = { id: "admin-test", name: "Administrator", email: "", role: "admin" };
@@ -145,6 +159,21 @@ it("rejects an empty search before requesting matches", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Search for matches" }));
   expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
   expect(search).toHaveBeenCalledWith(actor, "watch", photo);
+});
+
+it("requires content review and separate image consent before external analysis", async () => {
+  const actor: Account = { id: "ai-staff-test", name: "Staff", email: "", role: "maintenance" };
+  const report: MaintenanceReport = { id: "reviewed-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 4, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canReviewAiInput: true, canReviewAiImage: true, assessment: { state: "unavailable", type: "", priority: "", risk: "" } };
+  vi.spyOn(maintenance, "detail").mockResolvedValue(report);
+  const review = vi.spyOn(maintenance, "reviewAi").mockResolvedValue({ ...report, canReviewAiInput: false });
+  renderForActor(actor, <MaintenanceDetail />);
+  const submit = await screen.findByRole("button", { name: "Send reviewed content for analysis" });
+  await userEvent.click(submit);
+  expect(review).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("checkbox", { name: /I reviewed the description/ }));
+  expect((screen.getByRole("checkbox", { name: /I also reviewed the image/ }) as HTMLInputElement).checked).toBe(false);
+  await userEvent.click(submit);
+  expect(review).toHaveBeenCalledWith("reviewed-report", 4, true, false);
 });
 
 it("requires a nonblank rejection reason before requesting a report update", async () => {

@@ -9,7 +9,7 @@ using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
 
-public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend)
+public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend, ReleasePolicy release)
 {
     private readonly IDataProtector protector = protection.CreateProtector("SmartCampus.OutboundEmail.v1");
     private sealed record EmailPayload(string Recipient, string Subject, string Link);
@@ -27,6 +27,7 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         var email = await db.OutboundEmails.FindAsync(id) ?? throw new RuleException("email_unavailable", 503);
         if (email.SentAt.HasValue) return;
         var payload = JsonSerializer.Deserialize<EmailPayload>(protector.Unprotect(email.ProtectedPayload))!;
+        release.Require(payload.Recipient);
         await Send(payload.Recipient, payload.Subject, payload.Link, "smart-campus/email/" + email.Id.ToString("N"));
         email.SentAt = DateTimeOffset.UtcNow;
         email.ProtectedPayload = "";

@@ -93,6 +93,7 @@ export function useAction() {
       "Check required fields and the current record state.",
     ),
     unverified: t("أكد بريدك الجامعي أولاً من رابط البريد.", "Verify your university email using the email link first."),
+    release_restricted: t("النظام في مرحلة اختبار مُقيد بالحسابات المعتمدة فقط.", "This testing release is restricted to authorized accounts."),
     rate_limited: t("طلبات كثيرة. انتظر قليلاً ثم حاول مجدداً.", "Too many requests. Wait briefly and retry."),
     internal: t("تعذر إكمال الطلب. حاول مجدداً.", "The request failed. Please retry."),
   };

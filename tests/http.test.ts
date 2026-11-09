@@ -30,3 +30,9 @@ it("network failure cannot become an empty successful result", async () => {
   const { api } = await import("../src/services/http");
   await expect(api("/found/search")).rejects.toMatchObject({ code: "unavailable" });
 });
+
+it.each(["<!DOCTYPE html><title>Proxy response</title>", "{truncated"])("a malformed successful API response remains unavailable: %s", async (body) => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status: 200 })));
+  const { api } = await import("../src/services/http");
+  await expect(api("/found")).rejects.toMatchObject({ code: "unavailable" });
+});

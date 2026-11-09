@@ -15,7 +15,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       const error = await response.json().catch(() => ({})) as { code?: string };
       if (response.status === 401 && path !== "/auth/login" && path !== "/auth/me")
         window.dispatchEvent(new Event("smart-campus-session-expired"));
-      const code = error.code === "unverified" ? "unverified" : response.status === 429 ? "rate_limited" : response.status === 500 ? "internal" :
+      const code = error.code === "release_restricted" ? "release_restricted" : error.code === "unverified" ? "unverified" : response.status === 429 ? "rate_limited" : response.status === 500 ? "internal" :
         response.status === 401 ? (path === "/auth/login" ? "credentials" : "expired") :
         response.status === 403 ? "forbidden" : response.status === 409 ? "conflict" :
         response.status === 400 ? "invalid" : "unavailable";
@@ -26,6 +26,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   } catch (error) {
     if (error instanceof ServiceError) throw error;
     if (error instanceof TypeError) throw new ServiceError("unavailable");
+    if (error instanceof SyntaxError) throw new ServiceError("unavailable", "invalid_response");
     throw error;
   }
 }

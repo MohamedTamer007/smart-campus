@@ -34,6 +34,7 @@ Errors: 400 invalid input/CSRF/token, 401 missing/expired session or credentials
 | GET `/admin/accounts`; PUT `/admin/accounts/{id}/grants` | Admin. Exact roles/departmentIds arrays and concurrency stamp version. Self-modification prohibited; grants revoke target sessions. |
 | POST `/admin/departments`, `/admin/locations` | Admin. Department code/ar/en/canReceive/maintenance; location parentId/kind/ar/en/maintenanceDepartmentId. Use verified data. |
 | GET `/statistics?from=&to=&departmentId=` | Server applies ownership/scopes. Dates are inclusive Africa/Cairo dates. |
+| GET `/admin/operations` | Administrator only. Aggregate job counts, application AI budgets, API memory, deployment identity and loopback worker/calibration status. No credentials, private payloads or user directory. |
 
 ## State rules and limits
 
@@ -48,3 +49,11 @@ Search scores are ranks, never ownership probabilities. Up to five qualifying ma
 One JPEG/PNG/WebP image up to 5 MiB, maximum 16 million decoded pixels, sanitized to JPEG. Maintenance image optional; found image required. Descriptions/messages max 4000; locations/offices max 1000. Passwords 12–128 characters; exact normalized o6u.edu.eg domain.
 
 Statistics use each record's creation date and current authorized scope. Cancellation counts separately. Fault types use saved staff decisions; recurrence groups fault type/floor with counts above one. Under review is not all open work. Notifications are in-site; email is verification/reset only.
+
+Hosted testing defaults to `Release:Mode=controlled` and an explicit university-account allowlist. Unlisted registration/login/private access returns HTTP 403 with `release_restricted`. Recovery/resend remain generic and do not send to unlisted accounts. Opening general university access requires separate operational/privacy approval and its configured reference. Development defaults to open access on loopback.
+
+AI attempts consume atomic UTC day/minute application counters before provider calls; failed attempts count. OpenRouter defaults are 50/day and 20/minute. NVIDIA defaults to a zero daily budget until permitted quota is explicitly configured. These are application budgets, not a live account-credit report. Quota deferral carries a reset time; applicable API errors include `Retry-After`.
+
+`POST /maintenance/{id}/ai-review` takes `{version, confirmedNonSensitive, includeImage}`. Current scoped maintenance staff or administrators must explicitly review the exact report content version before external analysis. Images require separate approval, an eligible configured provider, and the globally enabled image permission. The endpoint increments the report version and requeues its assessment; it does not change maintenance status or staff decisions. A running job or repeated approval returns 409. Owner edits create a new unreviewed assessment. Late results cannot populate the edited version. Staff DTOs include `assessment.inputReviewed`, `canReviewAiInput` and `canReviewAiImage`; ordinary-user assessments remain null.
+
+Cairo date bounds use the first actual instant of the calendar date, including skipped midnight at DST. Pending claims are filtered by claim creation date and current custodian department; the item's registration date does not exclude a new claim. Dashboard grouping runs in PostgreSQL.

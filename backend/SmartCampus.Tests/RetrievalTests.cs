@@ -38,7 +38,8 @@ public sealed class RetrievalTests(CampusFixture campus) : IClassFixture<CampusF
         (await db.Items.FindAsync(redId))!.Description = "Red bag";
         await db.SaveChangesAsync();
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, campus.Other.ToString())], "test-boundary"));
-        var access = new Access(db, new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = principal } }, scope.ServiceProvider.GetRequiredService<UserManager<CampusUser>>());
+        var access = new Access(db, new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = principal } },
+            scope.ServiceProvider.GetRequiredService<UserManager<CampusUser>>(), scope.ServiceProvider.GetRequiredService<ReleasePolicy>());
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
             ["Search:CalibrationApproval"] = "TEST ONLY - synthetic vectors", ["Search:MinimumScore"] = "0.9"
         }).Build();

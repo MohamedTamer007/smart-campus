@@ -9,8 +9,17 @@ namespace SmartCampus.Infrastructure;
 
 public sealed record AiSuggestion(string Type, string Priority, string Risk, string Explanation);
 
-public sealed class AiProviders(IHttpClientFactory clients, IConfiguration config)
+public sealed class AiProviders(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget)
 {
+    public static bool Configured(IConfiguration configuration)
+    {
+        var provider = configuration["AI:Provider"] ?? "openrouter";
+        return (provider is "openrouter" or "nvidia") && configuration.GetValue<bool>("AI:AllowNonSensitiveInference") &&
+            !string.IsNullOrWhiteSpace(configuration[provider == "nvidia" ? "AI:NvidiaKey" : "AI:OpenRouterKey"]) &&
+            new[] { "FaultTypes", "Priorities", "Risks" }.All(key => (configuration.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0) &&
+            configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaDailyRequestLimit" : "OpenRouterDailyRequestLimit"), provider == "nvidia" ? 0 : 50) > 0 &&
+            configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaRequestsPerMinute" : "OpenRouterRequestsPerMinute"), provider == "nvidia" ? 5 : 20) > 0;
+    }
     public async Task<AiSuggestion> Assess(string description, CancellationToken cancellation, byte[]? image = null)
     {
         if (!config.GetValue<bool>("AI:AllowNonSensitiveInference")) throw new RuleException("ai_not_configured", 503);
@@ -18,7 +27,9 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
         var priorities = config.GetSection("AI:Priorities").Get<string[]>() ?? [];
         var risks = config.GetSection("AI:Risks").Get<string[]>() ?? [];
         if (taxonomy.Length == 0 || priorities.Length == 0 || risks.Length == 0) throw new RuleException("taxonomy_unavailable", 503);
-        var nvidia = config["AI:Provider"] == "nvidia";
+        var provider = config["AI:Provider"] ?? "openrouter";
+        if (provider is not ("openrouter" or "nvidia")) throw new RuleException("ai_not_configured", 503);
+        var nvidia = provider == "nvidia";
         var key = config[nvidia ? "AI:NvidiaKey" : "AI:OpenRouterKey"];
         if (string.IsNullOrEmpty(key)) throw new RuleException("ai_not_configured", 503);
         using var client = clients.CreateClient("inference");
@@ -41,8 +52,14 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
             payload["reasoning"] = new { enabled = false };
             payload["provider"] = new { allow_fallbacks = false, max_price = new { prompt = 0, completion = 0 } };
         }
+        await budget.Reserve(provider, cancellation);
         using var response = await client.PostAsJsonAsync(nvidia ? "https://integrate.api.nvidia.com/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions", payload, cancellation);
-        if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new RuleException("ai_rate_limited", 503);
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var retry = response.Headers.RetryAfter?.Date ?? now.Add(response.Headers.RetryAfter?.Delta ?? TimeSpan.FromMinutes(1));
+            throw new RuleException("ai_rate_limited", 503, now.AddSeconds(Math.Clamp((retry - now).TotalSeconds, 60, 86400)));
+        }
         if (!response.IsSuccessStatusCode) throw new RuleException("ai_unavailable", 503);
         var json = await response.Content.ReadAsStringAsync(cancellation);
         if (json.Length > 100000) throw new RuleException("invalid_ai_response", 503);

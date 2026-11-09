@@ -21,3 +21,4 @@ backend/SmartCampus.Api/wwwroot/
 *.key
 .pgpass
 *.pgpass
+*.env

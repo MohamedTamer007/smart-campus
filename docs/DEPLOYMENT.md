@@ -2,6 +2,8 @@
 
 No deployment or production cutover was performed. Final Release compilation and local publish succeeded; final evidence is in BACKEND_PROGRESS.md. Container execution and hosted integration remain unverified.
 
+Current free-provider comparison and account setup are in [HOSTING_SETUP.md](HOSTING_SETUP.md). Linux VM packaging is prepared in `deployment/compose.yml`: Caddy serves the single HTTPS origin, API and worker bind loopback in the host network, private environment files are separate, and model cache/key storage persist outside images. This packaging has not yet passed CI/runtime verification. The full application's free platform-hostname requirement remains unresolved; no public URL is supplied as a completed deployment.
+
 ## Application shape
 
 Serve React and `/api/v1` from one HTTPS origin. `scripts/publish.ps1` builds React, publishes the Release API and copies assets into published wwwroot. `Dockerfile` provides an alternative Node/.NET multi-stage build with a non-root runtime user. The Python worker runs on the API host's loopback interface; if using containers, place both processes in the same network namespace. Do not expose its port publicly. Weights, key rings and uploads are outside the source image.

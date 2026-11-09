@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -7,8 +8,9 @@ namespace SmartCampus.Infrastructure;
 public sealed record MaintenanceInput(string Description, Guid Faculty, Guid Building, Guid Floor, string Details);
 public sealed record DecisionInput(string Type, string Priority, string Risk);
 public sealed record MaintenanceUpdate(int Version, string Status, string? Assignee, string Note, DecisionInput? Decision);
+public sealed record AiReviewInput(int Version, bool ConfirmedNonSensitive, bool IncludeImage);
 
-public sealed class MaintenanceService(CampusDb db, Access access, Events events, PrivateMedia media)
+public sealed class MaintenanceService(CampusDb db, Access access, Events events, PrivateMedia media, IConfiguration config)
 {
     public async Task<object> Create(MaintenanceInput input, IFormFile? photo)
     {
@@ -50,8 +52,9 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         Access.Require(staff || report.ReporterId == actor.Id);
         var history = await db.History.Where(h => h.ReportId == id).OrderBy(h => h.CreatedAt)
             .Select(h => new { at = h.CreatedAt, actor = h.ActorId, status = h.Status, note = h.Note, assignee = h.AssigneeId }).ToArrayAsync();
-        var assessment = staff ? await db.Assessments.Where(a => a.ReportId == id && a.InputVersion == report.ContentVersion)
-            .Select(a => new { state = a.State, type = a.FaultType, priority = a.Priority, risk = a.Risk }).FirstOrDefaultAsync() : null;
+        var assessmentRecord = staff ? await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == id && a.InputVersion == report.ContentVersion) : null;
+        var assessment = assessmentRecord is null ? null : new { state = assessmentRecord.State, type = assessmentRecord.FaultType,
+            priority = assessmentRecord.Priority, risk = assessmentRecord.Risk, inputReviewed = assessmentRecord.ReviewedAt.HasValue };
         var attachment = await db.Media.Where(m => m.ReportId == id).Select(m => (Guid?)m.Id).FirstOrDefaultAsync();
         var locationRecords = await db.Locations.Where(l => l.Id == report.FacultyId || l.Id == report.BuildingId || l.Id == report.FloorId).ToDictionaryAsync(l => l.Id);
         var allowedAssignees = staff ? await db.Users.Where(u => u.Active && u.EmailConfirmed &&
@@ -67,7 +70,46 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
             decision = staff ? new { type = report.FaultType, priority = report.Priority, risk = report.Risk } : null,
             mediaUrl = attachment.HasValue ? $"/api/v1/media/{attachment}" : null,
             canEdit = report.ReporterId == actor.Id && report.Status == "submitted" && report.CancelledAt is null,
-            canViewAssessment = staff, canUpdate = staff && report.CancelledAt is null && report.Status is not ("resolved" or "rejected") };
+            canViewAssessment = staff, canUpdate = staff && report.CancelledAt is null && report.Status is not ("resolved" or "rejected"),
+            canReviewAiInput = staff && report.CancelledAt is null && (report.Status is "submitted" or "review") &&
+                assessmentRecord is { ReviewedAt: null } && assessmentRecord.State != "completed" && AiProviders.Configured(config),
+            canReviewAiImage = staff && (config["AI:Provider"] ?? "openrouter") == "openrouter" && config.GetValue<bool>("AI:AllowNonSensitiveImages") && attachment.HasValue };
+    }
+
+    public async Task<object> ReviewAi(Guid id, AiReviewInput input)
+    {
+        var actor = await access.Current();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var report = await Locked(id);
+        Access.Require(actor.Admin || actor.Maintenance(report.DepartmentId));
+        Rules.Version(report.Version, input.Version);
+        if (!input.ConfirmedNonSensitive) throw new RuleException("ai_review_required");
+        if (report.CancelledAt.HasValue || report.Status is not ("submitted" or "review")) throw new RuleException("invalid_transition", 409);
+        if (!AiProviders.Configured(config)) throw new RuleException("ai_not_configured", 503);
+        var assessment = await db.Assessments.SingleAsync(a => a.ReportId == id && a.InputVersion == report.ContentVersion);
+        if (assessment.ReviewedAt.HasValue || assessment.State == "completed") throw new RuleException("conflict", 409);
+        var jobKey = $"maintenance:{id}:{report.ContentVersion}";
+        var job = await db.Jobs.FromSqlInterpolated($"SELECT * FROM smart_campus.\"Jobs\" WHERE \"Key\"={jobKey} FOR UPDATE").SingleAsync();
+        if (job.State == "running") throw new RuleException("conflict", 409);
+        if (input.IncludeImage)
+        {
+            if ((config["AI:Provider"] ?? "openrouter") != "openrouter" || !config.GetValue<bool>("AI:AllowNonSensitiveImages"))
+                throw new RuleException("ai_images_not_permitted", 503);
+            assessment.ReviewedImageId = await db.Media.Where(m => m.ReportId == id).Select(m => (Guid?)m.Id).SingleOrDefaultAsync()
+                ?? throw new RuleException("invalid_upload");
+        }
+        assessment.ReviewedBy = actor.Id;
+        assessment.ReviewedAt = DateTimeOffset.UtcNow;
+        assessment.State = "pending";
+        assessment.FailureCode = null;
+        job.State = "pending";
+        job.Attempts = 0;
+        job.AvailableAt = DateTimeOffset.UtcNow;
+        report.Version++;
+        events.Audit(actor, "MaintenanceAiInputReviewed", id);
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return await Detail(id);
     }
 
     public async Task<object> Edit(Guid id, int version, MaintenanceInput input, IFormFile? photo)

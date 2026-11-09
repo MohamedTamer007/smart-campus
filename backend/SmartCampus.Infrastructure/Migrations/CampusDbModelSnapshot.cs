@@ -199,6 +199,15 @@ namespace SmartCampus.Infrastructure.Migrations
                     b.Property<Guid>("ReportId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ReviewedImageId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Risk")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -209,6 +218,8 @@ namespace SmartCampus.Infrastructure.Migrations
                         .HasColumnType("character varying(4000)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ReviewedBy");
 
                     b.HasIndex("ReportId", "InputVersion")
                         .IsUnique();
@@ -527,6 +538,38 @@ namespace SmartCampus.Infrastructure.Migrations
                             t.HasCheckConstraint("custodian_xor", "(\"CustodianId\" IS NULL) <> (\"CustodianDepartmentId\" IS NULL)");
 
                             t.HasCheckConstraint("item_state", "\"State\" IN ('available','reserved','delivered')");
+                        });
+                });
+
+            modelBuilder.Entity("SmartCampus.Domain.InferenceUsage", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("Window")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("Provider", "WindowStart");
+
+                    b.ToTable("InferenceUsage", "smart_campus", t =>
+                        {
+                            t.HasCheckConstraint("inference_count_positive", "\"Count\" > 0");
                         });
                 });
 
@@ -1053,6 +1096,11 @@ namespace SmartCampus.Infrastructure.Migrations
                         .HasForeignKey("ReportId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SmartCampus.Infrastructure.CampusUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("SmartCampus.Domain.AuditEvent", b =>

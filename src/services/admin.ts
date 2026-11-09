@@ -55,6 +55,16 @@ export interface Stats {
   faultTypes: Record<string, number>;
 }
 export type DashboardScope = "all" | "maintenance" | "security" | "secretariat";
+export interface OperationsSnapshot {
+  sampledAt: string;
+  deployment: string;
+  workingSetBytes: number;
+  jobs: { kind: string; state: string; count: number; maximumAttempts: number }[];
+  quotas: { provider: string; used: number; dailyLimit: number }[];
+  worker: "available" | "unavailable";
+  calibrationApproved: boolean;
+}
+export const operations = () => api<OperationsSnapshot>("/admin/operations");
 export function calculateStats(
   reports: MaintenanceReport[],
   items: FoundItem[],

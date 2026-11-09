@@ -11,6 +11,7 @@ using SmartCampus.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 if (builder.Environment.IsDevelopment()) builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true);
 builder.Configuration.AddEnvironmentVariables();
+builder.Configuration["Release:Mode"] ??= builder.Environment.IsDevelopment() ? "open" : "controlled";
 var administrativeCommand = args.Contains("--migrate") || args.Contains("--bootstrap-admin");
 if (!builder.Environment.IsDevelopment() && !administrativeCommand)
     HostingSecurity.Validate(builder.Configuration);
@@ -48,6 +49,7 @@ builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInter
 HostingSecurity.ConfigureKeys(builder.Services, builder.Configuration, builder.Environment.IsDevelopment() || administrativeCommand);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<Access>();
+builder.Services.AddSingleton<ReleasePolicy>();
 builder.Services.AddScoped<Events>();
 builder.Services.AddScoped<EmailSender>();
 builder.Services.AddScoped<ResendEmailTransport>();
@@ -55,6 +57,9 @@ builder.Services.AddScoped<PrivateMedia>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped<LostFoundService>();
 builder.Services.AddScoped<AiProviders>();
+builder.Services.AddScoped<MaintenanceAssessmentProcessor>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<IInferenceBudget, InferenceBudget>();
 builder.Services.AddScoped<RetrievalService>();
 builder.Services.AddHttpClient("storage", c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHttpClient("inference", c => c.Timeout = TimeSpan.FromSeconds(45));
@@ -122,6 +127,8 @@ app.Use(async (context, next) => {
             _ => (500, "internal")
         };
         if (status is 400 or 403 or 409) app.Logger.LogWarning("Request rejected: {Code}; endpoint {Endpoint}; trace {TraceId}", code, context.GetEndpoint()?.DisplayName, context.TraceIdentifier);
+        if (exception is RuleException { RetryAt: { } retryAt })
+            context.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling((retryAt - DateTimeOffset.UtcNow).TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
         await Results.Problem(statusCode: status, title: code, extensions: new Dictionary<string, object?> { ["code"] = code }).ExecuteAsync(context);
     }
     catch (Exception exception)

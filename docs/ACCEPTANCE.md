@@ -2,7 +2,15 @@
 
 This is a local verification report, not a production readiness certificate. PASS means the stated check actually ran. BLOCKED means the indicated external/environment requirement remains unresolved. Historical AI trial measurements are not results from this implementation.
 
-## Executed checks
+## Current continuation
+
+The tables below retain the earlier local milestone. Current results supersede its test counts: **90 backend tests passed**, **47 frontend tests passed**, typecheck/lint/build passed, worker offline **6 passed**, backup guards **7 passed/1 Windows skip**. See [TEST_REPORT.md](TEST_REPORT.md) and `evidence/backend-release-controls.trx` for named evidence.
+
+GitHub CI has established PostgreSQL 17 test compatibility, a real encrypted application dump/isolated restore with report-count comparison, and a clean full-history Gitleaks scan. Expanded all-row restore comparison, storage-policy proof, actual-model Docker execution, corrected three-engine browser checks and VM packaging execution remain pending in the next CI batch.
+
+**BLOCKED:** full public deployment, platform HTTPS hostname for the complete worker-capable host, hosting account access, authorized real email transport, hosted least-privilege runtime setup, storage-prefix permission correction, real provider calls, verified directory/taxonomy, calibration, complete off-host recovery and load targets. **NOT IMPLEMENTED:** Microsoft Graph email adapter, full operational alerting and exhaustive browser journeys. Free hosting comparison/account-owner instructions are in [HOSTING_SETUP.md](HOSTING_SETUP.md).
+
+## Earlier executed checks
 
 | Check | Result | Evidence |
 |---|---|---|

@@ -36,3 +36,18 @@ Security-sensitive: YES. Reviewed directly by Codex against all ten categories i
 
 The original local implementation review is above.
 
+## Current release/quota/privacy review
+
+Security-sensitive: YES. Reviewed by Codex using security-review (10/10 checklist categories), clean-code-guard, test-guard and docs-guard. No new dependency was added. Parameterized database operations and shared mutation locks remain in place; React receives operational counts without private job payloads.
+
+| Finding | Severity | Resolution |
+|---|---|---|
+| Existing hosted authenticated storage SELECT bypasses private matching for new prefix objects | HIGH external deployment gate | Guarded policy correction prepared; isolated proof pending CI; hosted application uploads/deployment blocked until reviewed approval and correction. Legacy objects/trials untouched. |
+| Global inference permission alone could forward arbitrary report content | HIGH, FIXED in source | Scoped staff must explicitly approve each content version and separately approve the exact image. Owner edits invalidate approval; stale results cannot populate the new version. Six PostgreSQL-backed privacy scenarios pass. |
+| Unbounded application inference attempts could exhaust free quota | FIXED | Transactional UTC minute/day reservations before network requests; concurrency/reset/rollback tests pass; NVIDIA disabled without explicit daily allowance. No automatic paid fallback. |
+| Testing deployment could admit unapproved university accounts | FIXED | Hosted controlled allowlist; checked at login, private requests, verification/reset and queued delivery. Removal blocks an existing session. Recovery remains generic. |
+
+Backup subprocesses use argument arrays and scrub rclone environment overrides; encrypted source/filename copies preserve historical versions. Hosted credentials, destination permissions and complete recovery are unverified. CI has read-only GitHub permission and no live credentials; full-history Gitleaks passed on the prior commit. A limited current scan found no known local credentials/selected provider-token patterns across 177 worktree files and 412 history objects, which does not replace the next CI scan.
+
+The current 90 backend tests and 47 frontend cases passed; provider test doubles remain confined to explicit network boundaries. No fake provider/model fallback was added to production. Cairo dashboard aggregation now runs in PostgreSQL and pending-claim filtering preserves department/date authorization. Paged report/item DTO assembly still needs load/query work before capacity claims. Documentation was checked against actual routes, templates and generated OpenAPI; unexecuted hosting/inference/recovery claims stay blocked.
+

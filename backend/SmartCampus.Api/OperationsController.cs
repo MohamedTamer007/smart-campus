@@ -1,0 +1,46 @@
+using System.Diagnostics;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SmartCampus.Infrastructure;
+
+namespace SmartCampus.Api;
+
+[ApiController, Authorize, Route("api/v1/admin/operations")]
+public sealed class OperationsController(CampusDb db, Access access, IConfiguration config, IHttpClientFactory clients, TimeProvider clock) : ControllerBase
+{
+    private sealed record WorkerHealth(bool Ready, string Model, string Revision);
+
+    [HttpGet]
+    public async Task<ActionResult<OperationsResponse>> Status(CancellationToken cancellation)
+    {
+        Access.Require((await access.Current()).Admin);
+        var now = clock.GetUtcNow().ToUniversalTime();
+        var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var jobs = await db.Jobs.GroupBy(j => new { j.Kind, j.State })
+            .Select(g => new JobStateResponse(g.Key.Kind, g.Key.State, g.Count(), g.Max(j => j.Attempts))).ToArrayAsync(cancellation);
+        var used = await db.InferenceUsage.Where(u => u.Window == "day" && u.WindowStart == day)
+            .Select(u => new { u.Provider, u.Count }).ToDictionaryAsync(u => u.Provider, u => u.Count, cancellation);
+        var quotas = new[] {
+            new ProviderQuotaResponse("openrouter", used.GetValueOrDefault("openrouter"), config.GetValue("AI:OpenRouterDailyRequestLimit", 50)),
+            new ProviderQuotaResponse("nvidia", used.GetValueOrDefault("nvidia"), config.GetValue("AI:NvidiaDailyRequestLimit", 0))
+        };
+        var worker = "unavailable";
+        if (Uri.TryCreate(config["Search:WorkerUrl"] ?? "http://127.0.0.1:8123/", UriKind.Absolute, out var endpoint) && endpoint.IsLoopback && endpoint.Scheme == "http")
+        {
+            try
+            {
+                using var client = clients.CreateClient("worker");
+                var health = await client.GetFromJsonAsync<WorkerHealth>(new Uri(endpoint, "health"), cancellation);
+                if (health is { Ready: true } && health.Model == RetrievalService.Model && health.Revision == RetrievalService.Revision)
+                    worker = "available";
+            }
+            catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException) { }
+        }
+        using var process = Process.GetCurrentProcess();
+        return new OperationsResponse(now, config["Deployment:Commit"] ?? "local", process.WorkingSet64, jobs, quotas, worker,
+            RetrievalService.ApprovedThreshold(config).HasValue);
+    }
+}

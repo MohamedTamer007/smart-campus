@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
 
@@ -34,6 +35,19 @@ public static class HostingSecurity
             if (string.IsNullOrWhiteSpace(config["Email:Host"])) invalid.Add("Email:Host");
         }
         else invalid.Add("Email:Provider");
+        var releaseMode = config["Release:Mode"] ?? "controlled";
+        if (releaseMode is not ("controlled" or "open")) invalid.Add("Release:Mode");
+        if (releaseMode == "open" && string.IsNullOrWhiteSpace(config["Release:UniversityApproval"])) invalid.Add("Release:UniversityApproval");
+        if (releaseMode == "controlled")
+        {
+            var allowed = config.GetSection("Release:AllowedEmails").Get<string[]>() ?? [];
+            if (allowed.Length == 0 || allowed.Any(string.IsNullOrWhiteSpace)) invalid.Add("Release:AllowedEmails");
+            else
+            {
+                try { foreach (var email in allowed) Rules.UniversityEmail(email); }
+                catch (RuleException) { invalid.Add("Release:AllowedEmails"); }
+            }
+        }
         try
         {
             var database = new NpgsqlConnectionStringBuilder(config.GetConnectionString("Campus"));

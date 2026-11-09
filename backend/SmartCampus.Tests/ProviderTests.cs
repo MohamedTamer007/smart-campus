@@ -9,11 +9,23 @@ namespace SmartCampus.Tests;
 
 public sealed class ProviderTests
 {
+    private sealed class AvailableTestBudget : IInferenceBudget
+    {
+        public Task Reserve(string provider, CancellationToken cancellation) => Task.CompletedTask;
+    }
+    private sealed class ExhaustedTestBudget : IInferenceBudget
+    {
+        public Task Reserve(string provider, CancellationToken cancellation) => throw new RuleException("ai_quota_exhausted", 503, DateTimeOffset.UtcNow.AddDays(1));
+    }
     private sealed class ProviderBoundary(HttpStatusCode status, string body) : HttpMessageHandler, IHttpClientFactory
     {
+        public int Requests { get; private set; }
         public HttpClient CreateClient(string name) => new(this, false);
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests++;
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+        }
     }
     private static IConfiguration Config() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
         ["AI:AllowNonSensitiveInference"] = "true", ["AI:OpenRouterKey"] = "test-only-not-a-real-key", ["AI:FaultTypes:0"] = "plumbing",
@@ -27,7 +39,7 @@ public sealed class ProviderTests
     public async Task Provider_failure_never_creates_a_suggestion(int status, string body, string expected)
     {
         using var provider = new ProviderBoundary((HttpStatusCode)status, body);
-        var adapter = new AiProviders(provider, Config());
+        var adapter = new AiProviders(provider, Config(), new AvailableTestBudget());
         var failure = await Assert.ThrowsAsync<RuleException>(() => adapter.Assess("Synthetic leak near wiring", CancellationToken.None));
         Assert.Equal(expected, failure.Code);
     }
@@ -37,9 +49,19 @@ public sealed class ProviderTests
     {
         const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Water near wiring\"}"}}]}""";
         using var provider = new ProviderBoundary(HttpStatusCode.OK, body);
-        var suggestion = await new AiProviders(provider, Config()).Assess("Synthetic leak", CancellationToken.None);
+        var suggestion = await new AiProviders(provider, Config(), new AvailableTestBudget()).Assess("Synthetic leak", CancellationToken.None);
         Assert.Equal("plumbing", suggestion.Type);
         Assert.Equal("urgent", suggestion.Priority);
         Assert.Equal("high", suggestion.Risk);
+    }
+
+    [Fact]
+    public async Task Exhausted_budget_prevents_external_inference()
+    {
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, "{}");
+        var failure = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, Config(), new ExhaustedTestBudget())
+            .Assess("Synthetic leak", CancellationToken.None));
+        Assert.Equal("ai_quota_exhausted", failure.Code);
+        Assert.Equal(0, provider.Requests);
     }
 }

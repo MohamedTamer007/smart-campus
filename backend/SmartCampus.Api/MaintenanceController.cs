@@ -27,4 +27,5 @@ public sealed class MaintenanceController(MaintenanceService service) : Controll
     [HttpPut("{id:guid}"), RequestSizeLimit(6000000), ProducesResponseType<MaintenanceResponse>(200)] public Task<object> Edit(Guid id, [FromForm] ReportForm input) => service.Edit(id, input.Version, input.Input(), input.Photo);
     [HttpPost("{id:guid}/cancel"), ProducesResponseType<MaintenanceResponse>(200)] public Task<object> Cancel(Guid id, VersionInput input) => service.Cancel(id, input.Version);
     [HttpPost("{id:guid}/updates"), ProducesResponseType<MaintenanceResponse>(200)] public Task<object> Update(Guid id, MaintenanceUpdate input) => service.Update(id, input);
+    [HttpPost("{id:guid}/ai-review"), ProducesResponseType<MaintenanceResponse>(200)] public Task<object> ReviewAi(Guid id, AiReviewInput input) => service.ReviewAi(id, input);
 }

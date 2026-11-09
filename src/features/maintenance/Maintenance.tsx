@@ -442,6 +442,8 @@ function Detail({
 }) {
   const { t, account, language } = useApp();
   const [editing, setEditing] = useState(false);
+  const [reviewedNonSensitive, setReviewedNonSensitive] = useState(false);
+  const [includeAiImage, setIncludeAiImage] = useState(false);
   const [params] = useSearchParams();
   const loadLocations = useCallback(() => maintenance.locations(account), [account]);
   const owner = report.ownerId === account.id;
@@ -555,6 +557,17 @@ function Detail({
                 report.assessment?.state === "pending" ? "Analysis is pending." : "Analysis is currently unavailable.",
               )}
             </Feedback>}
+            {report.canReviewAiInput && <ActionForm
+              label={t("إرسال المحتوى المُراجع للتحليل", "Send reviewed content for analysis")}
+              onSubmit={async () => {
+                await maintenance.reviewAi(report.id, report.version, reviewedNonSensitive, includeAiImage);
+                onChanged();
+              }}
+            >
+              <p>{t("سيُرسل الوصف إلى مزود التحليل الخارجي. راجع المحتوى أولاً وتأكد من خلوه من البيانات الشخصية أو الحساسة.", "The description will be sent to the external analysis provider. Review it first and ensure it contains no personal or sensitive information.")}</p>
+              <label><input type="checkbox" required checked={reviewedNonSensitive} onChange={event => setReviewedNonSensitive(event.target.checked)} /> {t("راجعت الوصف وأؤكد أنه غير حساس ومسموح بمشاركته.", "I reviewed the description and confirm it is non-sensitive and permitted to share.")}</label>
+              {report.canReviewAiImage && <label><input type="checkbox" checked={includeAiImage} onChange={event => setIncludeAiImage(event.target.checked)} /> {t("راجعت الصورة أيضاً وأوافق على إرسالها لأنها غير حساسة.", "I also reviewed the image and approve sending it as non-sensitive content.")}</label>}
+            </ActionForm>}
           </div>
           {report.canUpdate && <StaffActions
             key={`${report.id}-${report.version}`}

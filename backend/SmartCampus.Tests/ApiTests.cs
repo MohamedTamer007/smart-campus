@@ -12,6 +12,36 @@ namespace SmartCampus.Tests;
 public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
     [DatabaseFact]
+    public async Task Operational_diagnostics_reject_guests_users_and_scoped_staff()
+    {
+        using var guest = campus.CreateClient();
+        using var user = await campus.Login(campus.Student);
+        using var staff = await campus.Login(campus.Staff);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await guest.GetAsync("/api/v1/admin/operations")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await user.GetAsync("/api/v1/admin/operations")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/v1/admin/operations")).StatusCode);
+    }
+
+    [DatabaseFact]
+    public async Task Administrator_operational_summary_contains_real_counts_without_private_payloads()
+    {
+        using var student = await campus.Login(campus.Student);
+        await campus.Report(student);
+        using var administrator = await campus.Login(campus.Admin);
+        var response = await CampusFixture.Response(await administrator.GetAsync("/api/v1/admin/operations"));
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        Assert.Equal(await db.Jobs.CountAsync(), response.GetProperty("jobs").EnumerateArray().Sum(j => j.GetProperty("count").GetInt32()));
+        Assert.Equal(7, response.EnumerateObject().Count());
+        Assert.True(response.GetProperty("workingSetBytes").GetInt64() > 0);
+        Assert.Contains(response.GetProperty("worker").GetString(), new[] { "available", "unavailable" });
+        Assert.Equal(0, response.GetProperty("quotas").EnumerateArray().Single(q => q.GetProperty("provider").GetString() == "nvidia").GetProperty("dailyLimit").GetInt32());
+        Assert.DoesNotContain(campus.Email(campus.Student), response.GetRawText());
+        Assert.DoesNotContain("ProtectedPayload", response.GetRawText());
+        Assert.DoesNotContain("Host=", response.GetRawText());
+    }
+
+    [DatabaseFact]
     public async Task Unauthenticated_unverified_and_forged_privileges_are_denied()
     {
         using var guest = campus.CreateClient();

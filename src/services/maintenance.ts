@@ -32,7 +32,7 @@ export interface MaintenanceReport extends MaintenanceInput {
   createdAt: string;
   assignee: string;
   history: MaintenanceEvent[];
-  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null } | null;
+  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null; inputReviewed?: boolean } | null;
   decision?: OperationalDecision | null;
   mediaUrl?: string | null;
   reference?: string;
@@ -41,6 +41,8 @@ export interface MaintenanceReport extends MaintenanceInput {
   canEdit?: boolean;
   canUpdate?: boolean;
   canViewAssessment?: boolean;
+  canReviewAiInput?: boolean;
+  canReviewAiImage?: boolean;
   departmentId?: string;
   allowedAssignees?: { id: string; name: string }[];
 }
@@ -89,6 +91,7 @@ interface MaintenanceService {
       decision?: OperationalDecision;
     },
   ): Promise<MaintenanceReport>;
+  reviewAi(id: string, version: number, confirmedNonSensitive: boolean, includeImage: boolean): Promise<MaintenanceReport>;
 }
 export const maintenance: MaintenanceService = {
   locations: () => api<LocationOption[]>("/directory/locations"),
@@ -98,6 +101,7 @@ export const maintenance: MaintenanceService = {
   edit: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}`, { method: "PUT", body: form({ ...request.input, version: request.version }) })),
   cancel: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/cancel`, json("POST", { version: request.version }))),
   update: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/updates`, json("POST", request))),
+  reviewAi: async (id, version, confirmedNonSensitive, includeImage) => normalize(await api<MaintenanceReport>(`/maintenance/${id}/ai-review`, json("POST", { version, confirmedNonSensitive, includeImage }))),
 };
 async function normalize(report: MaintenanceReport) {
   return withPhoto({ ...report, status: report.cancelledAt ? "cancelled" as const : report.status, assignee: report.assignee ?? "" });

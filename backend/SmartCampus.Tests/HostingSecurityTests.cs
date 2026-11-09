@@ -17,6 +17,7 @@ public sealed class HostingSecurityTests
             ["Storage:Local"] = "false", ["Storage:Url"] = "https://project.example.test", ["Storage:Key"] = "not-a-real-secret",
             ["Email:Provider"] = "resend", ["Email:From"] = "verification@example.test", ["Email:ResendKey"] = "not-a-real-secret",
             ["DataProtection:Directory"] = "/var/lib/smart-campus/keys", ["DataProtection:CertificatePath"] = "/run/secrets/keys.pfx",
+            ["Release:Mode"] = "controlled", ["Release:AllowedEmails:0"] = "authorized-test@o6u.edu.eg",
             ["ConnectionStrings:Campus"] = "Host=database.example.test;Database=campus;Username=runtime;Password=not-a-real-secret;SSL Mode=VerifyFull"
         };
         if (changedKey is not null) settings[changedKey] = changedValue;
@@ -39,6 +40,7 @@ public sealed class HostingSecurityTests
     [InlineData("Email:LocalSink", "true")]
     [InlineData("Email:ResendKey", "")]
     [InlineData("Email:Provider", "typo")]
+    [InlineData("Release:Mode", "typo")]
     [InlineData("DataProtection:CertificatePath", "")]
     [InlineData("ConnectionStrings:Campus", "Host=database.example.test;SSL Mode=Require")]
     public void Unsafe_hosted_configuration_is_rejected_without_exposing_values(string key, string value)
@@ -46,6 +48,13 @@ public sealed class HostingSecurityTests
         var failure = Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(Config(key, value)));
         Assert.Contains(key, failure.Message);
         Assert.DoesNotContain("not-a-real-secret", failure.Message);
+    }
+
+    [Fact]
+    public void Open_university_release_requires_explicit_operational_approval_reference()
+    {
+        var failure = Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(Config("Release:Mode", "open")));
+        Assert.Contains("Release:UniversityApproval", failure.Message);
     }
 
     [Fact]

@@ -16,6 +16,7 @@ import {
 } from "../../services/maintenance";
 import { lostFound, currentCustodian } from "../../services/lostFound";
 import { ServiceError, type Role } from "../../services/contracts";
+import { OperationsStatus } from "./OperationsStatus";
 const labels: Record<MaintenanceStatus, [string, string]> = {
   submitted: ["تم الإرسال", "Submitted"],
   review: ["قيد المراجعة", "Under review"],
@@ -286,6 +287,7 @@ export function AdminOverview() {
           );
         }}
       </AsyncView>
+      <OperationsStatus />
     </Page>
   );
 }

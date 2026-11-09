@@ -16,16 +16,13 @@ export default defineConfig({
     ["junit", { outputFile: integrated ? "test-results/browser-integrated.xml" : "test-results/browser-static.xml" }],
   ],
   projects: [
-    { name: "chromium", use: { browserName: "chromium" } },
+    { name: "chromium", use: { browserName: "chromium", launchOptions: { executablePath, args: ["--no-sandbox"], timeout: 20000 } } },
     { name: "firefox", use: { browserName: "firefox" } },
     { name: "webkit", use: { browserName: "webkit" } },
   ],
   use: {
     baseURL: integrated ? "http://127.0.0.1:5080" : "http://127.0.0.1:4174",
-    launchOptions: {
-      executablePath,
-      args: ["--no-sandbox"],
-    },
+    launchOptions: { timeout: 20000 },
     trace: "retain-on-failure",
   },
   webServer: integrated ? undefined : {

@@ -39,6 +39,7 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
     public DbSet<SearchGrant> SearchGrants => Set<SearchGrant>();
     public DbSet<SessionTicket> Sessions => Set<SessionTicket>();
     public DbSet<OutboundEmail> OutboundEmails => Set<OutboundEmail>();
+    public DbSet<InferenceUsage> InferenceUsage => Set<InferenceUsage>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -70,6 +71,7 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
         model.Entity<MaintenanceHistory>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.ActorId);
         model.Entity<MaintenanceHistory>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.AssigneeId);
         model.Entity<Assessment>().HasOne<MaintenanceReport>().WithMany().HasForeignKey(x => x.ReportId);
+        model.Entity<Assessment>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.ReviewedBy).OnDelete(DeleteBehavior.Restrict);
         model.Entity<Assessment>().HasIndex(x => new { x.ReportId, x.InputVersion }).IsUnique();
         model.Entity<FoundItem>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.UploaderId);
         model.Entity<FoundItem>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.CustodianId);
@@ -106,5 +108,9 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
         model.Entity<SessionTicket>().HasKey(x => x.Id);
         model.Entity<SessionTicket>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.UserId);
         model.Entity<SessionTicket>().HasIndex(x => x.UserId);
+        model.Entity<InferenceUsage>().HasKey(x => x.Key);
+        model.Entity<InferenceUsage>().Property(x => x.Key).HasMaxLength(100);
+        model.Entity<InferenceUsage>().HasIndex(x => new { x.Provider, x.WindowStart });
+        model.Entity<InferenceUsage>().ToTable(t => t.HasCheckConstraint("inference_count_positive", "\"Count\" > 0"));
     }
 }

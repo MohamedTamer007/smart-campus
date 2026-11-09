@@ -2,10 +2,11 @@ using System.Net.Mail;
 
 namespace SmartCampus.Domain;
 
-public sealed class RuleException(string code, int status = 400) : Exception(code)
+public sealed class RuleException(string code, int status = 400, DateTimeOffset? retryAt = null) : Exception(code)
 {
     public string Code { get; } = code;
     public int Status { get; } = status;
+    public DateTimeOffset? RetryAt { get; } = retryAt;
 }
 
 public static class Rules
@@ -121,6 +122,9 @@ public sealed class Assessment : Record
     public string? Explanation { get; set; }
     public string? Model { get; set; }
     public string? FailureCode { get; set; }
+    public Guid? ReviewedBy { get; set; }
+    public DateTimeOffset? ReviewedAt { get; set; }
+    public Guid? ReviewedImageId { get; set; }
 }
 
 public sealed class FoundItem : VersionedRecord
@@ -217,4 +221,13 @@ public sealed class OutboundEmail : Record
 {
     public string ProtectedPayload { get; set; } = "";
     public DateTimeOffset? SentAt { get; set; }
+}
+
+public sealed class InferenceUsage
+{
+    public string Key { get; set; } = "";
+    public string Provider { get; set; } = "";
+    public string Window { get; set; } = "";
+    public DateTimeOffset WindowStart { get; set; }
+    public int Count { get; set; }
 }

@@ -22,7 +22,7 @@ public sealed record ProfileInput(string Name, string Language);
 
 [ApiController, Route("api/v1/auth"), EnableRateLimiting("auth")]
 public sealed class AuthController(UserManager<CampusUser> users, SignInManager<CampusUser> signin,
-    CampusDb db, Access access, EmailSender mail, IConfiguration config) : ControllerBase
+    CampusDb db, Access access, EmailSender mail, IConfiguration config, ReleasePolicy release) : ControllerBase
 {
     [HttpGet("csrf")]
     public object Csrf(IAntiforgery antiforgery) => new { token = antiforgery.GetAndStoreTokens(HttpContext).RequestToken };
@@ -30,6 +30,7 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
     [HttpPost("register")]
     public async Task<object> Register(RegisterInput input)
     {
+        release.Require(Rules.UniversityEmail(input.Email));
         if (input.Password != input.Confirmation || input.Password.Length > 128) throw new RuleException("invalid_password");
         var user = new CampusUser { Id = Guid.NewGuid(), UserName = Rules.UniversityEmail(input.Email),
             Email = Rules.UniversityEmail(input.Email), DisplayName = Rules.Required(input.Name, 150) };
@@ -42,6 +43,7 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
     public async Task<object> Login(LoginInput input)
     {
         var email = Rules.UniversityEmail(input.Email);
+        release.Require(email);
         var user = await users.FindByEmailAsync(email);
         if (user is null || !user.Active) throw new RuleException("credentials", 401);
         if (!user.EmailConfirmed) throw new RuleException("unverified", 403);
@@ -65,7 +67,9 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
     [HttpPost("resend")]
     public async Task<object> Resend(EmailInput input)
     {
-        var user = await users.FindByEmailAsync(Rules.UniversityEmail(input.Email));
+        var email = Rules.UniversityEmail(input.Email);
+        if (!release.Allows(email)) return new { accepted = true };
+        var user = await users.FindByEmailAsync(email);
         if (user is { EmailConfirmed: false }) await SendVerification(user);
         return new { accepted = true };
     }
@@ -76,6 +80,7 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
         if (!Guid.TryParse(input.UserId, out _)) throw new RuleException("invalid_token");
         var user = await users.FindByIdAsync(input.UserId);
         if (user is null || user.EmailConfirmed) throw new RuleException("invalid_token");
+        if (!release.Allows(user.Email!)) throw new RuleException("invalid_token");
         Check(await users.ConfirmEmailAsync(user, Decode(input.Token)));
         return new { verified = true };
     }
@@ -83,7 +88,9 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
     [HttpPost("recover")]
     public async Task<object> Recover(EmailInput input)
     {
-        var user = await users.FindByEmailAsync(Rules.UniversityEmail(input.Email));
+        var email = Rules.UniversityEmail(input.Email);
+        if (!release.Allows(email)) return new { accepted = true };
+        var user = await users.FindByEmailAsync(email);
         if (user is { EmailConfirmed: true, Active: true })
         {
             var token = Encode(await users.GeneratePasswordResetTokenAsync(user));
@@ -98,6 +105,7 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
         if (!Guid.TryParse(input.UserId, out _)) throw new RuleException("invalid_token");
         if (input.Password != input.Confirmation || input.Password.Length > 128) throw new RuleException("invalid_password");
         var user = await users.FindByIdAsync(input.UserId) ?? throw new RuleException("invalid_token");
+        if (!release.Allows(user.Email!)) throw new RuleException("invalid_token");
         Check(await users.ResetPasswordAsync(user, Decode(input.Token), input.Password));
         await db.Sessions.Where(s => s.UserId == user.Id).ExecuteDeleteAsync();
         return new { reset = true };

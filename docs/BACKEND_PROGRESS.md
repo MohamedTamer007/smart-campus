@@ -12,6 +12,22 @@ See TEST_REPORT.md and DECISIONS.md for current evidence and setup clarification
 
 Base: `main` at `da7af55993e2b6dc8d41f46bd621bc10af5b97d5`. Local branch: `codex/backend-integration`. No push, hosted migration, deployment, bucket-policy change or paid inference performed.
 
+## Current continuation evidence — 2026-11-09
+
+The earlier local milestone below is historical. Current source adds controlled-release authorization, atomic inference budgets, administrator operational summaries, explicit per-content-version AI input review, Cairo DST-safe statistics, media-backup tooling, VM packaging, and expanded CI verification. The current public-deployment constraints and account steps are in [HOSTING_SETUP.md](HOSTING_SETUP.md).
+
+- Full local backend: **90 passed, zero failed/skipped**, `evidence/backend-release-controls.trx`. Includes PostgreSQL-backed release restrictions, quota concurrency, reviewed AI privacy/stale-result guards, and statistics date/department cases. All seven migrations applied to isolated local test databases; latest additions also applied to the development database. Hosted schema remains untouched.
+- Frontend: **47 passed**, typecheck, lint and build passed. Generated Playwright reports were added to lint exclusions after a local browser attempt exposed accidental scanning of vendor report assets.
+- Worker: **6 offline tests passed** with site packages disabled. Real model inference is prepared in a separate CI Docker job and remains unverified until that job executes successfully.
+- Backup guards: **7 passed, 1 skipped on Windows**; POSIX credential-permission coverage runs on Linux. Real hosted media/OCI copies, scheduling, and full recovery remain blocked.
+- First GitHub CI run `42674065915`: Gitleaks full-history scan passed; 67 backend cases passed with PostgreSQL 17; actual age-encrypted dump and isolated restore/report-count comparison passed; frontend 43 checks passed. Its worker boundary failed due to an eager optional import, fixed in `97c1a22`.
+- Second PR run `42674620543`: backend, backup, frontend, worker, advisory/history checks passed; Chromium had nine passing static cases and three failed account cases. Firefox launch attempts stalled until the overall job was cancelled. Static preview inherited an absent API proxy and Chromium's executable override was incorrectly shared across engines. Both configurations were corrected locally; their CI rerun is pending.
+- Local native browser attempts remain blocked by missing expected Chromium build / cached executable `spawn UNKNOWN`; no local native browser pass is claimed. The earlier in-app maintenance journey remains the only completed manual browser evidence.
+- Read-only hosted audit: private application schema absent, legacy AI trial count **38**, buckets private. The existing authenticated bucket-wide read policy would bypass matching for application uploads. A guarded prefix restriction and isolated proof are prepared; neither hosted permission changes nor migrations have been applied.
+- Draft PR: https://github.com/MohamedTamer007/smart-campus/pull/1. Feature branch only; main unchanged. The new batch must pass its own CI before deployment.
+
+No public URL, real verification delivery, real external inference, approved calibration, load target, or complete recovery is claimed. No paid service was enabled.
+
 ## Implemented
 
 - .NET 10 domain/infrastructure/controller API with EF migrations in private `smart_campus` schema.

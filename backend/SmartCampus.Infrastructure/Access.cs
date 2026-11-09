@@ -14,7 +14,7 @@ public sealed record Actor(Guid Id, string Name, string Email, string[] Roles, G
     public bool Custodian(FoundItem found) => found.CustodianId == Id || Department(found.CustodianDepartmentId);
 }
 
-public sealed class Access(CampusDb db, IHttpContextAccessor http, UserManager<CampusUser> users)
+public sealed class Access(CampusDb db, IHttpContextAccessor http, UserManager<CampusUser> users, ReleasePolicy release)
 {
     private Actor? cached;
     public async Task<Actor> Current()
@@ -25,6 +25,7 @@ public sealed class Access(CampusDb db, IHttpContextAccessor http, UserManager<C
         var user = await users.FindByIdAsync(id.ToString());
         if (user is null || !user.Active) throw new RuleException("expired", 401);
         if (!user.EmailConfirmed) throw new RuleException("unverified", 403);
+        release.Require(user.Email!);
         cached = new(id, user.DisplayName, user.Email!, (await users.GetRolesAsync(user)).ToArray(),
             await db.Scopes.Where(s => s.UserId == id && db.Departments.Any(d => d.Id == s.DepartmentId && d.Active))
                 .Select(s => s.DepartmentId).ToArrayAsync());

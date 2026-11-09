@@ -15,12 +15,17 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
 {
     public const string Model = "google/siglip2-base-patch16-224";
     public const string Revision = "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2";
+    public static double? ApprovedThreshold(IConfiguration configuration)
+    {
+        var threshold = configuration.GetValue<double?>("Search:MinimumScore");
+        return !string.IsNullOrWhiteSpace(configuration["Search:CalibrationApproval"]) && threshold is >= -1 and <= 1 && double.IsFinite(threshold.Value) ? threshold : null;
+    }
     public async Task<object> Search(string description, IFormFile? photo)
     {
         var actor = await access.Current();
         Rules.Required(description);
-        var threshold = config.GetValue<double?>("Search:MinimumScore");
-        if (string.IsNullOrWhiteSpace(config["Search:CalibrationApproval"]) || threshold is null or < -1 or > 1 || !double.IsFinite(threshold.Value))
+        var threshold = ApprovedThreshold(config);
+        if (threshold is null)
             throw new RuleException("search_calibration_required", 503);
         if (await db.Items.AnyAsync(f => f.State == "available" && f.UploaderId != actor.Id && f.CustodianId != actor.Id &&
             !(actor.Roles.Contains("department") && actor.Scopes.Contains(f.CustodianDepartmentId ?? Guid.Empty)) &&

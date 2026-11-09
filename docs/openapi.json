@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:5080/"
+      "url": "http://127.0.0.1:5081/"
     }
   ],
   "paths": {
@@ -1864,6 +1864,95 @@
         }
       }
     },
+    "/api/v1/maintenance/{id}/ai-review": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiReviewInput"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiReviewInput"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiReviewInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/statistics": {
       "get": {
         "tags": [
@@ -1954,12 +2043,37 @@
           }
         }
       },
+      "AiReviewInput": {
+        "required": [
+          "version",
+          "confirmedNonSensitive",
+          "includeImage"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "confirmedNonSensitive": {
+            "type": "boolean"
+          },
+          "includeImage": {
+            "type": "boolean"
+          }
+        }
+      },
       "AssessmentResponse": {
         "required": [
           "state",
           "type",
           "priority",
-          "risk"
+          "risk",
+          "inputReviewed"
         ],
         "type": "object",
         "properties": {
@@ -1983,6 +2097,9 @@
               "null",
               "string"
             ]
+          },
+          "inputReviewed": {
+            "type": "boolean"
           }
         }
       },
@@ -2517,6 +2634,39 @@
         "type": "string",
         "format": "binary"
       },
+      "JobStateResponse": {
+        "required": [
+          "kind",
+          "state",
+          "count",
+          "maximumAttempts"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maximumAttempts": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "LocationInput": {
         "required": [
           "parentId",
@@ -2610,7 +2760,9 @@
           "mediaUrl",
           "canEdit",
           "canViewAssessment",
-          "canUpdate"
+          "canUpdate",
+          "canReviewAiInput",
+          "canReviewAiImage"
         ],
         "type": "object",
         "properties": {
@@ -2725,6 +2877,12 @@
           },
           "canUpdate": {
             "type": "boolean"
+          },
+          "canReviewAiInput": {
+            "type": "boolean"
+          },
+          "canReviewAiImage": {
+            "type": "boolean"
           }
         }
       },
@@ -2767,6 +2925,53 @@
                 "$ref": "#/components/schemas/DecisionInput"
               }
             ]
+          }
+        }
+      },
+      "OperationsResponse": {
+        "required": [
+          "sampledAt",
+          "deployment",
+          "workingSetBytes",
+          "jobs",
+          "quotas",
+          "worker",
+          "calibrationApproved"
+        ],
+        "type": "object",
+        "properties": {
+          "sampledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deployment": {
+            "type": "string"
+          },
+          "workingSetBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobStateResponse"
+            }
+          },
+          "quotas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderQuotaResponse"
+            }
+          },
+          "worker": {
+            "type": "string"
+          },
+          "calibrationApproved": {
+            "type": "boolean"
           }
         }
       },
@@ -2839,6 +3044,35 @@
           },
           "language": {
             "type": "string"
+          }
+        }
+      },
+      "ProviderQuotaResponse": {
+        "required": [
+          "provider",
+          "used",
+          "dailyLimit"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "used": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "dailyLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -2987,6 +3221,9 @@
     },
     {
       "name": "Maintenance"
+    },
+    {
+      "name": "Operations"
     },
     {
       "name": "Statistics"

@@ -27,6 +27,7 @@ export class ServiceError extends Error {
       | "invalid"
       | "credentials"
       | "unverified"
+      | "release_restricted"
       | "rate_limited"
       | "internal",
     public detail?: string,

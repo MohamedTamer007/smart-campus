@@ -896,3 +896,82 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109183646_InferenceBudgets') THEN
+    CREATE TABLE smart_campus."InferenceUsage" (
+        "Key" character varying(100) NOT NULL,
+        "Provider" character varying(4000) NOT NULL,
+        "Window" character varying(4000) NOT NULL,
+        "WindowStart" timestamp with time zone NOT NULL,
+        "Count" integer NOT NULL,
+        CONSTRAINT "PK_InferenceUsage" PRIMARY KEY ("Key"),
+        CONSTRAINT inference_count_positive CHECK ("Count" > 0)
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109183646_InferenceBudgets') THEN
+    CREATE INDEX "IX_InferenceUsage_Provider_WindowStart" ON smart_campus."InferenceUsage" ("Provider", "WindowStart");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109183646_InferenceBudgets') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261109183646_InferenceBudgets', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109192053_ReviewedAssessmentInputs') THEN
+    ALTER TABLE smart_campus."Assessments" ADD "ReviewedAt" timestamp with time zone;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109192053_ReviewedAssessmentInputs') THEN
+    ALTER TABLE smart_campus."Assessments" ADD "ReviewedBy" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109192053_ReviewedAssessmentInputs') THEN
+    ALTER TABLE smart_campus."Assessments" ADD "ReviewedImageId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109192053_ReviewedAssessmentInputs') THEN
+    CREATE INDEX "IX_Assessments_ReviewedBy" ON smart_campus."Assessments" ("ReviewedBy");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109192053_ReviewedAssessmentInputs') THEN
+    ALTER TABLE smart_campus."Assessments" ADD CONSTRAINT "FK_Assessments_AspNetUsers_ReviewedBy" FOREIGN KEY ("ReviewedBy") REFERENCES smart_campus."AspNetUsers" ("Id") ON DELETE RESTRICT;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109192053_ReviewedAssessmentInputs') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261109192053_ReviewedAssessmentInputs', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
