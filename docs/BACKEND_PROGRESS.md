@@ -1,3 +1,10 @@
+## 10 November 2026 — Resend verification preparation
+
+Current local backend regression: 97 passed, zero failed/skipped (`evidence/backend-resend-evidence.trx`); targeted mail safety/evidence cases: 20 passed. The eighth EF migration adds nullable provider-message/failure metadata and was applied only to the isolated development database. Windows PowerShell 5.1 and PowerShell 7 launcher preflight passed. Source, security, test and documentation review checked recipient restrictions, hidden key entry, transport acceptance evidence, encrypted payload cleanup and durable retry behavior.
+
+CI for committed e4443a7c6200f57b1045c7c275e53a6a9723347b succeeded in run 42693231390: 92 backend cases on PostgreSQL 17, 54 frontend cases, 36 static browser cases and nine integrated cases across Chromium/Firefox/WebKit, isolated storage-policy and encrypted restore checks, and API image build. Real-worker run 42693230873 succeeded. These runs precede the current Resend evidence changes and do not establish production deployment.
+
+Resend tools remain unavailable in this session. The owner reported launching the secure helper, but the subsequent health request was refused and no dotnet process or API listener was present. Startup diagnosis is pending the owner's window message. No real message has been submitted by this test; provider acceptance, delivery and owner verification remain BLOCKED. No verification token was consumed and no account confirmation was bypassed.
 # Backend progress
 
 ## Latest checked milestone

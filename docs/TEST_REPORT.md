@@ -1,3 +1,12 @@
+## 10 November: latest executed evidence
+
+The current Resend evidence batch passed 97 backend cases, zero failed/skipped, in isolated PostgreSQL (`evidence/backend-resend-evidence.trx`). Targeted transport/outbox tests passed 20 cases. The eighth migration adds provider correlation and sanitized failure fields. Launcher preflight passed under Windows PowerShell 5.1 and PowerShell 7. Test doubles are restricted to the external provider HTTP boundary; actual delivery is not inferred.
+
+The preceding committed source e4443a7c6200f57b1045c7c275e53a6a9723347b passed main CI 42693231390: 92 backend cases, 54 frontend cases, 36 static browser cases and nine integrated cases across three engines. PostgreSQL 17 encrypted restore/policy/media proof and API Docker image build passed. This does not establish a running public deployment. Real-worker run 42693230873 succeeded; retrieval calibration remains unapproved.
+
+The real-email check is currently BLOCKED: the owner reported starting the private-key helper, but the API health connection was refused and no API listener/process was observed. No real email has been sent by this check. Provider acceptance, delivery, inbox receipt and actual owner verification remain unproven.
+
+The records below are historical batches and retain their original counts and failures.
 # Deployment continuation test report
 
 This report separates current observed results from earlier implementation evidence in [ACCEPTANCE.md](ACCEPTANCE.md).

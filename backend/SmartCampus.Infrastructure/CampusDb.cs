@@ -48,6 +48,8 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
         foreach (var entity in model.Model.GetEntityTypes())
             foreach (var property in entity.GetProperties().Where(p => p.ClrType == typeof(string)))
                 property.SetMaxLength(4000);
+        model.Entity<OutboundEmail>().Property(email => email.ProviderMessageId).HasMaxLength(200);
+        model.Entity<OutboundEmail>().Property(email => email.FailureCode).HasMaxLength(100);
         foreach (var type in new[] { typeof(MaintenanceReport), typeof(FoundItem), typeof(CustodyHandover), typeof(RecoveryRequest) })
             model.Entity(type).Property("Version").IsConcurrencyToken();
         model.Entity<Department>().HasIndex(x => x.Code).IsUnique();

@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using MimeKit;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -10,12 +11,21 @@ namespace SmartCampus.Infrastructure;
 /// <summary>Sends transactional mail through the fixed Resend HTTPS endpoint.</summary>
 public sealed class ResendEmailTransport(IHttpClientFactory clients, IConfiguration config)
 {
-    public async Task Send(string recipient, string subject, string link, string idempotencyKey, CancellationToken cancellation = default)
+    public async Task<string> Send(string recipient, string subject, string link, string idempotencyKey, CancellationToken cancellation = default)
     {
         var key = config["Email:ResendKey"];
         var sender = config["Email:From"];
         if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(sender))
             throw new RuleException("email_not_configured", 503);
+        if (!MailboxAddress.TryParse(sender, out var address)) throw new RuleException("email_not_configured", 503);
+        var testRecipient = config["Email:TestRecipient"];
+        if (address.Address.EndsWith("@resend.dev", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(testRecipient))
+            throw new RuleException("email_test_recipient_required", 503);
+        if (!string.IsNullOrWhiteSpace(testRecipient))
+        {
+            var allowed = Rules.UniversityEmail(testRecipient);
+            if (!allowed.Equals(recipient, StringComparison.OrdinalIgnoreCase)) throw new RuleException("email_recipient_not_allowed", 503);
+        }
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         request.Headers.Add("Idempotency-Key", idempotencyKey);
@@ -35,8 +45,9 @@ public sealed class ResendEmailTransport(IHttpClientFactory clients, IConfigurat
         {
             using var document = JsonDocument.Parse(bytes.AsMemory(0, count));
             if (document.RootElement.ValueKind != JsonValueKind.Object || !document.RootElement.TryGetProperty("id", out var id) ||
-                id.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(id.GetString()))
+                id.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(id.GetString()) || id.GetString()!.Length > 200)
                 throw new RuleException("invalid_email_response", 503);
+            return id.GetString()!;
         }
         catch (JsonException) { throw new RuleException("invalid_email_response", 503); }
     }

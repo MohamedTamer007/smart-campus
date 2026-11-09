@@ -1,6 +1,6 @@
 # Free hosting and university email setup
 
-Checked against provider documentation on 2026-11-09. No hosting account, chargeable resource, public deployment, tenant consent, or hosted database change has been created by this implementation.
+Checked against provider documentation on 2026-11-09. No hosting account, paid hosting plan, public deployment, tenant consent, or hosted database change has been created by this implementation. CI uses standard GitHub runners against the account's included allocation; no billing setting or paid plan was enabled.
 
 ## Decision and unresolved constraint
 
@@ -38,7 +38,11 @@ This is a possible controlled testing arrangement, not the selected university r
 
 An Outlook inbox proves access to the mailbox, not permission for this application to send as it. The current implementation supports SMTP with STARTTLS or Resend HTTPS. Neither has been verified against the university tenant.
 
-Resend requires a verified sending domain, so the user's current lack of a controlled domain prevents that path. Never claim ownership of o6u.edu.eg or request arbitrary university DNS changes.
+For delivery to general recipients, Resend requires a verified sending domain. The user does not own a domain, so that general delivery path remains blocked. Never claim ownership of o6u.edu.eg or request arbitrary university DNS changes.
+
+There is a narrower first-test option: [Resend's shared test sender](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain) can send from `onboarding@resend.dev` only to the email associated with that Resend account. If the owner can register a free Resend account using the authorized university test mailbox, the existing HTTPS adapter can exercise real verification/recovery delivery to that one inbox without purchasing a domain. Configure `Email:Provider=resend`, `Email:LocalSink=false`, that test sender, the key through secure configuration, and a controlled release allowlist containing only the authorized address. Check the actual inbox and usable link; provider acceptance alone is insufficient. No real message has been sent yet.
+
+This single-inbox test does not establish multi-user university delivery or solve a full recovery/custody pilot needing independent accounts. Resend simulation recipients such as `delivered@resend.dev` do not prove university-mail delivery and must not be substituted for the authorized inbox.
 
 Ask university IT whether an authorized test sender can use an approved SMTP relay or delegated [Microsoft Graph Mail.Send](https://learn.microsoft.com/en-us/graph/permissions-reference#mail-send). Delegated Graph permissions act as the signed-in user and remain subject to tenant consent policies. Graph support is **NOT IMPLEMENTED**; an OAuth/token-refresh adapter and its tests would be required after the permitted route is established. Do not request application-wide Mail.Send or the user's mailbox password as a shortcut.
 

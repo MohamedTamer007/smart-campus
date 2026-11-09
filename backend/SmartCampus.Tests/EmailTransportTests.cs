@@ -33,7 +33,8 @@ public sealed class EmailTransportTests
         using var provider = new EmailBoundary(HttpStatusCode.OK, "{\"id\":\"test-message-id\"}");
         var transport = new ResendEmailTransport(provider, Config());
         const string link = "https://campus.example.test/verify?token=synthetic-token";
-        await transport.Send("student@o6u.edu.eg", "Verify Smart Campus", link, "smart-campus/email/test-id");
+        var messageId = await transport.Send("student@o6u.edu.eg", "Verify Smart Campus", link, "smart-campus/email/test-id");
+        Assert.Equal("test-message-id", messageId);
         await transport.Send("student@o6u.edu.eg", "Verify Smart Campus", link, "smart-campus/email/test-id");
         Assert.Equal(2, provider.Requests.Count);
         Assert.All(provider.Requests, request => {
@@ -47,6 +48,31 @@ public sealed class EmailTransportTests
             Assert.Equal("Verify Smart Campus", document.RootElement.GetProperty("subject").GetString());
             Assert.Equal(link, document.RootElement.GetProperty("text").GetString());
         });
+    }
+
+    [Theory]
+    [InlineData(null, "owner@o6u.edu.eg", "email_test_recipient_required")]
+    [InlineData("owner@o6u.edu.eg", "other@o6u.edu.eg", "email_recipient_not_allowed")]
+    public async Task Shared_sender_never_contacts_provider_without_the_authorized_test_recipient(string? allowed, string recipient, string expected)
+    {
+        var config = Config(sender: "Smart Campus testing <onboarding@resend.dev>");
+        config["Email:TestRecipient"] = allowed;
+        using var provider = new EmailBoundary(HttpStatusCode.OK, "{\"id\":\"test-message-id\"}");
+        var failure = await Assert.ThrowsAsync<RuleException>(() => new ResendEmailTransport(provider, config)
+            .Send(recipient, "Verify", "https://example.test/verify", "test-id"));
+        Assert.Equal(expected, failure.Code);
+        Assert.Empty(provider.Requests);
+    }
+
+    [Fact]
+    public async Task Shared_sender_accepts_only_the_configured_university_test_recipient()
+    {
+        var config = Config(sender: "Smart Campus testing <onboarding@resend.dev>");
+        config["Email:TestRecipient"] = "OWNER@o6u.edu.eg";
+        using var provider = new EmailBoundary(HttpStatusCode.OK, "{\"id\":\"test-message-id\"}");
+        Assert.Equal("test-message-id", await new ResendEmailTransport(provider, config)
+            .Send("owner@o6u.edu.eg", "Verify", "https://example.test/verify", "test-id"));
+        Assert.Single(provider.Requests);
     }
 
     [Theory]

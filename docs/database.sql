@@ -975,3 +975,28 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109204834_EmailProviderEvidence') THEN
+    ALTER TABLE smart_campus."OutboundEmails" ADD "FailureCode" character varying(100);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109204834_EmailProviderEvidence') THEN
+    ALTER TABLE smart_campus."OutboundEmails" ADD "ProviderMessageId" character varying(200);
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261109204834_EmailProviderEvidence') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261109204834_EmailProviderEvidence', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+

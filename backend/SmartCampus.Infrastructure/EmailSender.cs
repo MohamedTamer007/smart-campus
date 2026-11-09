@@ -28,17 +28,25 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         if (email.SentAt.HasValue) return;
         var payload = JsonSerializer.Deserialize<EmailPayload>(protector.Unprotect(email.ProtectedPayload))!;
         release.Require(payload.Recipient);
-        await Send(payload.Recipient, payload.Subject, payload.Link, "smart-campus/email/" + email.Id.ToString("N"));
+        try
+        {
+            email.ProviderMessageId = await Send(payload.Recipient, payload.Subject, payload.Link, "smart-campus/email/" + email.Id.ToString("N"));
+            email.FailureCode = null;
+        }
+        catch (Exception exception) when (exception is RuleException or HttpRequestException or TaskCanceledException)
+        {
+            email.FailureCode = exception is RuleException rule ? rule.Code : "email_unavailable";
+            throw;
+        }
         email.SentAt = DateTimeOffset.UtcNow;
         email.ProtectedPayload = "";
     }
 
-    public async Task Send(string recipient, string subject, string link, string? idempotencyKey = null)
+    public async Task<string?> Send(string recipient, string subject, string link, string? idempotencyKey = null)
     {
         if (config["Email:Provider"] == "resend" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
         {
-            await resend.Send(recipient, subject, link, idempotencyKey ?? "smart-campus/email/" + Guid.NewGuid().ToString("N"));
-            return;
+            return await resend.Send(recipient, subject, link, idempotencyKey ?? "smart-campus/email/" + Guid.NewGuid().ToString("N"));
         }
         var sender = config["Email:From"];
         if (string.IsNullOrWhiteSpace(sender))
@@ -56,7 +64,7 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
             var directory = Path.GetFullPath(config["Email:SinkDirectory"] ?? "local-data/mail");
             Directory.CreateDirectory(directory);
             await message.WriteToAsync(Path.Combine(directory, Guid.NewGuid() + ".eml"));
-            return;
+            return null;
         }
         var host = config["Email:Host"];
         var username = config["Email:Username"];
@@ -67,5 +75,6 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
             await client.AuthenticateAsync(username, config["Email:Password"] ?? throw new RuleException("email_unavailable", 503));
         await client.SendAsync(message);
         await client.DisconnectAsync(true);
+        return null;
     }
 }

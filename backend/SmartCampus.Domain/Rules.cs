@@ -221,6 +221,8 @@ public sealed class OutboundEmail : Record
 {
     public string ProtectedPayload { get; set; } = "";
     public DateTimeOffset? SentAt { get; set; }
+    public string? ProviderMessageId { get; set; }
+    public string? FailureCode { get; set; }
 }
 
 public sealed class InferenceUsage

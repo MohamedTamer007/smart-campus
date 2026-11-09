@@ -20,6 +20,8 @@ Oracle remains a compute candidate for the full worker, subject to account setup
 
 The Resend HTTPS adapter is implemented and tested against an isolated HTTP boundary, but Resend requires sender-domain verification. Real delivery is blocked without a verified sender. Microsoft Graph delegated `Mail.Send` is a possible university-mail option, subject to tenant policy and explicit consent. No Graph adapter or consent grant has been implemented. Possession of an Outlook mailbox alone does not establish app permission.
 
+Clarification for the initial single-inbox proof: Resend's shared `onboarding@resend.dev` test sender can deliver only to its account email. An owner-created free Resend account tied to the authorized university test address can therefore test real verification/recovery delivery to that inbox without a custom domain. This is not general university delivery and does not remove the independent-account, sender-authorization or full-pilot gates. No message or account creation has occurred.
+
 ## Approved testing targets
 
 Target ten simultaneous signed-in users, warm ordinary API p95 below two seconds, RPO 24 hours and RTO four hours. AI latency and cold starts are measured separately. These are targets, not achieved performance or recovery results.
