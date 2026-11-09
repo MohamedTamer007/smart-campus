@@ -15,6 +15,12 @@ async function login(page: Page, role: string) {
   await expect(page.getByRole("heading", { name: "My requests", exact: true })).toBeVisible();
 }
 
+async function logout(page: Page) {
+  await page.getByRole("button", { name: /^(Sign out|تسجيل الخروج)$/ }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("link", { name: /^(Sign in|تسجيل الدخول)$/ })).toBeVisible();
+}
+
 test("browser maintenance submission, staff assignment and resolution persist", async ({ page }) => {
   const accounts = fixture();
   await login(page, "student");
@@ -28,7 +34,7 @@ test("browser maintenance submission, staff assignment and resolution persist", 
   await expect(page.getByText("Report saved.", { exact: true })).toBeVisible();
   const reportPath = new URL(page.url()).pathname;
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await logout(page);
   await login(page, "staff");
   await page.goto(reportPath);
   await page.getByLabel(/^Status/).selectOption("review");
@@ -52,7 +58,7 @@ test("browser logout revokes access and uncalibrated search stays unavailable", 
   await page.getByRole("button", { name: "Search for matches", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("temporarily unavailable");
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await logout(page);
   await page.goto("/maintenance");
   await expect(page.getByRole("heading", { name: "Sign in required", exact: true })).toBeVisible();
 });
@@ -73,7 +79,7 @@ test("browser found-item upload and department receipt preserve custody across s
   await expect(page.getByRole("button", { name: "Cancel handover", exact: true })).toBeVisible();
   const itemPath = new URL(page.url()).pathname;
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await logout(page);
   await login(page, "staff");
   await page.goto(itemPath);
   await page.getByRole("button", { name: "Item not received", exact: true }).click();
@@ -85,7 +91,7 @@ test("browser found-item upload and department receipt preserve custody across s
   await page.getByRole("button", { name: "العربية", exact: true }).click();
   await expect(page.getByRole("heading", { name: "عهدة الغرض", exact: true })).toBeVisible();
   await page.goto("/settings");
-  await page.getByRole("button", { name: "تسجيل الخروج", exact: true }).click();
+  await logout(page);
   await login(page, "student");
   await page.goto(itemPath);
   await expect(page.getByRole("button", { name: "Request departmental handover", exact: true })).toHaveCount(0);

@@ -1,6 +1,10 @@
 # Backend progress
 
-## Public testing deployment continuation
+## Latest checked milestone
+
+Local backend: **92 passed, zero failed/skipped** (vidence/backend-cookie-race.trx); frontend: **54 passed**, typecheck/lint/build passed. Real pinned-model CPU inference, PostgreSQL 17 tests, complete application restore comparison, isolated storage-policy proof and media crypt roundtrip have passed CI. All 36 static browser checks passed. The latest integrated run passed five cases and exposed a session-renewal/logout race; an atomic fix and real lock-barrier regression now pass locally, with integrated/container rerun pending. No public deployment, hosted migration/permission change, real email/provider call, calibrated search release or paid resource is claimed. See HOSTING_SETUP.md for owner setup steps. Earlier milestones below retain their observed historical counts.
+
+## Historical deployment setup milestone
 
 The final addendum authorizes a safe feature-branch push, review PR and initial free testing deployment. The user subsequently clarified that no custom domain or Oracle account exists; use a free HTTPS hostname. Hosting, sender authorization and real service credentials remain pending.
 
@@ -16,7 +20,7 @@ Base: `main` at `da7af55993e2b6dc8d41f46bd621bc10af5b97d5`. Local branch: `codex
 
 The earlier local milestone below is historical. Current source adds controlled-release authorization, atomic inference budgets, administrator operational summaries, explicit per-content-version AI input review, Cairo DST-safe statistics, media-backup tooling, VM packaging, and expanded CI verification. The current public-deployment constraints and account steps are in [HOSTING_SETUP.md](HOSTING_SETUP.md).
 
-- Full local backend: **91 passed, zero failed/skipped**, `evidence/backend-release-controls.trx`. Includes PostgreSQL-backed release restrictions, quota concurrency, reviewed AI privacy/stale-result guards, and statistics date/department cases. All seven migrations applied to isolated local test databases; latest additions also applied to the development database. Hosted schema remains untouched.
+- Full local backend: **92 passed, zero failed/skipped**, `evidence/backend-release-controls.trx`. Includes PostgreSQL-backed release restrictions, quota concurrency, reviewed AI privacy/stale-result guards, and statistics date/department cases. All seven migrations applied to isolated local test databases; latest additions also applied to the development database. Hosted schema remains untouched.
 - Frontend: **54 passed**, typecheck, lint and build passed. Includes multi-scope receipt permissions and native browser JSON failures. Generated Playwright reports were added to lint exclusions after a local browser attempt exposed accidental scanning of vendor report assets.
 - Worker: **6 offline tests passed** with site packages disabled. Real model inference is prepared in a separate CI Docker job and remains unverified until that job executes successfully.
 - Backup guards: **7 passed, 1 skipped on Windows**; POSIX credential-permission coverage runs on Linux. Real hosted media/OCI copies, scheduling, and full recovery remain blocked.

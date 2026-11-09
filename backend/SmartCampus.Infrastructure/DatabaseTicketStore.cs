@@ -29,11 +29,14 @@ public sealed class DatabaseTicketStore(IServiceScopeFactory scopes, IDataProtec
     {
         using var scope = scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
-        var session = await db.Sessions.FindAsync(Hash(key));
-        if (session is null) return;
-        session.ProtectedTicket = protector.Protect(Convert.ToBase64String(TicketSerializer.Default.Serialize(ticket)));
-        session.ExpiresAt = ticket.Properties.ExpiresUtc!.Value < session.AbsoluteExpiry ? ticket.Properties.ExpiresUtc.Value : session.AbsoluteExpiry;
-        await db.SaveChangesAsync();
+        var id = Hash(key);
+        var payload = protector.Protect(Convert.ToBase64String(TicketSerializer.Default.Serialize(ticket)));
+        var expiry = ticket.Properties.ExpiresUtc!.Value;
+        var now = DateTimeOffset.UtcNow;
+        // Update only: concurrent logout/revocation must win without recreating a ticket or failing the response.
+        await db.Sessions.Where(session => session.Id == id && session.ExpiresAt > now && session.AbsoluteExpiry > now)
+            .ExecuteUpdateAsync(update => update.SetProperty(session => session.ProtectedTicket, payload)
+                .SetProperty(session => session.ExpiresAt, session => expiry < session.AbsoluteExpiry ? expiry : session.AbsoluteExpiry));
     }
 
     public async Task<AuthenticationTicket?> RetrieveAsync(string key)
