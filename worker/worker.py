@@ -30,7 +30,6 @@ class Encoder:
         self.model = AutoModel.from_pretrained(MODEL, revision=REVISION, trust_remote_code=False, use_safetensors=True).eval()
 
     def embed(self, route, payload):
-        from PIL import Image, ImageOps
         if route == "/embed/text":
             document = json.loads(payload)
             if not isinstance(document, dict) or set(document) != {"text"}:
@@ -42,6 +41,7 @@ class Encoder:
             with self.torch.inference_mode():
                 embedding = self.model.get_text_features(**inputs, return_dict=True).pooler_output
         elif route == "/embed/image":
+            from PIL import Image, ImageOps
             with Image.open(io.BytesIO(payload)) as source:
                 if source.format not in {"JPEG", "PNG", "WEBP"} or source.width * source.height > 16_000_000:
                     raise ValueError("invalid_image")

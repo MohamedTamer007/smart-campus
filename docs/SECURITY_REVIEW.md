@@ -34,5 +34,5 @@ Security-sensitive: YES. Reviewed directly by Codex against all ten categories i
 - CI uses read-only repository permissions, pinned official action commits, isolated local databases and no live application credentials. Reports contain synthetic CI data. Full-history Gitleaks is configured but not yet executed; a local release download timed out. A limited source/history scan found no known local credentials or selected provider-token patterns across 150 files and 265 Git objects.
 - 67 backend cases passed after final mail changes, plus five backup safety tests. Dependency versions were unchanged in this continuation; the previous advisory evidence is historical until CI reruns it. No critical/high finding was identified in these changes. Hosted permissions, real mail/provider access, full inference, performance and complete restore remain release gates.
 
-The original local implementation review follows below.
+The original local implementation review is above.
 
