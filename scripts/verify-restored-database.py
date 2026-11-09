@@ -38,7 +38,7 @@ def main():
             raise ValueError("Restored application data differs")
         total += len(original.splitlines())
     for sql in (
-        "SELECT conname,contype,pg_get_constraintdef(oid) FROM pg_constraint WHERE connamespace='smart_campus'::regnamespace ORDER BY conname,contype;",
+        "SELECT conrelid::regclass::text,conname,contype,pg_get_constraintdef(oid) FROM pg_constraint WHERE connamespace='smart_campus'::regnamespace ORDER BY conrelid::regclass::text,conname,contype;",
         "SELECT tablename,indexname,indexdef FROM pg_indexes WHERE schemaname='smart_campus' ORDER BY tablename,indexname;",
     ):
         if query(args.source, sql) != query(args.restored, sql):
@@ -52,6 +52,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, subprocess.SubprocessError):
+    except ValueError as error:
+        # These messages are fixed validation reasons, never database rows or connection strings.
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
+    except (OSError, subprocess.SubprocessError):
         print("Isolated restoration comparison failed; inspect the controlled test databases privately.", file=sys.stderr)
         sys.exit(1)

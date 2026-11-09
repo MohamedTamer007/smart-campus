@@ -56,3 +56,38 @@ test("browser logout revokes access and uncalibrated search stays unavailable", 
   await page.goto("/maintenance");
   await expect(page.getByRole("heading", { name: "Sign in required", exact: true })).toBeVisible();
 });
+
+test("browser found-item upload and department receipt preserve custody across sessions", async ({ page }) => {
+  await login(page, "student");
+  await page.goto("/found/new");
+  // Committed synthetic UI screenshot; no personal image or external inference input.
+  await page.getByLabel(/^Item photo/).setInputFiles("docs/screenshots/admin-operations.png");
+  await page.getByLabel(/^Item description/).fill("DEMO ONLY browser custody fixture");
+  await page.getByLabel(/^Place found/).fill("DEMO ONLY courtyard");
+  await page.getByLabel(/^Date found/).fill("2026-01-01");
+  await page.getByLabel(/^Current storage/).fill("DEMO ONLY finder desk");
+  await page.getByLabel(/^Proposed receiving department/).selectOption({ label: "DEMO ONLY department" });
+  await page.getByLabel(/^Receiving office or location/).fill("DEMO ONLY receiving desk");
+  await page.getByRole("button", { name: "Register item", exact: true }).click();
+  await expect(page.getByText(/Handover status: Pending receipt/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel handover", exact: true })).toBeVisible();
+  const itemPath = new URL(page.url()).pathname;
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await login(page, "staff");
+  await page.goto(itemPath);
+  await page.getByRole("button", { name: "Item not received", exact: true }).click();
+  await expect(page.getByText(/Handover status: Not received/)).toBeVisible();
+  await page.getByRole("button", { name: "Confirm physical receipt", exact: true }).click();
+  await expect(page.getByText(/Handover status: Receipt confirmed/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/Current department: demo-maintenance-/)).toBeVisible();
+  await page.getByRole("button", { name: "العربية", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "عهدة الغرض", exact: true })).toBeVisible();
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "تسجيل الخروج", exact: true }).click();
+  await login(page, "student");
+  await page.goto(itemPath);
+  await expect(page.getByRole("button", { name: "Request departmental handover", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Photo of the registered item", exact: true })).toBeVisible();
+});

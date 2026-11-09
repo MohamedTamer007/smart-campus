@@ -68,3 +68,5 @@ Final local verification completed:
 - Security, code, test and documentation review recorded in SECURITY_REVIEW.md. No push, hosted migration, production deployment or paid inference performed.
 
 Acceptance gates and remaining unimplemented checks are in ACCEPTANCE.md. This is not certified deployment-ready.
+
+CI update: run 42685171210 passed full-history scan, PostgreSQL 17 backend tests and isolated storage-policy proof. Actual encrypted dump/restore completed, but expanded all-row/constraint comparison failed. Constraint ordering was made deterministic by table plus constraint name (names can repeat across tables), and fixed validation reasons are now reported without row/credential data. Rerun required. Real pinned model inference already passed in run 42683987444 (768 dimensions). Manual updated administrator sign-in/live operational counts verified; screenshot admin-operations.png.
