@@ -16,9 +16,9 @@ describe("lost-and-found frontend boundary", () => {
       () => lostFound.claim(guestAccount, "item", ""),
       () => lostFound.claims(guestAccount),
       () => lostFound.claimDetail(guestAccount, "claim"),
-      () => lostFound.approve(guestAccount, "claim", { phone: "01000000000" }),
-      () => lostFound.reject(guestAccount, "claim"),
-      () => lostFound.confirmDelivery(guestAccount, "claim"),
+      () => lostFound.approve(guestAccount, "claim", { phone: "01000000000", version: 1 }),
+      () => lostFound.reject(guestAccount, "claim", "Reason", 1),
+      () => lostFound.confirmDelivery(guestAccount, "claim", 1),
     ];
     for (const operation of operations)
       await expect(operation()).rejects.toMatchObject({ code: "unavailable" });

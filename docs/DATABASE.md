@@ -1,0 +1,26 @@
+# Database and private media
+
+EF Core migrations in `backend/SmartCampus.Infrastructure/Migrations` are authoritative. `database.sql` is an idempotent review export of the original five migrations. Hosted rollout is pending; the application never automatically migrates at startup.
+
+## Boundaries
+
+The target is Supabase project `mninpcrhqsaafoshjqpn`, PostgreSQL 17. The existing public schema and trial records remain legacy data. New application/Identity tables live in `smart_campus`, outside the exposed Data API schemas. The API connects directly through Npgsql and enforces current account, role, scope, ownership and version checks.
+
+`CampusDb` maps Identity users/roles, department grants and location hierarchy, maintenance reports/history/assessments, found items/handovers/recovery, private media metadata, notifications/audit, server sessions, search grants, mail outbox and durable jobs. Vector storage is installed by the explicit retrieval migration and records actual embedding dimensions/revisions.
+
+Foreign keys preserve actor and domain relationships. Check/unique constraints enforce valid states, one custodian, one open handover, one active reservation, and one active request per requester/item. Item-affecting approval, custody and confirmation operations lock the same item row. Integer versions reject stale writes.
+
+## Rollout
+
+1. Inventory the actual target and export an authorized backup before changes. Review the generated SQL and reject destructive changes affecting existing data.
+2. Rehearse on isolated PostgreSQL 17 with pgvector. Use migration credentials for the explicit `--migrate` command; startup does not perform this operation.
+3. Provision a distinct runtime role with application DML and extension-schema usage, without ownership/DDL or legacy-table access. Use verified database TLS and a bounded connection pool.
+4. Verify migration history, constraints, persistence and legacy-record counts afterward. Check Data API grants and storage policies with direct-access tests.
+
+The local development role/database are synthetic. They are not hosted runtime credentials. CLI setup and connection-search-path requirements are in [SETUP_WINDOWS.md](SETUP_WINDOWS.md).
+
+## Media and recovery
+
+The private `maintenance-images` and `lost-found-images` buckets receive new `smart-campus/` object keys. Backend authorization gates every download; public object URLs are not persisted. Existing bucket objects remain intact.
+
+Database dumps do not contain storage object bytes. Database backup tooling exists; media export, scheduled off-site upload and complete recovery evidence remain pending. See [OPERATIONS.md](OPERATIONS.md).

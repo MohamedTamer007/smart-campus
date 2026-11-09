@@ -29,6 +29,17 @@ import { AppProvider, useApp } from "./context";
 import { BrandMark, Icon } from "../components/Icon";
 import { Home } from "./Home";
 import { Feedback, Page } from "../components/ui";
+import { useState } from "react";
+function StaffQueues() {
+  const { account, t } = useApp();
+  const maintenanceAccess = account.role === "admin" || account.role === "maintenance" || account.roles?.includes("maintenance");
+  const custodyAccess = account.role === "department" || account.roles?.includes("department");
+  const [view, setView] = useState(maintenanceAccess ? "maintenance" : "custody");
+  return <><div className="actions">
+    {maintenanceAccess && <button className="button" onClick={() => setView("maintenance")}>{t("الصيانة", "Maintenance")}</button>}
+    {custodyAccess && <button className="button" onClick={() => setView("custody")}>{t("العهدة والمعثورات", "Custody and found items")}</button>}
+  </div>{view === "maintenance" ? <MaintenanceList staff /> : <FoundList department />}</>;
+}
 function Shell() {
   const {
     t,
@@ -121,11 +132,7 @@ function Shell() {
               <Access
                 roles={["maintenance", "department", "secretariat", "admin"]}
               >
-                {["department", "secretariat"].includes(account.role) ? (
-                  <FoundList department />
-                ) : (
-                  <MaintenanceList staff />
-                )}
+                <StaffQueues />
               </Access>
             }
           />

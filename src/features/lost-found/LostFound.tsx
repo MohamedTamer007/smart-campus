@@ -10,6 +10,7 @@ import {
   useAction,
 } from "../../components/ui";
 import { ImageField } from "../maintenance/Maintenance";
+import { DirectoryOptions } from "../../components/DirectoryOptions";
 import { ServiceError } from "../../services/contracts";
 import {
   lostFound,
@@ -45,16 +46,15 @@ const claimLabels: Record<ClaimStatus, [string, string]> = {
   rejected: ["مرفوض", "Rejected"],
   delivered: ["تم التسليم", "Delivered"],
   closed: ["أُغلق", "Closed"],
+  cancelled: ["ملغى", "Cancelled"],
 };
 function isCustodian(
   item: FoundItem,
-  actor: { id: string; role: string; department?: string },
+  actor: import("../../services/contracts").Account,
 ) {
-  return item.custodianDepartment
-    ? ["department", "secretariat"].includes(actor.role) &&
-        actor.department === item.custodianDepartment
-    : item.custodianId === actor.id;
+  return currentCustodian(item, actor);
 }
+
 function Photo({ file }: { file?: File }) {
   const [preview, setPreview] = useState<{ file: File; url: string }>();
   const { t } = useApp();
@@ -86,7 +86,7 @@ function ClaimStatusBadge({ status }: { status: ClaimStatus }) {
 function departmentName(id: Department, t: (ar: string, en: string) => string) {
   return id === "security"
     ? t("الأمن", "Security")
-    : t("السكرتارية", "Secretariat");
+    : id === "secretariat" ? t("السكرتارية", "Secretariat") : id;
 }
 function FoundCard({ item }: { item: FoundItem }) {
   const { t } = useApp();
@@ -148,7 +148,6 @@ export function RegisterFound() {
               !draft.description.trim() ||
               !draft.place.trim() ||
               !draft.storage.trim() ||
-              draft.destination === "other" ||
               (draft.destination !== "" && !draft.office.trim())
             )
               throw new ServiceError("invalid");
@@ -222,13 +221,7 @@ export function RegisterFound() {
               }
             >
               <option value="">{t("معي حالياً", "With me for now")}</option>
-              <option value="security">{t("الأمن", "Security")}</option>
-              <option value="secretariat">
-                {t("السكرتارية", "Secretariat")}
-              </option>
-              <option value="other">
-                {t("جهة مسجلة أخرى", "Other registered department")}
-              </option>
+              <DirectoryOptions />
             </select>
           </Field>
           {draft.destination === "other" && (
@@ -447,10 +440,8 @@ function HandoverPanel({
 }) {
   const { t, account } = useApp();
   const owner = isCustodian(item, account);
-  const recipient =
-    ["department", "secretariat"].includes(account.role) &&
-    account.department === item.handover?.department;
-  const pending = item.handover?.status === "pending";
+  const recipient = receiving(item, account);
+  const pending = item.handover?.status === "pending" || item.handover?.status === "not-received";
   return (
     <div className="panel">
       <h2>{t("عهدة الغرض", "Item custody")}</h2>
@@ -559,10 +550,8 @@ function HandoverPanel({
         >
           <Field label={t("الجهة المستلمة", "Receiving department")} required>
             <select name="department" required>
-              <option value="security">{t("الأمن", "Security")}</option>
-              <option value="secretariat">
-                {t("السكرتارية", "Secretariat")}
-              </option>
+              <option value="">{t("اختر الجهة", "Choose department")}</option>
+              <DirectoryOptions />
             </select>
           </Field>
           <Field label={t("المكتب أو الموقع", "Office or location")} required>
@@ -793,6 +782,7 @@ function ClaimView({
                   account,
                   claim.id,
                   {
+                    version: claim.version,
                     phone,
                     place,
                     instructions,
@@ -826,18 +816,19 @@ function ClaimView({
           {claim.canReject && (
             <ActionForm
               label={t("رفض الطلب", "Reject request")}
-              onSubmit={async () => {
-                await lostFound.reject(account, claim.id);
+              onSubmit={async data => {
+                await lostFound.reject(account, claim.id, String(data.get("reason")), claim.version);
                 changed();
               }}
             >
-              <span className="sr-only">
-                {t("رفض الطلب", "Reject request")}
-              </span>
+              <Field label={t("سبب الرفض", "Rejection reason")} required><textarea name="reason" required /></Field>
             </ActionForm>
           )}
         </div>
       )}
+      {claim.canCancel && <ActionForm label={t("إلغاء الموافقة", "Cancel approval")} onSubmit={async data => {
+        await lostFound.cancelApproval(account, claim.id, String(data.get("reason")), claim.version); changed();
+      }}><Field label={t("سبب الإلغاء", "Cancellation reason")} required><textarea name="reason" required /></Field></ActionForm>}
       {(claim.status === "approved" || claim.status === "delivered") &&
         (custodian || claimant) && (
           <div className="panel">
@@ -883,6 +874,7 @@ function ClaimView({
                               await lostFound.confirmDelivery(
                                 account,
                                 claim.id,
+                                claim.version,
                               );
                               setConfirm(false);
                               changed();

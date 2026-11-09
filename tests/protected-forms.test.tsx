@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -11,6 +11,11 @@ import { directory } from "../src/services/admin";
 import type { Account } from "../src/services/contracts";
 import { lostFound, type Claim, type FoundItem } from "../src/services/lostFound";
 import { maintenance, type MaintenanceReport } from "../src/services/maintenance";
+import * as http from "../src/services/http";
+
+beforeEach(() => vi.spyOn(http, "departments").mockResolvedValue([
+  { id: "test-department", code: "security", ar: "أمن الاختبار", en: "Security", canReceive: true, maintenance: false }
+]));
 
 afterEach(() => {
   cleanup();
@@ -44,7 +49,7 @@ it("requires a selected account before requesting a permission change", async ()
   await userEvent.selectOptions(account, "target-test");
   await userEvent.selectOptions(role, "user");
   await userEvent.click(screen.getByRole("button", { name: "Save permissions" }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/unavailable until the backend is connected/i);
+  expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
   expect(assign).toHaveBeenCalledWith(actor, { key: "target-test", role: "user", scope: "", confirmAdmin: false });
 });
 
@@ -75,7 +80,7 @@ it("validates a maintenance draft and retains it when submission is unavailable"
   await userEvent.clear(location);
   await userEvent.type(location, "Room 1");
   await userEvent.click(screen.getByRole("button", { name: "Submit report" }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/unavailable until the backend is connected/i);
+  expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
   expect((description as HTMLTextAreaElement).value).toBe("Leaking tap");
   expect(create).toHaveBeenCalledOnce();
 });
@@ -111,6 +116,7 @@ it("requires a photo and nonfuture date and keeps a found-item draft on failure"
     await userEvent.type(field, original);
   }
   const destination = screen.getByLabelText(/^Proposed receiving department/);
+  await screen.findByRole("option", { name: "Security" });
   await userEvent.selectOptions(destination, "security");
   await userEvent.type(screen.getByLabelText(/^Receiving office or location/), "   ");
   await userEvent.click(screen.getByRole("button", { name: "Register item" }));
@@ -118,7 +124,7 @@ it("requires a photo and nonfuture date and keeps a found-item draft on failure"
   expect(register).not.toHaveBeenCalled();
   await userEvent.selectOptions(destination, "");
   await userEvent.click(screen.getByRole("button", { name: "Register item" }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/unavailable until the backend is connected/i);
+  expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
   expect((description as HTMLTextAreaElement).value).toBe("Blue watch");
   expect(register).toHaveBeenCalledOnce();
 });
@@ -137,13 +143,13 @@ it("rejects an empty search before requesting matches", async () => {
   const photo = new File(["image"], "photo.png", { type: "image/png" });
   await userEvent.upload(screen.getByLabelText(/^Previous photo/), photo);
   await userEvent.click(screen.getByRole("button", { name: "Search for matches" }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/unavailable until the backend is connected/i);
+  expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
   expect(search).toHaveBeenCalledWith(actor, "watch", photo);
 });
 
 it("requires a nonblank rejection reason before requesting a report update", async () => {
   const actor: Account = { id: "staff-test", name: "Staff", email: "", role: "maintenance", department: "maintenance" };
-  const report: MaintenanceReport = { id: "r", ownerId: "other", description: "Fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 1, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], assessment: { type: "", priority: "", risk: "" } };
+  const report: MaintenanceReport = { id: "r", ownerId: "other", description: "Fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "review", version: 1, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canUpdate: true, assessment: { type: "", priority: "", risk: "" } };
   vi.spyOn(maintenance, "detail").mockResolvedValue(report);
   const update = vi.spyOn(maintenance, "update");
   renderForActor(actor, <MaintenanceDetail />);
@@ -156,7 +162,7 @@ it("requires a nonblank rejection reason before requesting a report update", asy
   await userEvent.clear(note);
   await userEvent.type(note, "Needs review");
   await userEvent.click(screen.getByRole("button", { name: "Save update" }));
-  expect(await screen.findByText(/unavailable until the backend is connected/i)).toBeTruthy();
+  expect(await screen.findByText(/temporarily unavailable/i)).toBeTruthy();
   expect(update).toHaveBeenCalledOnce();
 });
 
@@ -167,6 +173,8 @@ it("requires a nonblank office before requesting a handover", async () => {
   const handover = vi.spyOn(lostFound, "requestHandover");
   renderForActor(actor, <FoundDetail />);
   const office = await screen.findByLabelText(/^Office or location/);
+  await screen.findByRole("option", { name: "Security" });
+  await userEvent.selectOptions(screen.getByLabelText(/^Receiving department/), "security");
   await userEvent.type(office, "   ");
   await userEvent.click(screen.getByRole("button", { name: "Request departmental handover" }));
   expect((await screen.findByRole("alert")).textContent).toMatch(/check required fields/i);
@@ -174,14 +182,14 @@ it("requires a nonblank office before requesting a handover", async () => {
   await userEvent.clear(office);
   await userEvent.type(office, "Desk 1");
   await userEvent.click(screen.getByRole("button", { name: "Request departmental handover" }));
-  expect(await screen.findByText(/unavailable until the backend is connected/i)).toBeTruthy();
+  expect(await screen.findByText(/temporarily unavailable/i)).toBeTruthy();
   expect(handover).toHaveBeenCalledOnce();
 });
 
 it.each(["user", "department"] as const)("requires nonblank collection details for a %s custodian", async (role) => {
   const actor: Account = { id: `holder-${role}`, name: "Holder", email: "", role, department: role === "department" ? "security" : undefined };
   const item: FoundItem = { id: "item", description: "Watch", place: "Hall", date: "2025-01-01", storage: "Desk", uploaderId: actor.id, custodianId: actor.id, custodianDepartment: role === "department" ? "security" : undefined, state: "available", createdAt: "2025-01-01T12:00:00Z", version: 1 };
-  const claim: Claim & { canApprove: boolean; canReject: boolean } = { id: "claim", itemId: item.id, claimantId: "requester", claimantName: "Requester", claimantRole: "user", createdAt: "2025-01-01T12:00:00Z", message: "", status: "pending", claimantConfirmed: false, custodianConfirmed: false, canApprove: true, canReject: false };
+  const claim: Claim & { canApprove: boolean; canReject: boolean } = { id: "claim", itemId: item.id, claimantId: "requester", claimantName: "Requester", claimantRole: "user", createdAt: "2025-01-01T12:00:00Z", message: "", status: "pending", version: 1, claimantConfirmed: false, custodianConfirmed: false, canApprove: true, canReject: false };
   vi.spyOn(lostFound, "claimDetail").mockResolvedValue({ claim, item });
   const approve = vi.spyOn(lostFound, "approve");
   renderForActor(actor, <ClaimDetail />);
@@ -204,6 +212,6 @@ it.each(["user", "department"] as const)("requires nonblank collection details f
     await userEvent.type(instructions, "Collect at desk");
   }
   await userEvent.click(screen.getByRole("button", { name: "Approve request" }));
-  expect(await screen.findByText(/unavailable until the backend is connected/i)).toBeTruthy();
+  expect(await screen.findByText(/temporarily unavailable/i)).toBeTruthy();
   expect(approve).toHaveBeenCalledOnce();
 });

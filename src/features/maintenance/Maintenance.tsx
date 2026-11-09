@@ -99,13 +99,13 @@ export function ImageField({
       >
         <input
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           required={required && !photo}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file && !file.type.startsWith("image/")) {
+            if (file && (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024)) {
               setError(
-                t("اختر ملف صورة مدعوماً.", "Choose a supported image file."),
+                t("اختر JPEG أو PNG أو WebP حتى 5 ميجابايت.", "Choose JPEG, PNG or WebP up to 5 MiB."),
               );
               onChange();
             } else {
@@ -345,9 +345,9 @@ function StaffActions({
 }) {
   const { t, account } = useApp();
   const options: Partial<Record<MaintenanceStatus, MaintenanceStatus[]>> = {
-    submitted: ["review", "rejected"],
+    submitted: ["review"],
     review: ["review", "repair", "rejected"],
-    repair: ["repair", "resolved", "rejected"],
+    repair: ["repair", "resolved"],
   };
   const allowed = options[report.status] ?? [];
   const [status, setStatus] = useState<MaintenanceStatus>(
@@ -363,6 +363,10 @@ function StaffActions({
           const note = String(data.get("note") ?? "");
           if (status === "rejected" && !note.trim())
             throw new ServiceError("invalid");
+          const type = String(data.get("type") ?? "").trim();
+          const priority = String(data.get("priority") ?? "").trim();
+          const risk = String(data.get("risk") ?? "").trim();
+          if ((type || priority || risk) && !(type && priority && risk)) throw new ServiceError("invalid");
           await maintenance.update(
             account,
             {
@@ -371,11 +375,7 @@ function StaffActions({
               status,
               assignee: String(data.get("assignee")),
               note,
-              decision: {
-                type: String(data.get("type")),
-                priority: String(data.get("priority")),
-                risk: String(data.get("risk")),
-              },
+              decision: type && priority && risk ? { type, priority, risk } : undefined,
             },
           );
           onChanged();
@@ -394,7 +394,10 @@ function StaffActions({
           </select>
         </Field>
         <Field label={t("إسناد إلى", "Assign to")}>
-          <input name="assignee" value={report.assignee} readOnly />
+          <select name="assignee" defaultValue={report.assignee}>
+            <option value="">{t("غير مسند", "Unassigned")}</option>
+            {report.allowedAssignees?.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
+          </select>
         </Field>
         <p>
           {t(
@@ -442,7 +445,7 @@ function Detail({
   const [params] = useSearchParams();
   const loadLocations = useCallback(() => maintenance.locations(account), [account]);
   const owner = report.ownerId === account.id;
-  const staff = !!report.assessment;
+  const staff = !!report.canViewAssessment || !!report.canUpdate;
   if (editing)
     return (
       <div className="panel">
@@ -470,7 +473,7 @@ function Detail({
       )}
       <div className="panel">
         <div className="record-top">
-          <bdi>{report.id}</bdi>
+          <bdi>{report.reference ?? report.id}</bdi>
           <Status value={report.status} />
         </div>
         <h2>{t("تفاصيل البلاغ", "Report details")}</h2>
@@ -479,7 +482,7 @@ function Detail({
           <div>
             <dt>{t("الموقع", "Location")}</dt>
             <dd>
-              {report.faculty} · {report.building} · {report.floor}
+              {report.locationNames ? `${t(report.locationNames.faculty.ar, report.locationNames.faculty.en)} · ${t(report.locationNames.building.ar, report.locationNames.building.en)} · ${t(report.locationNames.floor.ar, report.locationNames.floor.en)}` : `${report.faculty} · ${report.building} · ${report.floor}`}
             </dd>
             <dd>{report.details}</dd>
           </div>
@@ -492,7 +495,7 @@ function Detail({
         {!report.photo && (
           <p>{t("لا توجد صورة مرفقة.", "No photo attached.")}</p>
         )}
-        {owner && report.status === "submitted" && (
+        {owner && report.canEdit && (
           <div className="actions">
             <button className="button" onClick={() => setEditing(true)}>
               {t("تعديل البلاغ", "Edit report")}
@@ -542,18 +545,22 @@ function Detail({
                 "Analysis suggestions — staff only",
               )}
             </h2>
-            <Feedback>
+            {report.assessment?.state === "completed" ? <dl className="details-grid">
+              <div><dt>{t("نوع العطل المقترح", "Suggested fault type")}</dt><dd>{report.assessment.type}</dd></div>
+              <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{report.assessment.priority}</dd></div>
+              <div><dt>{t("المخاطر المقترحة", "Suggested risk")}</dt><dd>{report.assessment.risk}</dd></div>
+            </dl> : <Feedback>
               {t(
-                "التحليل غير متاح حالياً.",
-                "Analysis is currently unavailable.",
+                report.assessment?.state === "pending" ? "التحليل قيد الانتظار." : "التحليل غير متاح حالياً.",
+                report.assessment?.state === "pending" ? "Analysis is pending." : "Analysis is currently unavailable.",
               )}
-            </Feedback>
+            </Feedback>}
           </div>
-          <StaffActions
+          {report.canUpdate && <StaffActions
             key={`${report.id}-${report.version}`}
             report={report}
             onChanged={onChanged}
-          />
+          />}
         </>
       )}
     </>

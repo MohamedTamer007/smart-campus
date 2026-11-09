@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { auth } from "../services/auth";
+import { ServiceError } from "../services/contracts";
 import {
   createContext,
   useContext,
@@ -35,6 +37,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSessionExpired(true);
     navigate("/login");
   }, [navigate]);
+  useEffect(() => {
+    let active = true;
+    auth.me().then(current => { if (active) setAccount(current); }).catch(error => {
+      if (!(error instanceof ServiceError)) console.error("Session restoration failed");
+    });
+    window.addEventListener("smart-campus-session-expired", expireSession);
+    return () => { active = false; window.removeEventListener("smart-campus-session-expired", expireSession); };
+  }, [expireSession]);
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";

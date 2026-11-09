@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useApp } from "../../app/context";
 import {
@@ -10,6 +10,7 @@ import {
 } from "../../components/ui";
 import { AsyncView } from "../../components/AsyncView";
 import { accountService } from "../../services/frontend";
+import { auth } from "../../services/auth";
 import { guestAccount, ServiceError } from "../../services/contracts";
 export function Settings() {
   const {
@@ -31,6 +32,7 @@ export function Settings() {
               await accountService.saveName(
                 account,
                 String(data.get("name")),
+                language,
               ),
             );
             setSaved(true);
@@ -73,7 +75,8 @@ export function Settings() {
               String(data.get("currentPassword") ?? ""),
               String(data.get("password") ?? ""),
             );
-            setSaved(true);
+            updateAccount(guestAccount);
+            navigate("/login");
           }}
         >
           <Password
@@ -90,7 +93,8 @@ export function Settings() {
       <div className="narrow">
         <button
           className="button danger"
-          onClick={() => {
+          onClick={async () => {
+            await auth.logout();
             updateAccount(guestAccount);
             navigate("/login");
           }}
@@ -104,6 +108,10 @@ export function Settings() {
 export function Notifications() {
   const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRevision(value => value + 1), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
   const load = useCallback(
     () => accountService.notifications(account),
     [account],

@@ -37,7 +37,7 @@ export function Access({
         </div>
       </Page>
     );
-  if (roles && !roles.includes(account.role))
+  if (roles && !roles.some(role => account.roles?.includes(role) || account.role === role))
     return (
       <Page title={t("غير مصرح", "Access denied")}>
         <Feedback kind="error">

@@ -1,40 +1,20 @@
-# Smart Campus frontend
+# Smart Campus
 
-Arabic-first React frontend for campus maintenance and lost-and-found workflows. The project contains screens, navigation and client-side validation; it has no connected backend, sample accounts or simulated records. Backend-dependent actions currently report that the service is unavailable. Private screens remain behind the client-side sign-in gate until a real session is connected.
+React/TypeScript frontend and ASP.NET Core 10 backend for maintenance and private lost-and-found workflows. Includes PostgreSQL/pgvector, Identity cookie sessions, private media, department scopes, transactional reservations, bilateral delivery, notifications, administration and AI adapters.
 
-The gate is a presentation aid, not authorization. The backend must enforce access, data privacy and workflow rules. The only persisted browser preference is the selected language. Unsubmitted drafts can remain in page memory while navigating.
+Local branch: `codex/backend-integration`. Nothing has been pushed or deployed. Hosted services, real inference and calibrated search are not certified. See the acceptance report before describing this as ready.
 
-## Run locally
+- [Windows setup](docs/SETUP_WINDOWS.md)
+- [API handoff](docs/API_HANDOFF.md) and [OpenAPI](docs/openapi.json)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Progress](docs/BACKEND_PROGRESS.md) and [acceptance evidence](docs/ACCEPTANCE.md)
+- [Product requirements](docs/SMART_CAMPUS_REQUIREMENTS.md)
 
-The installed Vite version requires Node.js `^20.19.0 || >=22.12.0` (see the lockfile and installed package metadata).
+Configure the database and API using the setup guide. Run `npm ci`, then `dotnet run --project backend/SmartCampus.Api --urls http://127.0.0.1:5080` with Development environment enabled. In another terminal run `npm run dev -- --host 127.0.0.1`. Vite proxies API requests; no backend secret belongs in frontend variables. `scripts/publish.ps1` prepares the single-origin application without deployment.
 
-```sh
-npm ci
-npm run dev
-```
+Checks: `dotnet build backend/SmartCampus.slnx`, `dotnet test backend/SmartCampus.slnx`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:e2e`, and `python -m unittest discover -s worker -v`.
 
-The development server prints its local URL. Do not put API, GitHub, Cloudflare, Supabase or AI-provider credentials in frontend files or browser-exposed variables.
+PostgreSQL tests require `SMART_CAMPUS_TEST_DB` pointing to an isolated loopback database ending `_test`; they reset only its application schema. Without it they are skipped. Worker boundary tests use a fake model and do not establish inference quality. General search requires reviewed calibration and completed indexing.
 
-## Checks
-
-```sh
-npm test
-npm run typecheck
-npm run lint
-npm run build
-npm run test:e2e
-```
-
-The Playwright configuration uses `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` if provided, otherwise `/usr/bin/chromium` if present, otherwise Playwright's installed browser. Install the Playwright Chromium browser if the machine has neither an executable override nor the system browser. Browser tests build the project and start a production preview. `npm run preview` also serves an existing build locally.
-
-For the public-screen screenshots, start `npm run preview -- --port 4175 --strictPort`, then run `node scripts/capture-screenshots.mjs` from the repository root.
-
-## Cloudflare Pages deployment
-
-Production site: <https://smart-campus-o6u.pages.dev>. The Cloudflare Pages project is connected to this GitHub repository and deploys from `main`. Build command: `npm ci && npm run build`; output directory: `dist`; root directory: repository root. No build environment variables are required.
-
-## Backend handoff
-
-There is no live API adapter yet. The frontend's unavailable service boundaries and integration questions are described in `docs/API_HANDOFF.md`; the behavioral requirements are in `docs/SMART_CAMPUS_REQUIREMENTS.md`. Actual endpoint paths, DTOs, session transport and error contracts must be agreed with the backend team. Until then, signing in, registering, changing account data, submitting reports and using lost-and-found operations cannot succeed.
-
-`npm run build` produces `dist/`. The campus photograph and O6U emblem are used in the homepage and branding. Actual locations, departments and operational policies require backend integration.
+The existing Git-connected Cloudflare Pages frontend deployment remains unchanged and does not deploy this backend.

@@ -1,11 +1,12 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../../app/context";
+import { DirectoryOptions } from "../../components/DirectoryOptions";
 import { AsyncView } from "../../components/AsyncView";
 import { ActionForm, Feedback, Field, Page } from "../../components/ui";
 import {
   directory,
-  calculateStats,
+  statistics,
   type AssignableRole,
   type DashboardScope,
 } from "../../services/admin";
@@ -135,14 +136,7 @@ export function AdminOverview() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [scope, setScope] = useState<DashboardScope>("all");
-  const load = useCallback(async () => {
-    const [reports, items, claims] = await Promise.all([
-      maintenance.list(account),
-      lostFound.itemsFor(account),
-      lostFound.claims(account),
-    ]);
-    return { reports, items, claims };
-  }, [account]);
+  const load = useCallback(() => statistics({ from, to, scope }), [from, to, scope]);
   return (
     <Page
       title={t("لوحة الإدارة", "Admin overview")}
@@ -174,11 +168,7 @@ export function AdminOverview() {
             onChange={(e) => setScope(e.target.value as DashboardScope)}
           >
             <option value="all">{t("كل الجهات", "All departments")}</option>
-            <option value="maintenance">{t("الصيانة", "Maintenance")}</option>
-            <option value="security">{t("الأمن", "Security")}</option>
-            <option value="secretariat">
-              {t("السكرتارية", "Secretariat")}
-            </option>
+            <DirectoryOptions kind="all" />
           </select>
         </Field>
         <p className="muted">
@@ -208,13 +198,8 @@ export function AdminOverview() {
         </Link>
       </div>
       <div className="spacer" />
-      <AsyncView key={`${account.id}`} load={load}>
-        {(data) => {
-          const stats = calculateStats(data.reports, data.items, data.claims, {
-            from,
-            to,
-            scope,
-          });
+      <AsyncView key={`${account.id}-${from}-${to}-${scope}`} load={load}>
+        {(stats) => {
           return (
             <>
               <div className="stats admin-stats">
@@ -341,8 +326,16 @@ export function AdminAccounts() {
                         <td>
                           <bdi>{entry.account.name}</bdi>
                         </td>
-                        <td>{roleName(entry.account.role, t)}</td>
-                        <td>{scopeName(entry.account.department, t)}</td>
+                        <td>{(entry.account.roles?.length ? entry.account.roles : [entry.account.role]).map(grant =>
+                          <div key={grant}>{roleName(grant as Role, t)}{entry.version && entry.key !== account.id && <ActionForm label={t("إزالة الدور", "Remove role")} onSubmit={async () => {
+                            await directory.replaceGrants(entry.key, (entry.account.roles ?? []).filter(role => role !== grant), entry.account.departments?.map(scope => scope.id) ?? [], entry.version!);
+                            setRevision(value => value + 1);
+                          }}><span className="sr-only">{grant}</span></ActionForm>}</div>)}</td>
+                        <td>{entry.account.departments?.map(scope => <div key={scope.id}>{scope.code}{entry.version && entry.key !== account.id &&
+                          <ActionForm label={t("إزالة النطاق", "Remove scope")} onSubmit={async () => {
+                            await directory.replaceGrants(entry.key, entry.account.roles ?? [], entry.account.departments?.filter(other => other.id !== scope.id).map(other => other.id) ?? [], entry.version!);
+                            setRevision(value => value + 1);
+                          }}><span className="sr-only">{scope.code}</span></ActionForm>}</div>) ?? scopeName(entry.account.department, t)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -361,6 +354,7 @@ export function AdminAccounts() {
                         role,
                         scope: String(data.get("scope") ?? ""),
                         confirmAdmin: data.get("confirmAdmin") === "on",
+                        ...(entries.find(entry => entry.key === key)?.version ? { version: entries.find(entry => entry.key === key)?.version } : {}),
                       },
                     );
                     setRevision((v) => v + 1);
@@ -413,21 +407,14 @@ export function AdminAccounts() {
                   {role === "maintenance" && (
                     <Field label={t("النطاق", "Scope")}>
                       <select name="scope">
-                        <option value="maintenance">
-                          {t("الصيانة", "Maintenance")}
-                        </option>
+                        <DirectoryOptions kind="maintenance" />
                       </select>
                     </Field>
                   )}
                   {role === "department" && (
                     <Field label={t("الجهة", "Department")} required>
                       <select name="scope">
-                        <option value="security">
-                          {t("الأمن", "Security")}
-                        </option>
-                        <option value="secretariat">
-                          {t("السكرتارية", "Secretariat")}
-                        </option>
+                        <DirectoryOptions />
                       </select>
                     </Field>
                   )}

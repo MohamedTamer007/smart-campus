@@ -69,8 +69,8 @@ export function useAction() {
   const [errorCode, setErrorCode] = useState<ServiceError["code"] | null>(null);
   const messages = {
     unavailable: t(
-      "الخدمة غير متاحة حتى ربطها بالنظام الخلفي. احتُفظ بمدخلاتك.",
-      "This service is unavailable until the backend is connected. Your input is kept.",
+      "الخدمة غير متاحة حالياً. احتُفظ بمدخلاتك.",
+      "This service is temporarily unavailable. Your input is kept.",
     ),
     expired: t(
       "انتهت الجلسة. سجل الدخول مجدداً.",
@@ -92,6 +92,9 @@ export function useAction() {
       "تحقق من الحقول المطلوبة وحالة السجل.",
       "Check required fields and the current record state.",
     ),
+    unverified: t("أكد بريدك الجامعي أولاً من رابط البريد.", "Verify your university email using the email link first."),
+    rate_limited: t("طلبات كثيرة. انتظر قليلاً ثم حاول مجدداً.", "Too many requests. Wait briefly and retry."),
+    internal: t("تعذر إكمال الطلب. حاول مجدداً.", "The request failed. Please retry."),
   };
 
   async function run(action: () => Promise<void>) {

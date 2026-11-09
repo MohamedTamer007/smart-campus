@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useApp } from "../../app/context";
 import {
   ActionForm,
@@ -9,11 +9,12 @@ import {
   Password,
 } from "../../components/ui";
 import { ServiceError } from "../../services/contracts";
-import { backendUnavailable } from "../../services/unavailable";
+import { auth } from "../../services/auth";
 import { universityEmail } from "../../services/validation";
 
 export function Auth({ register = false }: { register?: boolean }) {
-  const { t } = useApp();
+  const { t, updateAccount } = useApp();
+  const navigate = useNavigate();
   const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [confirmationError, setConfirmationError] = useState(false);
@@ -34,7 +35,13 @@ export function Auth({ register = false }: { register?: boolean }) {
       setConfirmationError(true);
       return;
     }
-    await backendUnavailable();
+    if (register) {
+      await auth.register(String(data.get("name")), String(data.get("email")), String(data.get("password")), String(data.get("confirmation")));
+      navigate("/verify");
+    } else {
+      updateAccount(await auth.login(String(data.get("email")), String(data.get("password"))));
+      navigate("/requests");
+    }
   }
 
   return (
@@ -116,6 +123,7 @@ export function Auth({ register = false }: { register?: boolean }) {
               : t("إنشاء حساب جديد", "Create a new account")}
           </Link>
           <Link to="/recover">{t("نسيت كلمة المرور؟", "Forgot password?")}</Link>
+          <Link to="/verify">{t("تأكيد البريد أو إعادة الإرسال", "Verify email or resend link")}</Link>
         </div>
       </div>
     </Page>
@@ -124,18 +132,27 @@ export function Auth({ register = false }: { register?: boolean }) {
 
 export function Verification() {
   const { t } = useApp();
+  const [params] = useSearchParams();
+  const [verified, setVerified] = useState(false);
+  const [resent, setResent] = useState(false);
   return (
     <Page title={t("تأكيد البريد الجامعي", "Verify university email")}>
       <div className="panel narrow">
         <Feedback>
           {t(
-            "تأكيد البريد غير متاح حتى ربط الخدمة.",
-            "Email verification is unavailable until the service is connected.",
+            "افتح رابط التأكيد من بريدك الجامعي ثم أكد أدناه.",
+            "Open the link from your university inbox, then confirm below.",
           )}
         </Feedback>
+        {verified && <Feedback kind="success">{t("تم تأكيد البريد. يمكنك تسجيل الدخول.", "Email verified. You can now sign in.")}</Feedback>}
+        {resent && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً.", "Check your inbox if the address is eligible.")}</Feedback>}
+        {!verified && params.get("token") && <ActionForm label={t("تأكيد البريد", "Confirm email")} onSubmit={async () => {
+          await auth.verify(params.get("userId") ?? "", params.get("token") ?? "");
+          setVerified(true);
+        }}><p>{t("تأكيد عنوان البريد الجامعي.", "Verify your university email address.")}</p></ActionForm>}
         <ActionForm
           label={t("إعادة إرسال رابط التأكيد", "Resend verification link")}
-          onSubmit={backendUnavailable}
+          onSubmit={async data => { await auth.resend(String(data.get("email"))); setResent(true); }}
         >
           <Field label={t("البريد الجامعي", "University email")} required>
             <input required type="email" dir="ltr" name="email" />
@@ -151,12 +168,14 @@ export function Verification() {
 
 export function Recovery() {
   const { t } = useApp();
+  const [requested, setRequested] = useState(false);
   return (
     <Page title={t("نسيت كلمة المرور؟", "Forgot password?")}>
       <div className="panel narrow">
+        {requested && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً.", "Check your inbox if the address is eligible.")}</Feedback>}
         <ActionForm
           label={t("طلب رابط الاستعادة", "Request recovery link")}
-          onSubmit={backendUnavailable}
+          onSubmit={async data => { await auth.recover(String(data.get("email"))); setRequested(true); }}
         >
           <Field label={t("البريد الجامعي", "University email")} required>
             <input required type="email" dir="ltr" name="email" />
@@ -169,15 +188,20 @@ export function Recovery() {
 
 export function ResetPassword() {
   const { t } = useApp();
+  const { token = "" } = useParams();
+  const [params] = useSearchParams();
+  const [completed, setCompleted] = useState(false);
   return (
     <Page title={t("تعيين كلمة مرور جديدة", "Set a new password")}>
       <div className="panel narrow">
-        <ActionForm
+        {completed && <Feedback kind="success">{t("تغيرت كلمة المرور. سجل الدخول مجدداً.", "Password changed. Sign in again.")}</Feedback>}
+        {!completed && <ActionForm
           label={t("حفظ كلمة المرور", "Save password")}
           onSubmit={async (data) => {
             if (data.get("password") !== data.get("confirmation"))
               throw new ServiceError("invalid");
-            await backendUnavailable();
+            await auth.reset(params.get("userId") ?? "", token, String(data.get("password")), String(data.get("confirmation")));
+            setCompleted(true);
           }}
         >
           <Password label={t("كلمة المرور الجديدة", "New password")} />
@@ -185,7 +209,7 @@ export function ResetPassword() {
             name="confirmation"
             label={t("تأكيد كلمة المرور", "Confirm password")}
           />
-        </ActionForm>
+        </ActionForm>}
         <Link className="text-link" to="/recover">
           {t("اطلب رابطاً جديداً", "Request a new link")}
         </Link>

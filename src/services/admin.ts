@@ -1,12 +1,13 @@
 import type { Account } from "./contracts";
 import type { MaintenanceReport, MaintenanceStatus } from "./maintenance";
 import type { FoundItem, Claim } from "./lostFound";
-import { backendUnavailable } from "./unavailable";
+import { api, departmentId, json, pages } from "./http";
 
 export type AssignableRole = "user" | "maintenance" | "department" | "admin";
 export interface DirectoryEntry {
   key: string;
   account: Account;
+  version?: string;
 }
 interface DirectoryService {
   list(actor: Account): Promise<DirectoryEntry[]>;
@@ -17,12 +18,32 @@ interface DirectoryService {
       role: AssignableRole;
       scope: string;
       confirmAdmin: boolean;
+      version?: string;
     },
   ): Promise<Account>;
+  replaceGrants(key: string, roles: string[], departmentIds: string[], version: string): Promise<void>;
 }
 export const directory: DirectoryService = {
-  list: backendUnavailable,
-  assign: backendUnavailable,
+  replaceGrants: (key, roles, departmentIds, version) => api<void>(`/admin/accounts/${key}/grants`, json("PUT", { roles, departmentIds, version })),
+  list: () => pages<DirectoryEntry>("/admin/accounts"),
+  assign: async (_actor, request) => {
+    const entries = await pages<DirectoryEntry>("/admin/accounts");
+    const entry = entries.find(candidate => candidate.key === request.key);
+    if (!entry) throw new Error("Account no longer available");
+    await api(`/admin/accounts/${request.key}/grants`, json("PUT", {
+      roles: request.role === "user" ? ["user"] : Array.from(new Set([...(entry.account.roles ?? []), request.role])),
+      departmentIds: request.role === "user" ? [] : Array.from(new Set([...(entry.account.departments?.map(scope => scope.id) ?? []),
+        ...(request.scope ? [await departmentId(request.scope)] : [])])), version: request.version ?? entry.version,
+    }));
+    return (await pages<DirectoryEntry>("/admin/accounts")).find(candidate => candidate.key === request.key)!.account;
+  },
+};
+export const statistics = async (query: { scope?: string; from?: string; to?: string } = {}) => {
+  const parameters = new URLSearchParams();
+  if (query.from) parameters.set("from", query.from);
+  if (query.to) parameters.set("to", query.to);
+  if (query.scope && query.scope !== "all") parameters.set("departmentId", await departmentId(query.scope));
+  return api<Stats>(`/statistics?${parameters}`);
 };
 
 export interface Stats {
@@ -80,7 +101,7 @@ export function calculateStats(
   for (const report of reports) {
     byStatus[report.status]++;
     locations[report.faculty] = (locations[report.faculty] ?? 0) + 1;
-    const type = report.decision?.type.trim();
+    const type = report.decision?.type?.trim();
     if (type) faultTypes[type] = (faultTypes[type] ?? 0) + 1;
   }
   return {

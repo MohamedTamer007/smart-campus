@@ -13,6 +13,9 @@ export interface Account {
   email: string;
   role: Role;
   department?: string;
+  roles?: string[];
+  departments?: { id: string; code: string }[];
+  language?: "ar" | "en";
 }
 export class ServiceError extends Error {
   constructor(
@@ -22,7 +25,11 @@ export class ServiceError extends Error {
       | "conflict"
       | "forbidden"
       | "invalid"
-      | "credentials",
+      | "credentials"
+      | "unverified"
+      | "rate_limited"
+      | "internal",
+    public detail?: string,
   ) {
     super(code);
   }
