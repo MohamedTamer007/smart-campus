@@ -22,7 +22,9 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
       throw new ServiceError(code, error.code);
     }
     if (path.startsWith("/auth/") && method !== "GET") csrf = undefined;
-    return response.status === 204 ? undefined as T : await response.json() as T;
+    return response.status === 204 ? undefined as T : await response.json().catch(() => {
+      throw new ServiceError("unavailable", "invalid_response");
+    }) as T;
   } catch (error) {
     if (error instanceof ServiceError) throw error;
     if (error instanceof TypeError) throw new ServiceError("unavailable");

@@ -2,12 +2,13 @@
 
 React/TypeScript frontend and ASP.NET Core 10 backend for maintenance and private lost-and-found workflows. Includes PostgreSQL/pgvector, Identity cookie sessions, private media, department scopes, transactional reservations, bilateral delivery, notifications, administration and AI adapters.
 
-Local branch: `codex/backend-integration`. Nothing has been pushed or deployed. Hosted services, real inference and calibrated search are not certified. See the acceptance report before describing this as ready.
+Source is pushed on `codex/backend-integration` with [draft PR #1](https://github.com/MohamedTamer007/smart-campus/pull/1). No public backend deployment or university release has occurred. Real pinned-model CPU inference passed in CI; calibrated retrieval, hosted integration and full release acceptance remain incomplete. See the acceptance report before describing this as ready.
 
 - [Windows setup](docs/SETUP_WINDOWS.md)
 - [API handoff](docs/API_HANDOFF.md) and [OpenAPI](docs/openapi.json)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Deployment](docs/DEPLOYMENT.md)
+- [Free hosting and Outlook setup](docs/HOSTING_SETUP.md)
 - [Progress](docs/BACKEND_PROGRESS.md) and [acceptance evidence](docs/ACCEPTANCE.md)
 - [Product requirements](docs/SMART_CAMPUS_REQUIREMENTS.md)
 

@@ -36,3 +36,14 @@ it.each(["<!DOCTYPE html><title>Proxy response</title>", "{truncated"])("a malfo
   const { api } = await import("../src/services/http");
   await expect(api("/found")).rejects.toMatchObject({ code: "unavailable" });
 });
+
+it.each(["SyntaxError", "EncodingError"])("a native response parse failure prevents authenticated writes: %s", async (name) => {
+  const response = new Response("", { status: 200 });
+  vi.spyOn(response, "json").mockRejectedValue(new DOMException("Browser-specific response failure", name));
+  const fetch = vi.fn().mockResolvedValue(response);
+  vi.stubGlobal("fetch", fetch);
+  const { api, json } = await import("../src/services/http");
+  await expect(api("/auth/login", json("POST", { email: "test@o6u.edu.eg" }))).rejects.toMatchObject({ code: "unavailable" });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toBe("/api/v1/auth/csrf");
+});

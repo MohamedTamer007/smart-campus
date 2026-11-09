@@ -10,7 +10,7 @@ import { MaintenanceDetail, NewMaintenance } from "../src/features/maintenance/M
 import { directory } from "../src/services/admin";
 import * as adminServices from "../src/services/admin";
 import { OperationsStatus } from "../src/features/admin/OperationsStatus";
-import type { Account } from "../src/services/contracts";
+import { ServiceError, type Account } from "../src/services/contracts";
 import { lostFound, type Claim, type FoundItem } from "../src/services/lostFound";
 import { maintenance, type MaintenanceReport } from "../src/services/maintenance";
 import * as http from "../src/services/http";
@@ -213,6 +213,23 @@ it("requires a nonblank office before requesting a handover", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Request departmental handover" }));
   expect(await screen.findByText(/temporarily unavailable/i)).toBeTruthy();
   expect(handover).toHaveBeenCalledOnce();
+});
+
+it.each([true, false])("uses server receipt permission for a staff member with multiple department scopes: %s", async (allowed) => {
+  const actor: Account = { id: "scoped-receiver", name: "Receiver", email: "", role: "maintenance", roles: ["maintenance", "department"], department: "primary", departments: [{ id: "primary-id", code: "primary" }, { id: "secondary-id", code: "secondary" }] };
+  const item: FoundItem = { id: "item", description: "Synthetic watch", place: "Hall", date: "2025-01-01", storage: "Desk", uploaderId: "finder", custodianId: "finder", state: "available", createdAt: "2025-01-01T12:00:00Z", version: 3, canReceive: allowed, canHandover: false, canCancelHandover: false, handover: { department: "secondary", office: "Test desk", status: "pending" } };
+  vi.spyOn(lostFound, "detail").mockResolvedValue({ ...item, canClaim: false });
+  const confirm = vi.spyOn(lostFound, "confirmHandover").mockRejectedValue(new ServiceError("unavailable"));
+  renderForActor(actor, <FoundDetail />);
+  await screen.findByText("Synthetic watch");
+  if (allowed) {
+    await userEvent.click(await screen.findByRole("button", { name: "Confirm physical receipt" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
+    expect(confirm).toHaveBeenCalledWith(actor, "item", 3);
+  } else {
+    expect(screen.queryByRole("button", { name: "Confirm physical receipt" })).toBeNull();
+    expect(confirm).not.toHaveBeenCalled();
+  }
 });
 
 it.each(["user", "department"] as const)("requires nonblank collection details for a %s custodian", async (role) => {

@@ -55,3 +55,5 @@ CI run 42683987364 reported one Gitleaks false positive: `AI__OpenRouterKey=` fo
 
 
 Restore-verifier follow-up: canonicalization applies only to arrays composed entirely of string literals cast to unbounded varchar/text. It does not strip arbitrary SQL, column expressions or bounded-length casts. Regression cases prove changed allowed values remain failures. Real source/restored row bytes still compare exactly. Local isolated restored-copy verification passes; hosted/complete recovery is not inferred.
+
+The custody panel now follows API canReceive/canHandover/canCancelHandover values, including explicit false, instead of gating receipt on a single primary department. Backward fixture fallback never grants backend access. Two regression variants cover secondary-department permission and authoritative denial; all 49 frontend tests and typecheck/lint/build pass.

@@ -1,0 +1,1 @@
+Synthetic bytes and filename encryption verified through real rclone crypt and isolated restoration. Hosted S3/OCI integration not exercised.

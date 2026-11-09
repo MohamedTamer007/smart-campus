@@ -28,6 +28,12 @@ The 10-user, p95 under 2 seconds, RPO 24 hours, and RTO 4 hours figures are targ
 
 Once account, hostname, and scoped access are ready, the remaining engineering sequence is: verify ARM images and actual model, install the reviewed container runtime, supply secure configuration, prepare backup destinations, validate isolated staging migrations, review the storage-policy correction, bootstrap the first administrator, run the controlled mailbox journeys, then test the public origin. `deployment/*.env.example` files are templates; their placeholder values cannot start a valid hosted deployment.
 
+## Additional HTTPS ingress candidate for a small controlled test
+
+[ngrok Free](https://ngrok.com/docs/pricing-limits/free-plan-limits) supplies an account-assigned stable development hostname and HTTPS without buying a domain. Its free endpoint can remain online, but limits are 20,000 HTTP requests and 1 GB outbound traffic per month, and browser HTML initially shows ngrok's notice. Oracle would still host the actual API/worker; ngrok would be an additional public ingress provider, not replacement compute.
+
+This is a possible controlled testing arrangement, not the selected university release architecture or a capacity guarantee. Notification polling, image downloads and normal application requests all consume its quota. Before using it, obtain an owner-controlled free account and verify the assigned hostname, privacy/traffic-inspection settings, free quota and proxy-header behavior. Its agent token belongs in host secret storage; never paste it here. Do not activate a paid plan, silently bypass its browser notice, or describe a live developer tunnel as a verified production deployment. No account, agent, public endpoint or new third-party access has been created.
+
 ## Outlook university mailbox
 
 An Outlook inbox proves access to the mailbox, not permission for this application to send as it. The current implementation supports SMTP with STARTTLS or Resend HTTPS. Neither has been verified against the university tenant.

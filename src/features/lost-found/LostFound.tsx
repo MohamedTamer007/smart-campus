@@ -440,7 +440,7 @@ function HandoverPanel({
 }) {
   const { t, account } = useApp();
   const owner = isCustodian(item, account);
-  const recipient = receiving(item, account);
+  const recipient = item.canReceive ?? receiving(item, account);
   const pending = item.handover?.status === "pending" || item.handover?.status === "not-received";
   return (
     <div className="panel">
@@ -473,7 +473,7 @@ function HandoverPanel({
           {item.handover.office}
         </Feedback>
       )}
-      {owner && pending && (
+      {(item.canCancelHandover ?? (owner && pending)) && (
         <ActionForm
           label={t("إلغاء طلب التسليم", "Cancel handover")}
           onSubmit={async () => {
@@ -530,7 +530,7 @@ function HandoverPanel({
           </ActionForm>
         </div>
       )}
-      {owner && !pending && item.state === "available" && (
+      {(item.canHandover ?? (owner && !pending && item.state === "available")) && (
         <ActionForm
           label={t("طلب تسليم لجهة", "Request departmental handover")}
           onSubmit={async (data) => {
@@ -617,7 +617,7 @@ function ItemDetail({
       </div>
       {(owner ||
         item.uploaderId === account.id ||
-        item.handover?.department === account.department) && (
+        (item.canReceive ?? receiving(item, account))) && (
         <HandoverPanel item={item} changed={changed} />
       )}
       {item.canClaim && (
