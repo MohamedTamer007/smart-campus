@@ -51,3 +51,5 @@ Backup subprocesses use argument arrays and scrub rclone environment overrides; 
 
 The current 90 backend tests and 47 frontend cases passed; provider test doubles remain confined to explicit network boundaries. No fake provider/model fallback was added to production. Cairo dashboard aggregation now runs in PostgreSQL and pending-claim filtering preserves department/date authorization. Paged report/item DTO assembly still needs load/query work before capacity claims. Documentation was checked against actual routes, templates and generated OpenAPI; unexecuted hosting/inference/recovery claims stay blocked.
 
+CI run 42683987364 reported one Gitleaks false positive: `AI__OpenRouterKey=` followed by the empty `AI__NvidiaKey=` setting. The generic rule crossed the newline and extracted a configuration name. Reviewed exact commit/file/rule/line fingerprint is the only exception in `.gitleaksignore`; every new commit value and all other findings remain scanned. Empty template values are quoted to prevent recurrence. Actual pinned-model CI 42683987444 passed; calibration and public-host evidence remain separate gates.
+

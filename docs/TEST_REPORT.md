@@ -4,6 +4,10 @@ This report separates current observed results from earlier implementation evide
 
 ## Current verified batch
 
+Subsequent CI evidence: actual pinned-model job **42683987444 succeeded**, using the built CPU Docker environment and loopback HTTP. English/Arabic text and two generated images produced unit vectors with **768 dimensions**; model load 22.61 seconds and four requests 1.186 seconds on that runner. This is a smoke measurement, not a semantic calibration, ARM compatibility result, or public-host performance result. Metadata is in `evidence/real-worker.json`.
+
+Main CI run **42683987364 failed at Gitleaks** before later checks executed. The one finding matches two adjacent empty template assignments across a newline, extracting the next setting name rather than a credential. The exact historical fingerprint was reviewed and listed in `.gitleaksignore`; empty values are now quoted. No rule/file/history-wide exclusion or credential was removed. Main CI rerun remains required.
+
 Full local run: **90 passed, zero failed/skipped**, `dotnet test backend/SmartCampus.slnx --no-build --logger 'trx;LogFileName=backend-release-controls.trx' --results-directory ../../work/test-results`, isolated PostgreSQL 16/pgvector. Fresh test fixtures apply all seven EF migrations. Selected report: `evidence/backend-release-controls.trx`. The same source compiled successfully in the preceding targeted run; `--no-build` reused that assembly.
 
 | Requirement | Evidence | Result |

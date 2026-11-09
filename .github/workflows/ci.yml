@@ -59,7 +59,7 @@ jobs:
       - name: Scan committed history for credentials
         run: |
           mkdir -p test-results
-          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact=100 --report-format json --report-path /repo/test-results/gitleaks.json
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --gitleaks-ignore-path /repo/.gitleaksignore --redact=100 --report-format json --report-path /repo/test-results/gitleaks.json
       - name: Backend tests with PostgreSQL 17
         run: dotnet test backend/SmartCampus.slnx --logger 'trx;LogFileName=backend.trx' --results-directory test-results/backend
       - name: Verify reviewed storage policy on isolated fixtures
