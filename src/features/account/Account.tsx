@@ -105,7 +105,7 @@ export function Settings() {
         >
           {logoutPending ? t("جارٍ التنفيذ…", "Working…") : t("تسجيل الخروج", "Sign out")}
         </button>
-        {logoutError && <Feedback kind="error">{logoutError}</Feedback>
+        {logoutError && <Feedback kind="error">{logoutError}</Feedback>}
       </div>
     </Page>
   );
