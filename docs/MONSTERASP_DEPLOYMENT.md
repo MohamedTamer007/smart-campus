@@ -126,6 +126,42 @@ explicitly approved test-only data**, if all runtime/security gates succeed.
 For genuine university operation, select a plan/provider that permits
 production personal-data processing and meets the worker/email/uptime needs.
 
+## Live interactive synthetic demo — browser-verified 2026-11-10
+
+In addition to the original non-functional static visual preview, the
+public `/preview/` page now includes **clearly labeled fictional,
+browser-memory-only** maintenance and lost-and-found workflows. Visitors
+may switch among simulated student/staff/admin roles, add pre-defined
+maintenance reports, progress their statuses, search a small set of fake
+found objects, simulate claims and custody resolution, and inspect
+dashboard counters. These operations **do not create accounts**, submit
+real tickets, access Supabase or call `/api/`. No free-text personally
+identifying fields or file uploads are accepted.
+
+A Content Security Policy embedded in `preview.html` prohibits all
+`connect-src` calls and actual form navigation; no user data is sent to
+the real backend. `src/preview-demo.tsx` and the responsive
+`src/styles/preview-demo.css` implement the simulation, with separate
+Vitest assertions for no API calls. The static deploy workflow gates
+publication on TypeScript and those tests before any WebDeploy sync.
+
+**Live browser verification PASS:** [GitHub Actions run
+42889532755](https://github.com/MohamedTamer007/smart-campus/actions/runs/42889532755).
+It built and published the isolated preview into
+`site/wwwroot/preview`, verified public HTML/JS/CSS/logo responses, and
+then used actual Chromium on **1440px desktop and 390px mobile** to
+exercise Arabic/English, the mocked report lifecycle, simulated claims,
+role switching, reset and dashboard. Both viewport runs reported
+no application JavaScript exceptions, no API requests and no horizontal
+overflow. Four synthetic screenshots (Arabic and English on both
+viewports) were uploaded as a seven-day Actions artifact.
+
+**Important:** The deployed preview is an interactive **simulation**, not
+the real database-backed Smart Campus application. Account registration,
+verification, recovery, private media, live repair/custody permissions,
+real email and SigLIP inference remain unavailable on this public demo.
+Neither this evidence nor an HTTP 200 proves backend launch readiness.
+
 ## Live static design preview — published and verified 2026-11-10
 
 The user explicitly requested that implementation proceed without further
