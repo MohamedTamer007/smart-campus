@@ -1,6 +1,6 @@
 # Free hosting and university email setup
 
-Checked against provider documentation on 2026-11-09. No hosting account, paid hosting plan, public deployment, tenant consent, or hosted database change has been created by this implementation. CI uses standard GitHub runners against the account's included allocation; no billing setting or paid plan was enabled.
+Checked against provider documentation on 2026-11-09. No hosting account, paid hosting plan, public deployment, or tenant consent has been created by this implementation. On 2026-11-10, the isolated `smart_campus` schema was deployed to the existing Supabase project using the reviewed `docs/database.sql` migrations. CI uses standard GitHub runners against the account's included allocation; no billing setting or paid plan was enabled.
 
 ## Decision and unresolved constraint
 
@@ -50,6 +50,6 @@ The exact authorized test address is needed only when configuring the controlled
 
 ## Remaining external release gates
 
-Hosted `smart_campus` migrations have not been applied. The legacy storage SELECT policy allows authenticated reads across the maintenance/found buckets; its prepared prefix restriction is in `scripts/sql/restrict-storage-prefix.sql`, with an isolated proof in `scripts/sql/test-storage-prefix.sql`. This is an external permission change and must receive approval after isolated verification and backup. Until corrected, new application objects must not be placed in those hosted prefixes for a real pilot.
+Hosted `smart_campus` migrations **were applied on 2026-11-10** to the existing project using a reviewed idempotent SQL script, following a successful transaction-rollback dry-run. Post-apply verification confirmed 26 application tables and eight EF history rows; `anon` and `authenticated` have no schema USAGE, `pgvector` is in `extensions`, and the legacy `public.ai_trial_records` count was unchanged at 38. This is schema deployment only, **not** evidence of a live API or full readiness. The legacy storage SELECT policy allows authenticated reads across the maintenance/found buckets; its prepared prefix restriction is in `scripts/sql/restrict-storage-prefix.sql`, with an isolated proof in `scripts/sql/test-storage-prefix.sql`. This is an external permission change and must receive approval after isolated verification and backup. Until corrected, new application objects must not be placed in those hosted prefixes for a real pilot.
 
 Runtime/migration database roles, private storage credentials, authorized mail transport, free AI keys, reviewed campus directory/taxonomy, reviewed retrieval calibration, and off-host restore proof remain required. Keep `Release__Mode=controlled`, populate only authorized university test emails, and keep inference/image forwarding and search disabled until their respective gates pass. No university-wide release is authorized by a successful testing deployment.
