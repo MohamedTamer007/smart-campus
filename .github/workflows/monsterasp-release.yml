@@ -1,0 +1,161 @@
+name: MonsterASP.NET guarded release
+
+# A branch push only tests the real built site through msdeploy -whatif.
+# A live publish additionally requires manual dispatch AND three explicit readiness flags.
+on:
+  push:
+    branches: [codex/backend-integration]
+    paths: ['.github/workflows/monsterasp-release.yml']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Actually publish site, only after runtime/HTTPS/security review'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monsterasp-guarded-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-check:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    env:
+      WEBSITE_NAME: ${{ secrets.WEBSITE_NAME }}
+      SERVER_COMPUTER_NAME: ${{ secrets.SERVER_COMPUTER_NAME }}
+      SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+      SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+      ACTUAL_PUBLISH_REQUEST: ${{ inputs.publish }}
+      APPROVED_PUBLICATION: ${{ vars.MONSTERASP_PUBLICATION_APPROVED }}
+      VERIFIED_RUNTIME: ${{ vars.MONSTERASP_RUNTIME_CONFIG_VERIFIED }}
+      APPROVED_SECURITY: ${{ vars.MONSTERASP_SECURITY_REVIEW_APPROVED }}
+    steps:
+      - name: Checkout source (no persistent token)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Configure .NET 10
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Configure Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Compile React + .NET for Windows IIS
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Destination "$env:RUNNER_TEMP/monsterasp-site"
+      - name: Check release files and require explicit approval before any publish
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'monsterasp-site'
+          foreach ($required in @('web.config','SmartCampus.Api.dll','wwwroot/index.html')) {
+            if (-not (Test-Path (Join-Path $root $required))) {
+              throw "The IIS release bundle is incomplete: $required"
+            }
+          }
+          if ((Get-Content (Join-Path $root 'web.config') -Raw) -notmatch 'AspNetCoreModuleV2') {
+            throw 'The IIS ASP.NET Core hosting module is absent.'
+          }
+          $privateFiles = @(Get-ChildItem $root -File -Recurse | Where-Object {
+            $_.Name -in @('appsettings.Local.json','.env','.publishSettings') -or
+            $_.Extension -in @('.key','.pfx','.pem')
+          })
+          if ($privateFiles.Count) { throw 'A private key or config was found in the publish bundle.' }
+          foreach ($name in @('WEBSITE_NAME','SERVER_COMPUTER_NAME','SERVER_USERNAME','SERVER_PASSWORD')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "A required WebDeploy repository secret is missing: $name"
+            }
+          }
+          if ($env:WEBSITE_NAME -notmatch '^site[A-Za-z0-9-]+$') { throw 'Invalid MonsterASP.NET site identifier.' }
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $uri = $null
+          if (-not [Uri]::TryCreate($rawServer,[UriKind]::Absolute,[ref]$uri) -or
+              $uri.Scheme -ne 'https' -or $uri.Host -notmatch '^[A-Za-z0-9-]+\.siteasp\.net$') {
+            throw 'WebDeploy publisher is not the approved MonsterASP.NET HTTPS host.'
+          }
+          if ($env:ACTUAL_PUBLISH_REQUEST -eq 'true') {
+            if ($env:APPROVED_PUBLICATION -ne 'true' -or $env:VERIFIED_RUNTIME -ne 'true' -or
+                $env:APPROVED_SECURITY -ne 'true') {
+              throw 'Live publishing is BLOCKED: require MONSTERASP_PUBLICATION_APPROVED, MONSTERASP_RUNTIME_CONFIG_VERIFIED and MONSTERASP_SECURITY_REVIEW_APPROVED repository variables.'
+            }
+            $http = [System.Net.Http.HttpClient]::new()
+            $http.Timeout = [TimeSpan]::FromSeconds(12)
+            try {
+              $response = $http.GetAsync('https://smartcampus.tryasp.net/').GetAwaiter().GetResult()
+              if (-not $response.IsSuccessStatusCode) {
+                throw 'The public HTTPS hostname must respond successfully before publishing.'
+              }
+            } finally {
+              $http.Dispose()
+            }
+          }
+          Write-Output 'IIS bundle and release guard validated.'
+      - name: Install WebDeploy
+        shell: pwsh
+        run: |
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          if (-not (Test-Path $exe)) {
+            choco install webdeploy --yes --no-progress --limit-output
+            if ($LASTEXITCODE -ne 0) { throw 'WebDeploy installation failed.' }
+          }
+          if (-not (Test-Path $exe)) { throw 'WebDeploy executable missing.' }
+      - name: Dry-run compiled app and publish only when fully authorized
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $serverHost = ([Uri]$rawServer).Host
+          $site = $env:WEBSITE_NAME
+          $endpoint = "https://$($serverHost):8172/msdeploy.axd?site=$site"
+          $root = Join-Path $env:RUNNER_TEMP 'monsterasp-site'
+          function Invoke-SecretSafeMSDeploy([bool]$dryRun) {
+            $argsList = @(
+              '-verb:sync',
+              "-source:contentPath=$root",
+              "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic",
+              '-enableRule:DoNotDeleteRule'
+            )
+            if ($dryRun) { $argsList += '-whatif' }
+            $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
+            $start.UseShellExecute = $false
+            $start.CreateNoWindow = $true
+            $start.RedirectStandardOutput = $true
+            $start.RedirectStandardError = $true
+            foreach ($arg in $argsList) { [void]$start.ArgumentList.Add($arg) }
+            $process = [System.Diagnostics.Process]::Start($start)
+            try {
+              $stdout = $process.StandardOutput.ReadToEndAsync()
+              $stderr = $process.StandardError.ReadToEndAsync()
+              if (-not $process.WaitForExit(120000)) {
+                $process.Kill()
+                throw 'WebDeploy timed out; inspect host before retrying.'
+              }
+              $null = $stdout.GetAwaiter().GetResult()
+              $null = $stderr.GetAwaiter().GetResult()
+              if ($process.ExitCode -ne 0) {
+                throw 'WebDeploy returned an error; verify host status. Provider output withheld to protect secrets.'
+              }
+            } finally {
+              $process.Dispose()
+            }
+          }
+          Invoke-SecretSafeMSDeploy $true
+          Write-Output 'Read-only plan for the complete compiled app passed. No files changed.'
+          if ($env:ACTUAL_PUBLISH_REQUEST -eq 'true') {
+            Invoke-SecretSafeMSDeploy $false
+            Write-Output 'Website files uploaded; live API, email, security, and AI still require acceptance testing.'
+          } else {
+            Write-Output 'Production publication skipped: no explicit dispatch requested.'
+          }
