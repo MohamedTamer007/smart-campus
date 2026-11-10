@@ -34,6 +34,7 @@ jobs:
       APPROVED_PUBLICATION: ${{ vars.MONSTERASP_PUBLICATION_APPROVED }}
       VERIFIED_RUNTIME: ${{ vars.MONSTERASP_RUNTIME_CONFIG_VERIFIED }}
       APPROVED_SECURITY: ${{ vars.MONSTERASP_SECURITY_REVIEW_APPROVED }}
+      TEST_DATA_ONLY: ${{ vars.MONSTERASP_TEST_DATA_ONLY }}
     steps:
       - name: Checkout source (no persistent token)
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -84,6 +85,12 @@ jobs:
             throw 'WebDeploy publisher is not the approved MonsterASP.NET HTTPS host.'
           }
           if ($env:ACTUAL_PUBLISH_REQUEST -eq 'true') {
+            # MonsterASP.NET Free terms permit evaluation only; not production
+            # processing of personal data. This gate is an explicit owner
+            # attestation, not a technical proof of the remote data contents.
+            if ($env:TEST_DATA_ONLY -ne 'true') {
+              throw 'Publishing blocked: MonsterASP.NET Free requires a synthetic-data-only evaluation. Set MONSTERASP_TEST_DATA_ONLY only after verifying no real personal data can be used.'
+            }
             if ($env:APPROVED_PUBLICATION -ne 'true' -or $env:VERIFIED_RUNTIME -ne 'true' -or
                 $env:APPROVED_SECURITY -ne 'true') {
               throw 'Live publishing is BLOCKED: require MONSTERASP_PUBLICATION_APPROVED, MONSTERASP_RUNTIME_CONFIG_VERIFIED and MONSTERASP_SECURITY_REVIEW_APPROVED repository variables.'
