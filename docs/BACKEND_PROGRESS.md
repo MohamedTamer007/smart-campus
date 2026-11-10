@@ -1,3 +1,36 @@
+## 10 November 2026 — Verified static MonsterASP.NET preview (no user data)
+
+Owner authorized continued deployment on the existing `smartcampus.tryasp.net` host.
+Added a separate static Vite entry, `preview.html` and
+`src/preview-main.tsx`, that shows the real product visual direction in
+Arabic/English but explicitly does not support account, maintenance or custody
+submissions. No backend API calls or secrets are included in the preview bundle.
+
+The first attempt to publish under `site/preview` completed MSDeploy but
+failed the public smoke test with HTTP 404
+([run 42885283927](https://github.com/MohamedTamer007/smart-campus/actions/runs/42885283927)).
+The corrected destination `site/wwwroot/preview` follows ASP.NET Core's
+nested static assets directory and passed the live public HTTP smoke test
+([run 42885734797](https://github.com/MohamedTamer007/smart-campus/actions/runs/42885734797)).
+A further real publish and verification pass
+([run 42886109744](https://github.com/MohamedTamer007/smart-campus/actions/runs/42886109744))
+**passed**, confirming the public `/preview/` directory URL, its HTML,
+compiled JS and CSS and the university logo are accessible. WebDeploy
+`-whatif` ran before each write and `DoNotDeleteRule` retained unrelated
+files. Confirmed live URL:
+`http://smartcampus.tryasp.net/preview/`.
+
+**Not passed/not attempted:** the full .NET runtime at public origin,
+HTTPS certificate, real identity verification and recovery email, external
+private media, separate Python AI inference, reliable hosted background jobs,
+real university account acceptance or 100% production functionality. The
+existing private `smart_campus` Postgres schema was not changed by the
+preview publishing. The backend release remains gated by an explicit
+manual dispatch and approved real environment configuration.
+Current detailed evidence is in `docs/MONSTERASP_DEPLOYMENT.md`.
+Do not promote the preview to university production or misdescribe its
+static buttons as working services.
+
 ## 10 November 2026 — Frontend error handling hardening
 
 Source review identified two UI failure paths: unexpected (non-ServiceError) failures from data loaders were rethrown in asynchronous handlers, leaving the view in loading state, and unexpected form-action failures could become unhandled without user feedback. The settings sign-out control also bypassed the shared action error handling. Updated AsyncView, useAction and sign-out to show a recoverable unavailable outcome and allow retry without assuming an operation succeeded. Added two targeted React regression tests for the failure/retry paths. New GitHub CI verification is required; this change does not certify deployment or unblock hosted database, email, university directory, or calibrated AI search.
