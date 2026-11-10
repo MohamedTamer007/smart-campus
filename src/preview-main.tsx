@@ -37,7 +37,7 @@ function PublicPreview() {
       <div className="preview-header">
         <header className="header">
           <a className="brand" href="#top" aria-label="Smart Campus">
-            <img className="brand-mark" src={import.meta.env.BASE_URL + "o6u-mark.png"} alt="" aria-hidden="true" width="28" height="28" />
+            <img className="brand-mark" src={"/preview/o6u-mark.png"} alt="" aria-hidden="true" width="28" height="28" />
             <bdi>Smart Campus</bdi>
           </a>
           <nav aria-label={t("التنقل", "Navigation")}>
