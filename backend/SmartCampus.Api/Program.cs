@@ -137,7 +137,20 @@ app.Use(async (context, next) => {
         await Results.Problem(statusCode: 500, title: "internal", extensions: new Dictionary<string, object?> { ["code"] = "internal" }).ExecuteAsync(context);
     }
 });
-if (!app.Environment.IsDevelopment()) { app.UseHsts(); app.UseHttpsRedirection(); }
+if (!app.Environment.IsDevelopment())
+{
+    if (string.Equals(builder.Configuration["Hosting:Platform"], "render", StringComparison.OrdinalIgnoreCase))
+    {
+        // Render's public edge already redirects HTTP to HTTPS and terminates TLS.
+        // Never trust arbitrary X-Forwarded-Proto from the internet just to stop
+        // an HTTP->HTTPS redirect loop inside the container.
+        app.Use(async (context, next) => {
+            context.Response.Headers.StrictTransportSecurity = "max-age=31536000";
+            await next();
+        });
+    }
+    else { app.UseHsts(); app.UseHttpsRedirection(); }
+}
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
