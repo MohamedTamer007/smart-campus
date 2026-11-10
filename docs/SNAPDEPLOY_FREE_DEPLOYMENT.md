@@ -76,3 +76,43 @@ and its cold-start/RAM usage are **not yet verified** on this provider.
 **Status:** No SnapDeploy account or service connection has been established
 in this ChatGPT session; the user must authorize its GitHub OAuth if selected.
 No paid resources or production services created through this preparation.
+
+## Supabase runtime prerequisite completed — 2026-11-10
+
+The user has set the `ConnectionStrings__Campus` and `Storage__Key`
+environment variables privately in SnapDeploy. Their **values were not
+disclosed in chat** and have not been verified by a running app.
+
+The limited login `smart_campus_app` was created by the owner and
+granted membership in `smart_campus_runtime`. After the owner added its
+password, a read-only Supabase check confirmed a password hash is
+present, membership is active, and the role can access the app schema.
+No production web-service DB connection has been tested.
+
+The backend-only private Storage buckets `lost-found-images` and
+`maintenance-images` were verified non-public and empty. The existing
+authenticated-wide `campus_images_read` and
+`campus_images_upload_own_folder` policies were **removed** using the
+connected Supabase management tool to prevent direct client reads/writes
+bypassing the ASP.NET authorization layer. A follow-up query verified
+no `campus_images_%` Storage policies remain. The server-side
+`Storage__Key` is a high-privilege `sb_secret_...` key and must be
+stored only in the backend's protected runtime environment and never
+bundled into React. Live Storage API calls still require testing.
+
+A non-destructive ninth EF migration
+`20261110225500_RenderPersistentKeys` was applied to the isolated
+`smart_campus` schema using SQL matching the committed migration.
+It adds `smart_campus."DataProtectionKeys"` and grants only
+`SELECT, INSERT` to the limited runtime group. Verification confirmed
+nine recorded migrations, a table with zero encrypted key records,
+and runtime role permissions to read/insert but **not DELETE** keys.
+No old user rows or legacy tables were deleted.
+
+**Still to do:** generate and securely back up a private PFX certificate
+and password, configure `DataProtection__CertificateBase64` and
+`DataProtection__CertificatePassword` on SnapDeploy, authorize
+operational email sender and test account, and deploy/test the complete
+server. A successful DB-admin query is not a substitute for a real
+runtime-credential connection from SnapDeploy.
+
