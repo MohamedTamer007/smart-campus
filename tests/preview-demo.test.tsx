@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PreviewDemo } from "../src/preview-demo";
 
@@ -32,8 +32,7 @@ describe("isolated public preview", () => {
     const user = userEvent.setup();
     render(<PreviewDemo language="en" />);
     await user.type(screen.getByRole("searchbox", { name: "Search sample items" }), "keys");
-    const listing = screen.getByRole("list", { name: undefined });
-    expect(within(listing).queryByText(/No matching examples/)).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Simulate claim" })).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Simulate claim" }));
     await user.click(screen.getByRole("button", { name: "Staff" }));
     await user.click(screen.getByRole("button", { name: "Simulate return" }));
