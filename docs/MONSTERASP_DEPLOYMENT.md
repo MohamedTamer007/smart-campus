@@ -4,9 +4,10 @@
 
 Owner supplied the website URL `http://smartcampus.tryasp.net/`, created for
 ASP.NET Core 10. This is the intended MonsterASP.NET free host, **not** a
-confirmed running application deployment. Attempts from the current
-environment to resolve the domain returned a DNS resolution failure; the
-HTTP/HTTPS endpoint and the API health probes remain unverified.
+confirmed running application deployment. GitHub Windows-runner checks on
+2026-11-10 confirmed the public HTTP origin returns **200**, but the HTTPS
+origin could not be verified, and **the API has not been deployed**. No
+public-origin API health or email journeys have been completed.
 
 Before using `PublicOrigin=https://smartcampus.tryasp.net` and
 `AllowedHosts=smartcampus.tryasp.net` on the actual host, publish a reviewed
@@ -26,39 +27,72 @@ The provider's recommended secret names are `WEBSITE_NAME`,
 See https://help.monsterasp.net/websites/git-deploy/github-actions.
 Do not paste credentials in chat, an artifact, a PR, or repository files.
 
-## WebDeploy credentials verified for presence, remote access pending (2026-11-10)
+## Verified GitHub-to-MonsterASP.NET publishing connection — 2026-11-10
 
-The owner confirmed adding four repository secrets: `WEBSITE_NAME`,
-`SERVER_COMPUTER_NAME`, `SERVER_USERNAME`, `SERVER_PASSWORD`.
-The **read-only** GitHub Actions preflight
-`.github/workflows/monsterasp-webdeploy-check.yml` confirmed that all
-four secrets are present, the site ID and publishing server hostname have
-the expected formats, and Microsoft Web Deploy is available on the Windows
-runner. The third-stage attempt to enumerate the remote site returned a
-nonzero exit code with an unclassified provider diagnostic. No remote files
-were changed or uploaded. See
-[run 42874410858](https://github.com/MohamedTamer007/smart-campus/actions/runs/42874410858).
+The owner enabled WebDeploy and stored these GitHub Actions repository secrets:
+`WEBSITE_NAME`, `SERVER_COMPUTER_NAME`, `SERVER_USERNAME`, and
+`SERVER_PASSWORD`. MonsterASP.NET's panel test reported **OK, connected in
+40 ms**. GitHub's Windows runner independently confirmed that all four secrets
+were present, TCP port 8172 was reachable, and a real **no-change remote
+`msdeploy -verb:sync -whatif` succeeded**:
 
-A failed remote `msdeploy -verb:dump` is not proof that a regular
-WebDeploy upload would fail: provider read/enumeration permissions and
-server-side configuration may differ. Verify the site-specific
-**Test connection** in the MonsterASP.NET Deploy panel; confirm that
-WebDeploy remains Enabled and the `SERVER_COMPUTER_NAME` GitHub secret
-matches the **Server** endpoint shown for the selected website. Do not
-disclose the secret values or publish profile.
+- [Run 42881358599](https://github.com/MohamedTamer007/smart-campus/actions/runs/42881358599) — connection and non-mutating sync passed
+- [Run 42881693164](https://github.com/MohamedTamer007/smart-campus/actions/runs/42881693164) — connection passed and public site returned HTTP 200; HTTPS did not complete a successful check
 
-**Do not deploy the full API just because four publishing secrets exist.**
-The production application fails closed until it has a validated HTTPS
-`PublicOrigin`, restricted PostgreSQL runtime connection, durable protected
-key ring and private certificate, approved external private storage,
-verified sender transport, and explicitly allowed university test emails.
-No one has provided those runtime settings. The Python AI worker
-cannot run on MonsterASP.NET Free alone. A successful package build is
-not a successful release.
+The original failures were caused by quoting remote MSDeploy destination
+arguments in PowerShell/.NET `ProcessStartInfo.ArgumentList`, which changed
+the argument's first character to `"` rather than `-`. A fully synthetic
+localhost test reproduced this independently of credentials. Passing the
+complete destination argument **without nested quote characters** fixed the
+parser failure and established remote `-whatif` connectivity.
+
+`.github/workflows/monsterasp-release.yml` now builds the real Windows
+IIS app and tests a **no-change deployment plan** from the combined React +
+.NET build. A plain Git push **cannot publish**. A future actual upload requires
+an explicit manual workflow dispatch with `publish=true`, all three operator
+readiness variables set to `true`, and a successful public HTTPS probe:
+`MONSTERASP_PUBLICATION_APPROVED`,
+`MONSTERASP_RUNTIME_CONFIG_VERIFIED`, and
+`MONSTERASP_SECURITY_REVIEW_APPROVED`. These values are operator attestations
+and do **not** replace actually verifying the live hosting configuration.
+Keep them absent/false until the real service gates have passed. No site files
+have been modified through this work.
+
+**Runtime integration still blocked:** the production app will refuse to start
+without HTTPS `PublicOrigin`, a TLS-verified restricted PostgreSQL runtime
+account, a durable protected key ring and certificate, secured external image
+storage, approved working email and explicit authorized university test
+accounts. The Python SigLIP worker cannot execute on MonsterASP.NET Free.
+
+## MonsterASP.NET-specific runtime configuration
+
+The provider documents `Websites -> selected website -> Scripting ->
+Environment variables` for secrets like `ConnectionStrings__Campus` and
+`Email__ResendKey`. Do not inject database passwords, service keys or PFX
+passwords into the published `web.config` or an Actions artifact. The host
+provides a private directory **beside** `wwwroot` for persisted data. Its
+documentation cautions that IIS shared hosting does not support relying on
+DPAPI to protect Data Protection keys; the current Smart Campus code
+requires a persistent encrypted key ring and private file-based certificate.
+A reviewed certificate in the private directory and runtime environment
+configuration must be established before starting production. Do not disable
+`HostingSecurity.Validate` to get the site to boot.
+
+Free hosting limits are **256 MB** for the whole site, may sleep after three
+hours of inactivity, lacks `AlwaysRunning`, and does not provide scheduled
+tasks on Free. The existing `JobWorker` needs a separate durable scheduling
+arrangement for reliable emails and AI jobs. This host is a potential
+controlled .NET/React preview, **not** a demonstrated full deployment.
+
+Provider documentation:
+- https://help.monsterasp.net/websites/configuration/environment-variables
+- https://help.monsterasp.net/websites/configuration/data-protection-keys
+- https://help.monsterasp.net/websites/configuration/always-running
+- https://help.monsterasp.net/websites/configuration/scheduled-tasks
 
 ## Current status
 
-The user has an existing MonsterASP.NET onboarding email and a website-creation confirmation, but **no MonsterASP.NET management/WebDeploy/SFTP connector is authorized in this workspace**. An account-confirmation email is not hosting API access or evidence of a successful site deployment. Do not extract/share publish passwords from email or source-control them.
+The user has an existing MonsterASP.NET onboarding email and a website-creation confirmation, and scoped WebDeploy credentials were supplied through GitHub Actions secrets. The non-mutating GitHub-to-Monster connection has been confirmed, but **no management-panel API connector or hosted runtime configuration access** is available in this workspace. An account-confirmation email is not evidence of a running app. Do not extract/share publish passwords from email or source-control them.
 
 The existing public/static Cloudflare Pages site remains separate. The repository's default `main` branch is not replaced by this preparation.
 
