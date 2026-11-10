@@ -18,7 +18,7 @@ async function login(page: Page, role: string) {
 async function logout(page: Page) {
   await page.getByRole("button", { name: /^(Sign out|تسجيل الخروج)$/ }).click();
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("link", { name: /^(Sign in|تسجيل الدخول)$/ })).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: /^(Sign in|تسجيل الدخول)$/ })).toBeVisible();
 }
 
 test("browser maintenance submission, staff assignment and resolution persist", async ({ page }) => {
