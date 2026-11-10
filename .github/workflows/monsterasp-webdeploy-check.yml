@@ -90,6 +90,37 @@ jobs:
           } finally {
             $client.Close()
           }
+      - name: Classify WebDeploy parser behavior with synthetic local-only credentials
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          $sourceDir = Join-Path $env:RUNNER_TEMP 'msdeploy-parser-only'
+          New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
+          $syntheticDest = '-dest:contentPath="siteTEST",computerName="https://127.0.0.1:1/msdeploy.axd?site=siteTEST",userName="synthetic",password="synthetic",authType="Basic"'
+          $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
+          $start.UseShellExecute = $false
+          $start.CreateNoWindow = $true
+          $start.RedirectStandardOutput = $true
+          $start.RedirectStandardError = $true
+          foreach ($argument in @('-verb:sync',"-source:contentPath=$sourceDir",$syntheticDest,'-whatif','-enableRule:DoNotDeleteRule','-allowUntrusted')) {
+            [void]$start.ArgumentList.Add($argument)
+          }
+          $process = [System.Diagnostics.Process]::Start($start)
+          try {
+            $stdout = $process.StandardOutput.ReadToEndAsync()
+            $stderr = $process.StandardError.ReadToEndAsync()
+            if (-not $process.WaitForExit(15000)) { $process.Kill(); throw 'Synthetic parser check timed out.' }
+            $diagnostic = $stdout.GetAwaiter().GetResult() + [Environment]::NewLine + $stderr.GetAwaiter().GetResult()
+            # Only synthetic credentials and local files are involved: safe to print parser text.
+            Write-Output "Synthetic parser test exit code: $($process.ExitCode)"
+            Write-Output ($diagnostic -split [Environment]::NewLine | Select-Object -First 6)
+            if ($diagnostic -match '(?i)unrecognized argument|all arguments must begin|invalid argument|unknown parameter') {
+              throw 'WebDeploy rejected the fully synthetic command syntax before contacting any hosting provider.'
+            }
+          } finally {
+            $process.Dispose()
+          }
       - name: Probe authenticated WebDeploy HTTP endpoint without publishing
         shell: pwsh
         run: |
