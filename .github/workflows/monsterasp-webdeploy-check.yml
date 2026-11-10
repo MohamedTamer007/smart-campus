@@ -90,6 +90,32 @@ jobs:
           } finally {
             $client.Close()
           }
+      - name: Probe authenticated WebDeploy HTTP endpoint without publishing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $hostName = ([Uri]$rawServer).Host
+          $endpoint = "https://$($hostName):8172/msdeploy.axd?site=$env:WEBSITE_NAME"
+          $client = [System.Net.Http.HttpClient]::new()
+          $client.Timeout = [TimeSpan]::FromSeconds(15)
+          $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $endpoint)
+          $authBytes = [System.Text.Encoding]::UTF8.GetBytes("$($env:SERVER_USERNAME):$($env:SERVER_PASSWORD)")
+          $request.Headers.Authorization = [System.Net.Http.Headers.AuthenticationHeaderValue]::new('Basic',[Convert]::ToBase64String($authBytes))
+          try {
+            $result = $client.Send($request)
+            Write-Output "Authenticated HTTPS GET received HTTP $([int]$result.StatusCode). GET may be rejected when WebDeploy requires POST."
+            if ([int]$result.StatusCode -in @(401,403)) {
+              Write-Output 'HTTP GET returned unauthorized; confirm whether WebDeploy requires POST before inferring invalid credentials.'
+            }
+          } catch {
+            Write-Output "HTTPS GET could not complete ($($_.Exception.GetType().Name)); WebDeploy uses POST, so this is not an upload test."
+          } finally {
+            [Array]::Clear($authBytes,0,$authBytes.Length)
+            $request.Dispose()
+            $client.Dispose()
+          }
       - name: Test WebDeploy sync without changing the site (Microsoft -whatif)
         shell: pwsh
         run: |
@@ -106,8 +132,31 @@ jobs:
           $dest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
           # Microsoft-documented -whatif performs a dry-run and never writes to the site.
           # DoNotDeleteRule additionally prevents a delete plan for the empty local source.
-          $diagnostic = & $exe '-verb:sync' $source $dest '-whatif' '-enableRule:DoNotDeleteRule' 2>&1 | Out-String
-          $exitCode = $LASTEXITCODE
+          # ProcessStartInfo.ArgumentList avoids PowerShell's Windows native-argument quoting quirks.
+          # Include internal double-quotes for MSDeploy's comma-delimited credential fields.
+          $quotedDest = '-dest:contentPath="' + $site + '",computerName="' + $endpoint + '",userName="' + $env:SERVER_USERNAME + '",password="' + $env:SERVER_PASSWORD + '",authType="Basic"'
+          $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
+          $start.UseShellExecute = $false
+          $start.CreateNoWindow = $true
+          $start.RedirectStandardOutput = $true
+          $start.RedirectStandardError = $true
+          foreach ($argument in @('-verb:sync',$source,$quotedDest,'-whatif','-enableRule:DoNotDeleteRule','-allowUntrusted')) {
+            [void]$start.ArgumentList.Add($argument)
+          }
+          $process = [System.Diagnostics.Process]::Start($start)
+          try {
+            $standardOut = $process.StandardOutput.ReadToEndAsync()
+            $standardErr = $process.StandardError.ReadToEndAsync()
+            if (-not $process.WaitForExit(30000)) {
+              $process.Kill()
+              throw 'WebDeploy read-only sync trial timed out; no files were uploaded.'
+            }
+            $diagnostic = $standardOut.GetAwaiter().GetResult() + [Environment]::NewLine + $standardErr.GetAwaiter().GetResult()
+            $exitCode = $process.ExitCode
+          } finally {
+            $process.Dispose()
+          }
+
           if ($exitCode -ne 0) {
             $reason = 'unclassified WebDeploy connection error'
             if ($diagnostic -match '(?i)ERROR_USER_UNAUTHORIZED|401|403|authentication failed|invalid credentials|unauthorized') {
