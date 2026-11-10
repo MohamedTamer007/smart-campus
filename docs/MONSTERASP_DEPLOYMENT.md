@@ -46,6 +46,8 @@ localhost test reproduced this independently of credentials. Passing the
 complete destination argument **without nested quote characters** fixed the
 parser failure and established remote `-whatif` connectivity.
 
+The [real-bundle dry-run 42882451284](https://github.com/MohamedTamer007/smart-campus/actions/runs/42882451284) **passed**: Windows runner built React and ASP.NET Core together, verified the IIS package and secret exclusions, authenticated to the remote Monster WebDeploy service, and completed a no-change plan for the *actual compiled site*. The run explicitly recorded `Production publication skipped`; no files were uploaded.
+
 `.github/workflows/monsterasp-release.yml` now builds the real Windows
 IIS app and tests a **no-change deployment plan** from the combined React +
 .NET build. A plain Git push **cannot publish**. A future actual upload requires
