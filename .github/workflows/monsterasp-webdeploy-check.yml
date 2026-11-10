@@ -58,7 +58,7 @@ jobs:
           }
           if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy binary unavailable.' }
           Write-Output 'Microsoft Web Deploy is available.'
-      - name: Authenticate and enumerate selected site (read-only)
+      - name: Test WebDeploy sync without changing the site (Microsoft -whatif)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -68,23 +68,28 @@ jobs:
           if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
           $serverHost = ([Uri]$rawServer).Host
           $endpoint = "https://$($serverHost):8172/msdeploy.axd?site=$site"
-          $source = "-source:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
-          # Read-only enumeration; never include provider output in CI logs.
-          $diagnostic = & $exe '-verb:dump' $source '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-String
+          $sourceDir = Join-Path $env:RUNNER_TEMP 'empty-webdeploy-whatif'
+          New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
+          $source = "-source:contentPath=$sourceDir"
+          $dest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic,includeAcls=False"
+          # -whatif + DoNotDeleteRule: no server mutation, even with an empty local source.
+          $diagnostic = & $exe '-verb:sync' '-whatif' $source $dest '-enableRule:DoNotDeleteRule' '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-String
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) {
             $reason = 'unclassified WebDeploy connection error'
             if ($diagnostic -match '(?i)ERROR_USER_UNAUTHORIZED|401|403|authentication failed|invalid credentials|unauthorized') {
-              $reason = 'publishing username/password or site authorization rejected (HTTP 401/403)'
+              $reason = 'publishing credentials or site permission rejected (401/403)'
             } elseif ($diagnostic -match '(?i)ERROR_DESTINATION_NOT_REACHABLE|connection refused|timed out|no such host|name or service not known') {
-              $reason = 'port 8172 or publishing hostname unreachable'
+              $reason = 'publishing host or port 8172 unreachable'
             } elseif ($diagnostic -match '(?i)certificate|SSL|TLS|trust') {
-              $reason = 'publishing endpoint TLS certificate validation failed'
+              $reason = 'publishing TLS certificate not trusted'
             } elseif ($diagnostic -match '(?i)ERROR_SITE_DOES_NOT_EXIST|404|not found') {
-              $reason = 'published site identifier was not found'
+              $reason = 'site ID not found by WebDeploy'
             } elseif ($diagnostic -match '(?i)permission|access denied') {
-              $reason = 'insufficient WebDeploy site permissions'
+              $reason = 'insufficient publishing permissions'
+            } elseif ($diagnostic -match '(?i)unrecognized|syntax|invalid argument') {
+              $reason = 'unsupported msdeploy command syntax'
             }
-            throw "Read-only connection failed: $reason. No remote files were modified."
+            throw "No-change WebDeploy trial failed: $reason. No files were uploaded."
           }
-          Write-Output 'WebDeploy read-only access passed. No remote files were modified.'
+          Write-Output 'No-change WebDeploy trial passed. No files were uploaded.'
