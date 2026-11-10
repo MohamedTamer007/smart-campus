@@ -92,6 +92,40 @@ Provider documentation:
 - https://help.monsterasp.net/websites/configuration/always-running
 - https://help.monsterasp.net/websites/configuration/scheduled-tasks
 
+## MonsterASP.NET Free is not a personal-data production host (2026-11-10)
+
+**Important newly verified provider limitation:** the [MonsterASP.NET Terms of
+Service](https://www.monsterasp.net/Terms/) state that Free hosting is for
+development, testing, learning and evaluation; it is not intended for production
+workloads or production processing of personal data, and has no service/backup
+commitment. Do **not** release real student profiles, student email/password
+flows, custody records or photographs of found items on this Free website.
+A public HTTP 200 or successful WebDeploy preflight is not authorization to
+run a university service under these terms. No real users have been enrolled
+through the prepared release.
+
+The guarded workflow now also requires the `MONSTERASP_TEST_DATA_ONLY`
+repository variable set to `true` as an explicit owner attestation **before**
+any manually initiated live upload. This does not replace a real data audit.
+The existing `MONSTERASP_PUBLICATION_APPROVED`,
+`MONSTERASP_RUNTIME_CONFIG_VERIFIED` and
+`MONSTERASP_SECURITY_REVIEW_APPROVED` flags, successful HTTPS probe, and
+manual `publish=true` dispatch remain mandatory. A normal Git push cannot
+publish.
+
+A separate *non-secret reference* for IIS Windows configuration has been
+added at `deployment/monsterasp-runtime.env.example`. Each value must be
+configured directly under the intended website's private Scripting >
+Environment variables panel. It is **not** a ready-to-use `.env` and must never
+be uploaded with a real key. A persistent private certificate and key ring,
+authorized email sender, limited DB runtime account, private storage policy,
+real HTTPS and independent background/AI processing still need proof.
+
+The application can be demonstrated on this Free host **only with synthetic or
+explicitly approved test-only data**, if all runtime/security gates succeed.
+For genuine university operation, select a plan/provider that permits
+production personal-data processing and meets the worker/email/uptime needs.
+
 ## Current status
 
 The user has an existing MonsterASP.NET onboarding email and a website-creation confirmation, and scoped WebDeploy credentials were supplied through GitHub Actions secrets. The non-mutating GitHub-to-Monster connection has been confirmed, but **no management-panel API connector or hosted runtime configuration access** is available in this workspace. An account-confirmation email is not evidence of a running app. Do not extract/share publish passwords from email or source-control them.
