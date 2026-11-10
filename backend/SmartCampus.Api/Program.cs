@@ -139,9 +139,10 @@ app.Use(async (context, next) => {
 });
 if (!app.Environment.IsDevelopment())
 {
-    if (string.Equals(builder.Configuration["Hosting:Platform"], "render", StringComparison.OrdinalIgnoreCase))
+    if ((string.Equals(builder.Configuration["Hosting:Platform"], "render", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(builder.Configuration["Hosting:Platform"], "snapdeploy", StringComparison.OrdinalIgnoreCase)))
     {
-        // Render's public edge already redirects HTTP to HTTPS and terminates TLS.
+        // Managed hosting edges (Render/SnapDeploy) redirect public HTTP to HTTPS and terminate TLS.
         // Never trust arbitrary X-Forwarded-Proto from the internet just to stop
         // an HTTP->HTTPS redirect loop inside the container.
         app.Use(async (context, next) => {
