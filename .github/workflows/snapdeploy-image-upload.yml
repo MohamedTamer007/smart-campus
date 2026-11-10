@@ -7,6 +7,7 @@ on:
       - codex/backend-integration
     paths:
       - .github/workflows/snapdeploy-image-upload.yml
+      - Dockerfile
 
 permissions:
   contents: read
