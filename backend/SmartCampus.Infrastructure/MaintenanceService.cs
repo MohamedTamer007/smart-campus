@@ -38,29 +38,74 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         var actor = await access.Current();
         var query = db.Reports.Where(r => actor.Admin || r.ReporterId == actor.Id ||
             (actor.Roles.Contains("maintenance") && actor.Scopes.Contains(r.DepartmentId)));
-        var ids = await query.OrderByDescending(r => r.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(r => r.Id).ToArrayAsync();
-        var reports = new List<object>();
-        foreach (var id in ids) reports.Add(await Detail(id));
-        return reports.ToArray();
+        var reports = await query.AsNoTracking().OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync();
+        return await Responses(reports, actor);
     }
 
     public async Task<object> Detail(Guid id)
     {
         var actor = await access.Current();
         var report = await db.Reports.FindAsync(id) ?? throw new RuleException("not_found", 404);
+        return (await Responses([report], actor))[0];
+    }
+
+    private sealed record Assignee(Guid DepartmentId, Guid Id, string Name);
+    private sealed record Attachment(Guid ReportId, Guid Id);
+    private sealed record ResponseData(ILookup<Guid, MaintenanceHistory> History, Dictionary<Guid, Assessment> Assessments,
+        ILookup<Guid, Attachment> Media, Dictionary<Guid, CampusLocation> Locations, ILookup<Guid, Assignee> Assignees);
+
+    private async Task<object[]> Responses(MaintenanceReport[] reports, Actor actor)
+    {
+        if (reports.Length == 0) return [];
+        foreach (var report in reports) Access.Require(actor.Admin || actor.Maintenance(report.DepartmentId) || report.ReporterId == actor.Id);
+        var related = await Related(reports, actor);
+        return reports.Select(report => Response(report, actor, related)).ToArray();
+    }
+
+    private async Task<ResponseData> Related(MaintenanceReport[] reports, Actor actor)
+    {
+        var ids = reports.Select(r => r.Id).ToArray();
+        var staffReports = reports.Where(r => actor.Admin || actor.Maintenance(r.DepartmentId)).ToArray();
+        var history = await db.History.AsNoTracking().Where(h => ids.Contains(h.ReportId)).OrderBy(h => h.CreatedAt).ToArrayAsync();
+        var attachments = await db.Media.Where(m => m.ReportId.HasValue && ids.Contains(m.ReportId.Value))
+            .Select(m => new Attachment(m.ReportId!.Value, m.Id)).ToArrayAsync();
+        var locationIds = reports.SelectMany(r => new[] { r.FacultyId, r.BuildingId, r.FloorId }).Distinct().ToArray();
+        var locations = await db.Locations.AsNoTracking().Where(l => locationIds.Contains(l.Id)).ToDictionaryAsync(l => l.Id);
+        return new(history.ToLookup(h => h.ReportId), await CurrentAssessments(staffReports), attachments.ToLookup(m => m.ReportId),
+            locations, (await Assignees(staffReports.Select(r => r.DepartmentId).Distinct().ToArray())).ToLookup(a => a.DepartmentId));
+    }
+
+    private async Task<Dictionary<Guid, Assessment>> CurrentAssessments(MaintenanceReport[] reports)
+    {
+        if (reports.Length == 0) return [];
+        var versions = reports.ToDictionary(r => r.Id, r => r.ContentVersion);
+        var ids = versions.Keys.ToArray();
+        var inputVersions = versions.Values.Distinct().ToArray();
+        var assessments = await db.Assessments.AsNoTracking().Where(a => ids.Contains(a.ReportId) && inputVersions.Contains(a.InputVersion)).ToArrayAsync();
+        return assessments.Where(a => versions[a.ReportId] == a.InputVersion).ToDictionary(a => a.ReportId);
+    }
+
+    private async Task<Assignee[]> Assignees(Guid[] departments)
+    {
+        if (departments.Length == 0) return [];
+        return await (from scope in db.Scopes
+            join user in db.Users on scope.UserId equals user.Id
+            where departments.Contains(scope.DepartmentId) && user.Active && user.EmailConfirmed &&
+                db.UserRoles.Any(r => r.UserId == user.Id && db.Roles.Any(role => role.Id == r.RoleId && role.Name == "maintenance"))
+            select new Assignee(scope.DepartmentId, user.Id, user.DisplayName)).Distinct().ToArrayAsync();
+    }
+
+    private object Response(MaintenanceReport report, Actor actor, ResponseData related)
+    {
         var staff = actor.Admin || actor.Maintenance(report.DepartmentId);
-        Access.Require(staff || report.ReporterId == actor.Id);
-        var history = await db.History.Where(h => h.ReportId == id).OrderBy(h => h.CreatedAt)
-            .Select(h => new { at = h.CreatedAt, actor = h.ActorId, status = h.Status, note = h.Note, assignee = h.AssigneeId }).ToArrayAsync();
-        var assessmentRecord = staff ? await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == id && a.InputVersion == report.ContentVersion) : null;
+        related.Assessments.TryGetValue(report.Id, out var assessmentRecord);
         var assessment = assessmentRecord is null ? null : new { state = assessmentRecord.State, type = assessmentRecord.FaultType,
             priority = assessmentRecord.Priority, risk = assessmentRecord.Risk, inputReviewed = assessmentRecord.ReviewedAt.HasValue };
-        var attachment = await db.Media.Where(m => m.ReportId == id).Select(m => (Guid?)m.Id).FirstOrDefaultAsync();
-        var locationRecords = await db.Locations.Where(l => l.Id == report.FacultyId || l.Id == report.BuildingId || l.Id == report.FloorId).ToDictionaryAsync(l => l.Id);
-        var allowedAssignees = staff ? await db.Users.Where(u => u.Active && u.EmailConfirmed &&
-            db.Scopes.Any(s => s.UserId == u.Id && s.DepartmentId == report.DepartmentId) &&
-            db.UserRoles.Any(r => r.UserId == u.Id && db.Roles.Any(role => role.Id == r.RoleId && role.Name == "maintenance")))
-            .Select(u => new { u.Id, name = u.DisplayName }).ToArrayAsync() : [];
+        var attachment = related.Media[report.Id].Select(m => (Guid?)m.Id).FirstOrDefault();
+        var locationRecords = related.Locations;
+        var allowedAssignees = staff ? related.Assignees[report.DepartmentId].Select(a => new { a.Id, name = a.Name }).ToArray() : [];
+        var history = related.History[report.Id].Select(h => new { at = h.CreatedAt, actor = h.ActorId, status = h.Status, note = h.Note, assignee = h.AssigneeId }).ToArray();
         return new { report.Id, report.Reference, ownerId = report.ReporterId, report.Description, faculty = report.FacultyId,
             building = report.BuildingId, floor = report.FloorId, report.Details, report.Status, report.CancelledAt,
             locationNames = new { faculty = new { locationRecords[report.FacultyId].Ar, locationRecords[report.FacultyId].En },
