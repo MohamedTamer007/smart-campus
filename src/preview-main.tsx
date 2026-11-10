@@ -1,6 +1,8 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Icon } from "./components/Icon";
+import { PreviewDemo } from "./preview-demo";
+import "./styles/preview-demo.css";
 import "./styles/app.css";
 
 function PublicPreview() {
@@ -28,8 +30,8 @@ function PublicPreview() {
       <div className="preview-note" role="status">
         <strong>{t("نسخة معاينة عامة — ", "Public design preview — ")}</strong>
         {t(
-          "الخدمات المعروضة غير مفعّلة. لا تُدخل بيانات شخصية أو تسجل حسابًا هنا.",
-          "Displayed services are not enabled. Do not submit personal data or create an account here.",
+          "الخدمات الحقيقية غير مفعّلة. التجربة التفاعلية وهمية بالكامل، فلا تُدخل بيانات شخصية.",
+          "Real services are not live. The interactive demo uses fictional data only; do not submit personal information.",
         )}
       </div>
       <div className="preview-header">
@@ -41,6 +43,7 @@ function PublicPreview() {
           <nav aria-label={t("التنقل", "Navigation")}>
             <a href="#top">{t("الرئيسية", "Home")}</a>
             <a href="#services">{t("الخدمات", "Services")}</a>
+            <a href="#demo">{t("جرّب النظام", "Try demo")}</a>
           </nav>
           <div className="header-actions">
             <button className="language" onClick={() => setLanguage(language === "ar" ? "en" : "ar")}>
@@ -55,7 +58,7 @@ function PublicPreview() {
             <h1>{t("أهلاً بك في Smart Campus", "Welcome to Smart Campus")}</h1>
             <p>{t("أبلغ عن عطل أو ابحث عن مفقوداتك", "Report a fault or find something you lost")}</p>
             <span className="eyebrow" style={{ color: "#fff", letterSpacing: 0 }}>
-              {t("معاينة للتصميم — دون خدمات حسابات", "Design preview — no account services")}
+              {t("معاينة تفاعلية للتصميم — دون حسابات حقيقية", "Interactive design preview — no real accounts")}
             </span>
           </section>
           <section className="services" id="services" aria-label={t("الخدمات", "Services")}>
@@ -89,6 +92,7 @@ function PublicPreview() {
             <p>{t("خدمتان، وحرم جامعي أقرب للجميع.", "Two services. A campus that looks out for everyone.")}</p>
           </div>
         </div>
+        <PreviewDemo language={language} />
       </main>
       <footer className="preview-footer">
         <strong>Smart Campus</strong>
