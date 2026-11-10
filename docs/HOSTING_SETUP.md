@@ -1,5 +1,15 @@
 # Free hosting and university email setup
 
+## Provider check: 10 November 2026
+
+The updated provider documentation does not change the no-cost production decision. Render Free has a useful platform-provided `onrender.com` HTTPS URL, but sleeps after 15 idle minutes, has only 512 MiB, and loses local files on restart/redeploy. Its free PostgreSQL expires after 30 days and lacks backups. Render also blocks outbound SMTP ports 25/465/587. It can preview a stateless API connected to separately provisioned services; it does not meet the required always-available full app/private worker/persistent backup target. Verify current outbound-bandwidth billing limits before any launch; never assume “free tier” caps all usage charges. [Render free deployment limits](https://render.com/docs/free), [Render subdomain and TLS](https://render.com/docs/web-services).
+
+Oracle's current Always Free documentation says A1 allowance is up to 2 OCPU and 12 GB/month equivalent in the home region, within its free limits. Oracle may reclaim A1 instances whose CPU, network and (A1) memory utilization each stay below its threshold for seven days. Capacity can be unavailable. This remains the strongest documented compute candidate, but it does not by itself supply a stable free hostname or prove the ARM worker, disk, backup or uptime requirements. No account or VM has been provisioned. [Oracle Always Free resources and idle reclamation](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
+
+Cloudflare Tunnel requires a domain on Cloudflare for stable published application hostnames. Its Quick Tunnel (`trycloudflare.com`) needs no domain/account, but is temporary, changes on restart, and is explicitly for testing/development; anyone holding the URL can reach the exposed service unless an access restriction is configured. It is suitable only for a short test, not the stable public application. [Tunnel prerequisites](https://developers.cloudflare.com/tunnel/get-started/), [Quick Tunnel limits](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+
+The user-authorized free budget means a temporary URL, sleeping API, expiring database, or unavailable worker cannot be represented as a complete production-equivalent deployment. Current hosted credentials, an Oracle account/capacity and any stable platform-provided hostname remain unresolved. The secure local Resend verification test can still proceed independently on the owner's PC.
+
 Checked against provider documentation on 2026-11-09. No hosting account, paid hosting plan, public deployment, tenant consent, or hosted database change has been created by this implementation. CI uses standard GitHub runners against the account's included allocation; no billing setting or paid plan was enabled.
 
 ## Decision and unresolved constraint
