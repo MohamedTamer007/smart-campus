@@ -1,5 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -22,8 +23,20 @@ public static class HostingSecurity
         if (!bool.TryParse(config["Storage:Local"], out var localStorage) || localStorage) invalid.Add("Storage:Local");
         if (!Uri.TryCreate(config["Storage:Url"], UriKind.Absolute, out var storage) || storage.Scheme != "https" || storage.UserInfo.Length != 0)
             invalid.Add("Storage:Url");
-        foreach (var key in new[] { "Storage:Key", "Email:From", "DataProtection:Directory", "DataProtection:CertificatePath" })
+        foreach (var key in new[] { "Storage:Key", "Email:From" })
             if (string.IsNullOrWhiteSpace(config[key])) invalid.Add(key);
+        var keyStore = config["DataProtection:Store"] ?? "file";
+        if (keyStore == "database")
+        {
+            if (string.IsNullOrWhiteSpace(config["DataProtection:CertificateBase64"])) invalid.Add("DataProtection:CertificateBase64");
+            if (string.IsNullOrWhiteSpace(config["DataProtection:CertificatePassword"])) invalid.Add("DataProtection:CertificatePassword");
+        }
+        else if (keyStore == "file")
+        {
+            foreach (var key in new[] { "DataProtection:Directory", "DataProtection:CertificatePath" })
+                if (string.IsNullOrWhiteSpace(config[key])) invalid.Add(key);
+        }
+        else invalid.Add("DataProtection:Store");
         if (config.GetValue<bool>("Email:LocalSink")) invalid.Add("Email:LocalSink");
         var provider = config["Email:Provider"] ?? "smtp";
         if (provider == "resend")
@@ -60,17 +73,44 @@ public static class HostingSecurity
 
     public static void ConfigureKeys(IServiceCollection services, IConfiguration config, bool development)
     {
-        var directory = config["DataProtection:Directory"] ?? "local-data/keys";
-        var protection = services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(directory)).SetApplicationName("SmartCampus");
-        var certificatePath = config["DataProtection:CertificatePath"];
-        if (!string.IsNullOrWhiteSpace(certificatePath))
+        var protection = services.AddDataProtection().SetApplicationName("SmartCampus");
+        var keyStore = config["DataProtection:Store"] ?? "file";
+        X509Certificate2? certificate = null;
+        if (keyStore == "database")
         {
-            var certificate = X509CertificateLoader.LoadPkcs12FromFile(certificatePath,
-                config["DataProtection:CertificatePassword"], X509KeyStorageFlags.EphemeralKeySet);
+            var connectionString = config.GetConnectionString("Campus")
+                ?? throw new InvalidOperationException("A database connection is required for persistent Data Protection keys.");
+            var encoded = config["DataProtection:CertificateBase64"];
+            if (string.IsNullOrWhiteSpace(encoded))
+                throw new InvalidOperationException("An X.509 certificate is required for database-backed Data Protection keys.");
+            byte[] bytes;
+            try { bytes = Convert.FromBase64String(encoded); }
+            catch (FormatException) { throw new InvalidOperationException("The Data Protection certificate encoding is invalid."); }
+            try
+            {
+                certificate = X509CertificateLoader.LoadPkcs12(bytes, config["DataProtection:CertificatePassword"],
+                    X509KeyStorageFlags.EphemeralKeySet);
+            }
+            finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(bytes); }
+            services.Configure<KeyManagementOptions>(options =>
+                options.XmlRepository = new PostgresKeyRepository(connectionString));
+        }
+        else if (keyStore == "file")
+        {
+            var directory = config["DataProtection:Directory"] ?? "local-data/keys";
+            protection.PersistKeysToFileSystem(new DirectoryInfo(directory));
+            var certificatePath = config["DataProtection:CertificatePath"];
+            if (!string.IsNullOrWhiteSpace(certificatePath))
+                certificate = X509CertificateLoader.LoadPkcs12FromFile(certificatePath,
+                    config["DataProtection:CertificatePassword"], X509KeyStorageFlags.EphemeralKeySet);
+            else if (OperatingSystem.IsWindows()) protection.ProtectKeysWithDpapi();
+            else if (!development) throw new InvalidOperationException("Hosted Data Protection certificate is required");
+        }
+        else throw new InvalidOperationException("Unsupported Data Protection persistence mode.");
+        if (certificate is not null)
+        {
             if (!certificate.HasPrivateKey) throw new InvalidOperationException("Data Protection certificate requires a private key");
             protection.ProtectKeysWithCertificate(certificate);
         }
-        else if (OperatingSystem.IsWindows()) protection.ProtectKeysWithDpapi();
-        else if (!development) throw new InvalidOperationException("Hosted Data Protection certificate is required");
     }
 }
