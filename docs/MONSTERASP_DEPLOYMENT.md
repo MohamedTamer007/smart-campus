@@ -1,5 +1,31 @@
 # MonsterASP.NET: verified packaging and release gates (2026-11-10)
 
+## Selected MonsterASP.NET website — 10 November 2026
+
+Owner supplied the website URL `http://smartcampus.tryasp.net/`, created for
+ASP.NET Core 10. This is the intended MonsterASP.NET free host, **not** a
+confirmed running application deployment. Attempts from the current
+environment to resolve the domain returned a DNS resolution failure; the
+HTTP/HTTPS endpoint and the API health probes remain unverified.
+
+Before using `PublicOrigin=https://smartcampus.tryasp.net` and
+`AllowedHosts=smartcampus.tryasp.net` on the actual host, publish a reviewed
+build, arrange HTTPS activation and verify TLS works. MonsterASP.NET documents
+that on Free plans HTTPS is enabled by support **after content has been
+uploaded** (see
+https://help.monsterasp.net/domains-https/https/lets-encrypt).
+Do not enable HTTPS redirects before TLS is working.
+
+The existing package-build workflow currently creates a publish artifact
+only. The next release gate is to enable WebDeploy under the selected
+site's Deploy page, configure scoped WebDeploy credentials directly as
+GitHub Actions repository secrets or through an authenticated publishing
+channel, and finish the server secret/identity/DB/mail/security setup.
+The provider's recommended secret names are `WEBSITE_NAME`,
+`SERVER_COMPUTER_NAME`, `SERVER_USERNAME`, `SERVER_PASSWORD`.
+See https://help.monsterasp.net/websites/git-deploy/github-actions.
+Do not paste credentials in chat, an artifact, a PR, or repository files.
+
 ## Current status
 
 The user has an existing MonsterASP.NET onboarding email and a website-creation confirmation, but **no MonsterASP.NET management/WebDeploy/SFTP connector is authorized in this workspace**. An account-confirmation email is not hosting API access or evidence of a successful site deployment. Do not extract/share publish passwords from email or source-control them.
