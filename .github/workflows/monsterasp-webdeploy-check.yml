@@ -212,3 +212,20 @@ jobs:
             throw "No-change WebDeploy trial failed: $reason. Codes: $errorCodes. No files were uploaded."
           }
           Write-Output 'No-change WebDeploy trial passed. No files were uploaded.'
+
+      - name: Check public Smart Campus HTTP and HTTPS without changing hosting
+        shell: pwsh
+        run: |
+          $client = [System.Net.Http.HttpClient]::new()
+          $client.Timeout = [TimeSpan]::FromSeconds(12)
+          foreach ($protocol in @('http','https')) {
+            try {
+              $url = '{0}://smartcampus.tryasp.net/' -f $protocol
+              $response = $client.GetAsync($url).GetAwaiter().GetResult()
+              Write-Output "Public $($protocol.ToUpperInvariant()) homepage: HTTP $([int]$response.StatusCode)"
+              $response.Dispose()
+            } catch {
+              Write-Output "Public $($protocol.ToUpperInvariant()) homepage not yet verifiable: $($_.Exception.GetType().Name)"
+            }
+          }
+          $client.Dispose()
