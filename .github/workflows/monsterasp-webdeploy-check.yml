@@ -97,7 +97,7 @@ jobs:
           $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
           $sourceDir = Join-Path $env:RUNNER_TEMP 'msdeploy-parser-only'
           New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
-          $syntheticDest = '-dest:contentPath="siteTEST",computerName="https://127.0.0.1:1/msdeploy.axd?site=siteTEST",userName="synthetic",password="synthetic",authType="Basic"'
+          $syntheticDest = '-dest:contentPath=siteTEST,computerName=https://127.0.0.1:1/msdeploy.axd?site=siteTEST,userName=synthetic,password=synthetic,authType=Basic'
           $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
           $start.UseShellExecute = $false
           $start.CreateNoWindow = $true
@@ -164,8 +164,9 @@ jobs:
           # Microsoft-documented -whatif performs a dry-run and never writes to the site.
           # DoNotDeleteRule additionally prevents a delete plan for the empty local source.
           # ProcessStartInfo.ArgumentList avoids PowerShell's Windows native-argument quoting quirks.
-          # Include internal double-quotes for MSDeploy's comma-delimited credential fields.
-          $quotedDest = '-dest:contentPath="' + $site + '",computerName="' + $endpoint + '",userName="' + $env:SERVER_USERNAME + '",password="' + $env:SERVER_PASSWORD + '",authType="Basic"'
+          # Keep the argument starting with '-' without nested quotes: MSDeploy rejects
+          # ProcessStartInfo's rewritten leading quote on Windows.
+          $quotedDest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
           $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
           $start.UseShellExecute = $false
           $start.CreateNoWindow = $true
