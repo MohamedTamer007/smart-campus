@@ -1,0 +1,154 @@
+name: Smart Campus static preview on MonsterASP.NET
+
+# Publish ONLY a synthetic, non-functional public design preview to /preview/.
+# This never touches /api, the root application, accounts, or Supabase.
+on:
+  push:
+    branches: [codex/backend-integration]
+    paths:
+      - '.github/workflows/monsterasp-static-preview.yml'
+      - 'src/preview-main.tsx'
+      - 'preview.html'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monsterasp-public-static-preview
+  cancel-in-progress: false
+
+jobs:
+  publish-preview:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    env:
+      WEBSITE_NAME: ${{ secrets.WEBSITE_NAME }}
+      SERVER_COMPUTER_NAME: ${{ secrets.SERVER_COMPUTER_NAME }}
+      SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+      SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Build synthetic static preview without app API
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
+          Copy-Item -Path preview.html -Destination index.html -Force
+          npx vite build --base=/preview/ --outDir dist-preview
+          if ($LASTEXITCODE -ne 0) { throw 'Vite preview build failed.' }
+          $root = Join-Path $env:GITHUB_WORKSPACE 'dist-preview'
+          $indexFile = Join-Path $root 'index.html'
+          if (-not (Test-Path $indexFile)) { throw 'Static preview entry missing.' }
+          $index = Get-Content $indexFile -Raw
+          if ($index -notmatch 'Smart Campus' -or $index -notmatch '/preview/assets/') {
+            throw 'Incorrect preview build base or missing assets.'
+          }
+          if (-not (Test-Path (Join-Path $root 'o6u-mark.png'))) {
+            throw 'University logo asset missing.'
+          }
+          $unwanted = @(Get-ChildItem $root -Recurse -File | Where-Object {
+            $_.Name -in @('appsettings.json','appsettings.Local.json','web.config','.env') -or
+            $_.Extension -in @('.dll','.pfx','.key','.pem')
+          })
+          if ($unwanted.Count) { throw 'Static preview accidentally includes backend or private files.' }
+          Write-Output 'Pure static preview verified: no ASP.NET backend, credentials, or application data.'
+      - name: Ensure WebDeploy Windows binary is available
+        shell: pwsh
+        run: |
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          if (-not (Test-Path $exe)) {
+            choco install webdeploy --yes --no-progress --limit-output
+            if ($LASTEXITCODE -ne 0) { throw 'WebDeploy installation failed.' }
+          }
+          if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy is unavailable.' }
+      - name: Publish to isolated preview subfolder, keeping existing files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($key in @('WEBSITE_NAME','SERVER_COMPUTER_NAME','SERVER_USERNAME','SERVER_PASSWORD')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($key))) {
+              throw "Publishing secret not set: $key"
+            }
+          }
+          if ($env:WEBSITE_NAME -notmatch '^site[A-Za-z0-9-]+$') {
+            throw 'Invalid website identifier.'
+          }
+          $raw = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($raw -notmatch '^https?://') { $raw = 'https://' + $raw }
+          $hostUri = [Uri]$raw
+          if ($hostUri.Scheme -ne 'https' -or $hostUri.Host -notmatch '^[A-Za-z0-9-]+\.siteasp\.net$') {
+            throw 'Unexpected MonsterASP.NET publishing host.'
+          }
+          $root = Join-Path $env:GITHUB_WORKSPACE 'dist-preview'
+          $site = $env:WEBSITE_NAME
+          $target = "$site/preview"
+          $endpoint = "https://$($hostUri.Host):8172/msdeploy.axd?site=$site"
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          function Invoke-PrivateDeploy([bool]$dry) {
+            $argsList = @(
+              '-verb:sync',
+              "-source:contentPath=$root",
+              "-dest:contentPath=$target,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic",
+              '-enableRule:DoNotDeleteRule'
+            )
+            if ($dry) { $argsList += '-whatif' }
+            $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
+            $start.UseShellExecute = $false
+            $start.CreateNoWindow = $true
+            $start.RedirectStandardOutput = $true
+            $start.RedirectStandardError = $true
+            foreach ($arg in $argsList) { [void]$start.ArgumentList.Add($arg) }
+            $process = [System.Diagnostics.Process]::Start($start)
+            try {
+              $out = $process.StandardOutput.ReadToEndAsync()
+              $err = $process.StandardError.ReadToEndAsync()
+              if (-not $process.WaitForExit(90000)) {
+                $process.Kill()
+                throw 'Static preview WebDeploy timed out.'
+              }
+              $null = $out.GetAwaiter().GetResult()
+              $null = $err.GetAwaiter().GetResult()
+              if ($process.ExitCode -ne 0) {
+                throw 'Static preview WebDeploy failed. Raw provider output withheld to protect credentials.'
+              }
+            } finally { $process.Dispose() }
+          }
+          Invoke-PrivateDeploy $true
+          Write-Output 'No-change preview-path plan succeeded.'
+          Invoke-PrivateDeploy $false
+          Write-Output 'Uploaded ONLY files under isolated site/preview path with DoNotDeleteRule.'
+      - name: Check public preview is visible without submitting data
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $client = [System.Net.Http.HttpClient]::new()
+          $client.Timeout = [TimeSpan]::FromSeconds(12)
+          $url = 'http://smartcampus.tryasp.net/preview/index.html'
+          $ok = $false
+          foreach ($attempt in 1..4) {
+            try {
+              $response = $client.GetAsync($url).GetAwaiter().GetResult()
+              $html = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+              if ($response.IsSuccessStatusCode -and $html.Contains('Smart Campus') -and $html.Contains('/preview/assets/')) {
+                $ok = $true
+                Write-Output 'Public static preview HTML and asset base verified on MonsterASP.NET HTTP.'
+                break
+              }
+              Write-Output "Preview HTTP response: $([int]$response.StatusCode); expected the generated preview HTML."
+            } catch {
+              Write-Output 'Public preview HTTP verification failed with a network exception.'
+            }
+            Start-Sleep -Seconds 3
+          }
+          $client.Dispose()
+          if (-not $ok) {
+            throw 'Preview files were uploaded, but public /preview/index.html is not verified. Check IIS static routing before continuing.'
+          }
