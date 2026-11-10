@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/snapdeploy-image-upload.yml
       - Dockerfile
+      - backend/SmartCampus.Infrastructure/JobWorker.cs
 
 permissions:
   contents: read
