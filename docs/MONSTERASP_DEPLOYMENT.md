@@ -126,6 +126,39 @@ explicitly approved test-only data**, if all runtime/security gates succeed.
 For genuine university operation, select a plan/provider that permits
 production personal-data processing and meets the worker/email/uptime needs.
 
+## Live static design preview — published and verified 2026-11-10
+
+The user explicitly requested that implementation proceed without further
+checkpoints. We published a **static, synthetic-only Smart Campus design
+preview** to the existing MonsterASP.NET website at:
+
+- [http://smartcampus.tryasp.net/preview/](http://smartcampus.tryasp.net/preview/)
+- [Preview build and real WebDeploy validation, run 42886109744](https://github.com/MohamedTamer007/smart-campus/actions/runs/42886109744)
+
+The run built a separate Vite entry (`preview.html` +
+`src/preview-main.tsx`) with `/preview/` as its asset base and deployed the
+output with MSDeploy to the **nested ASP.NET Core static folder**
+`site/wwwroot/preview`. The non-destructive deployment first passed a
+remote `-whatif`, then performed a real sync while retaining other site files.
+The final public smoke checks confirmed **HTML, JavaScript, CSS and university
+logo assets return successful HTTP responses**, including the short
+`/preview/` directory URL.
+
+An earlier first attempt [42885283927](https://github.com/MohamedTamer007/smart-campus/actions/runs/42885283927)
+placed the files under `site/preview` rather than the nested
+`site/wwwroot/preview` and correctly failed the public availability check
+with HTTP 404. The corrected run succeeded. No database schema/rows or
+application root files were changed in this rollout.
+
+**Scope disclosure:** This is a design preview only. Its service buttons
+are explicitly disabled, no passwords or private data are accepted, and no API
+requests are sent. It is NOT the full React + ASP.NET Core application,
+registered university login, email delivery, custody or AI search. The
+HTTP preview is not approved for any personal-data workflows; public HTTPS
+was not yet confirmed. The guarded full app IIS package remains prepared but
+**not live** until production config, HTTPS, approved mail, persistent key
+storage and separate AI/background processing are available.
+
 ## Current status
 
 The user has an existing MonsterASP.NET onboarding email and a website-creation confirmation, and scoped WebDeploy credentials were supplied through GitHub Actions secrets. The non-mutating GitHub-to-Monster connection has been confirmed, but **no management-panel API connector or hosted runtime configuration access** is available in this workspace. An account-confirmation email is not evidence of a running app. Do not extract/share publish passwords from email or source-control them.
