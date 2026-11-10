@@ -1,6 +1,6 @@
 # Deployment preparation
 
-No deployment or production cutover was performed. Final Release compilation and local publish succeeded; final evidence is in BACKEND_PROGRESS.md. Container execution and hosted integration remain unverified.
+The private application schema has now been deployed to the existing Supabase PostgreSQL project and verified, but **no API/worker/frontend production deployment or cutover** was performed. Final Release compilation and local publish succeeded; final evidence is in BACKEND_PROGRESS.md. Container execution and hosted integration remain unverified.
 
 Current free-provider comparison and account setup are in [HOSTING_SETUP.md](HOSTING_SETUP.md). Linux VM packaging is prepared in `deployment/compose.yml`: Caddy serves the single HTTPS origin, API and worker bind loopback in the host network, private environment files are separate, and model cache/key storage persist outside images. This packaging has not yet passed CI/runtime verification. The full application's free platform-hostname requirement remains unresolved; no public URL is supplied as a completed deployment.
 
@@ -16,7 +16,7 @@ For containers, restrict host publication to the local TLS proxy, such as loopba
 
 1. Inspect the intended target and take an appropriate backup. Preserve all legacy public tables and trial records.
 2. Enable/verify pgvector and its schema. Use a migration connection with DDL rights and `Search Path=smart_campus,extensions,public`. Hosted connections must verify TLS certificates, for example Npgsql `SSL Mode=VerifyFull`; use the actual direct/session-pooler connection details supplied by Supabase.
-3. Generate/review SQL with the pinned EF tool, or run the explicit `--migrate` command using migration credentials. Apply to an isolated staging database first. The newest actor-integrity migration passed local database rechecks after WSL recovery. Hosted staging validation is still required.
+3. **Completed 2026-11-10 for the existing target:** reviewed `docs/database.sql`, rehearsed all eight EF migrations in a hosted PostgreSQL transaction followed by `ROLLBACK` (26 temporary tables), verified that no changes persisted, then applied the script to the isolated `smart_campus` schema. Follow-up checks confirmed 26 application tables, all eight EF migration records, and no change to the 38 legacy `public.ai_trial_records`; `anon` and `authenticated` cannot `USAGE` the new schema. A separate staging environment and full hosted API/worker integration still require validation.
 4. Provision a distinct runtime role with USAGE on smart_campus and the vector extension schema, and SELECT/INSERT/UPDATE/DELETE on application tables. Do not grant DDL, ownership, superuser or legacy-table access. Do not expose smart_campus through the Data API or grant anon/authenticated access.
 5. Switch the application to runtime credentials. Migration history remains owned by the migration role; startup never applies migrations.
 
