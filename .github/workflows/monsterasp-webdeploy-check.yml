@@ -69,9 +69,22 @@ jobs:
           $serverHost = ([Uri]$rawServer).Host
           $endpoint = "https://$($serverHost):8172/msdeploy.axd?site=$site"
           $source = "-source:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
-          # dump only; suppress provider output to avoid accidental secret disclosure
-          & $exe '-verb:dump' $source '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-Null
-          if ($LASTEXITCODE -ne 0) {
-            throw 'WebDeploy read-only login failed. Confirm publishing server/username/password in MonsterASP.NET. No production files changed.'
+          # Read-only enumeration; never include provider output in CI logs.
+          $diagnostic = & $exe '-verb:dump' $source '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-String
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            $reason = 'unclassified WebDeploy connection error'
+            if ($diagnostic -match '(?i)ERROR_USER_UNAUTHORIZED|401|403|authentication failed|invalid credentials|unauthorized') {
+              $reason = 'publishing username/password or site authorization rejected (HTTP 401/403)'
+            } elseif ($diagnostic -match '(?i)ERROR_DESTINATION_NOT_REACHABLE|connection refused|timed out|no such host|name or service not known') {
+              $reason = 'port 8172 or publishing hostname unreachable'
+            } elseif ($diagnostic -match '(?i)certificate|SSL|TLS|trust') {
+              $reason = 'publishing endpoint TLS certificate validation failed'
+            } elseif ($diagnostic -match '(?i)ERROR_SITE_DOES_NOT_EXIST|404|not found') {
+              $reason = 'published site identifier was not found'
+            } elseif ($diagnostic -match '(?i)permission|access denied') {
+              $reason = 'insufficient WebDeploy site permissions'
+            }
+            throw "Read-only connection failed: $reason. No remote files were modified."
           }
-          Write-Output 'Read-only WebDeploy check passed; no production files changed.'
+          Write-Output 'WebDeploy read-only access passed. No remote files were modified.'
