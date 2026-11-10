@@ -8,6 +8,9 @@ on:
     paths:
       - '.github/workflows/monsterasp-static-preview.yml'
       - 'src/preview-main.tsx'
+      - 'src/preview-demo.tsx'
+      - 'src/styles/preview-demo.css'
+      - 'tests/preview-demo.test.tsx'
       - 'preview.html'
   workflow_dispatch:
 
@@ -41,6 +44,10 @@ jobs:
           $ErrorActionPreference = 'Stop'
           npm ci
           if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { throw 'Typecheck failed: preview deployment cancelled.' }
+          npm test -- tests/preview-demo.test.tsx
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic interactive preview tests failed: deployment cancelled.' }
           Copy-Item -Path preview.html -Destination index.html -Force
           npx vite build --base=/preview/ --outDir dist-preview
           if ($LASTEXITCODE -ne 0) { throw 'Vite preview build failed.' }
@@ -135,7 +142,7 @@ jobs:
           $client.Timeout = [TimeSpan]::FromSeconds(12)
           $url = 'http://smartcampus.tryasp.net/preview/index.html'
           $ok = $false
-          foreach ($attempt in 1..4) {
+          foreach ($attempt in 1..8) {
             try {
               $response = $client.GetAsync($url).GetAwaiter().GetResult()
               $html = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
@@ -148,7 +155,7 @@ jobs:
             } catch {
               Write-Output 'Public preview HTTP verification failed with a network exception.'
             }
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 5
           }
           if (-not $ok) {
             $client.Dispose()
