@@ -1,5 +1,37 @@
 # Smart Campus — Render Free real-app deployment
 
+## Actual Render account and Blueprint planning result — 2026-11-10
+
+The owner connected Render to ChatGPT. The connection identified workspace
+`My Workspace` and successfully reached the account. The assistant created
+Render Blueprint `smart-campus-free` against this private GitHub branch,
+with `autoSync=false` and **create-new resources only**, but Render's
+initial plan returned **`planningOutcome=failed`** and notice
+**`need_payment_info`** for `services[0]`. This is an account-specific
+creation restriction, NOT evidence that the Free instance itself has a
+subscription price. Subsequent read-only inspection showed the Blueprint
+has status `created`, **zero resources**, and no Render web service exists.
+
+**No paid resources or web service were created. No Blueprint plan was
+approved, no production secrets were submitted, and no site was deployed.**
+Do not claim the Render account can launch Free without payment verification
+until the provider removes the restriction. The owner previously confirmed
+that no payment card is available; do not advise supplying a payment card
+or switch to a paid plan without separate authorization.
+
+The branch passed [Smart Campus CI
+42897036701](https://github.com/MohamedTamer007/smart-campus/actions/runs/42897036701),
+[Windows publish packaging
+42897036910](https://github.com/MohamedTamer007/smart-campus/actions/runs/42897036910),
+and [worker inference verification
+42897036679](https://github.com/MohamedTamer007/smart-campus/actions/runs/42897036679).
+Those green builds demonstrate package readiness, not hosted runtime readiness.
+Review the account's Render Billing requirements or contact provider support
+to ask whether Free web service creation can be enabled without a payment
+method. Do not repeat failed provisioning attempts or apply secrets while
+the account-side gate remains unresolved.
+
+
 Status: **repository prepared, not deployed**. The public MonsterASP.NET
 `/preview/` page is a separate synthetic-only demo, not the application
 described here.
