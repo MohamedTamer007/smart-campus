@@ -36,8 +36,16 @@ public sealed class PrivateMedia(IHttpClientFactory clients, IConfiguration conf
             throw new RuleException("storage_unavailable", 503);
         var client = clients.CreateClient("storage");
         client.BaseAddress = new Uri(url, "/storage/v1/");
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config["Storage:Key"]);
-        client.DefaultRequestHeaders.Add("apikey", config["Storage:Key"]);
+        var key = config["Storage:Key"]!;
+        // New Supabase sb_secret_* API keys are opaque, not JWTs.
+        // Sending "Authorization: Bearer sb_secret_*" causes invalid-JWT errors.
+        // The apikey header is sufficient for backend-to-Storage calls.
+        if (!key.StartsWith("sb_secret_", StringComparison.Ordinal))
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        else
+            client.DefaultRequestHeaders.Authorization = null;
+        client.DefaultRequestHeaders.Remove("apikey");
+        client.DefaultRequestHeaders.Add("apikey", key);
         return client;
     }
 
