@@ -38,13 +38,11 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
     public async Task<object[]> List(int page, int pageSize)
     {
         var actor = await access.Current();
-        var ids = await db.Items.Where(f => actor.Admin || f.UploaderId == actor.Id || f.CustodianId == actor.Id ||
+        var items = await db.Items.AsNoTracking().Where(f => actor.Admin || f.UploaderId == actor.Id || f.CustodianId == actor.Id ||
             (actor.Roles.Contains("department") && (actor.Scopes.Contains(f.CustodianDepartmentId ?? Guid.Empty) ||
              db.Handovers.Any(h => h.ItemId == f.Id && actor.Scopes.Contains(h.DepartmentId) && (h.Status == "pending" || h.Status == "not-received")))))
-            .OrderByDescending(f => f.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(f => f.Id).ToArrayAsync();
-        var records = new List<object>();
-        foreach (var id in ids) records.Add(await Detail(id));
-        return records.ToArray();
+            .OrderByDescending(f => f.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync();
+        return await Responses(items, actor);
     }
 
     public async Task<object> Detail(Guid id)
@@ -52,13 +50,48 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
         var actor = await access.Current();
         var found = await db.Items.FindAsync(id) ?? throw new RuleException("not_found", 404);
         Access.Require(await access.ItemReadable(actor, found));
-        var handover = await db.Handovers.Where(h => h.ItemId == id).OrderByDescending(h => h.CreatedAt).FirstOrDefaultAsync();
-        var imageId = await db.Media.Where(m => m.ItemId == id).Select(m => m.Id).FirstAsync();
-        var department = await db.Departments.Where(d => d.Id == found.CustodianDepartmentId).Select(d => d.Code).FirstOrDefaultAsync();
-        var destination = handover is null ? null : await db.Departments.Where(d => d.Id == handover.DepartmentId).Select(d => d.Code).FirstAsync();
-        var canClaim = found.State == "available" && !actor.Custodian(found) &&
-            await db.SearchGrants.AnyAsync(g => g.UserId == actor.Id && g.ItemId == id && g.ExpiresAt > DateTimeOffset.UtcNow) &&
-            !await db.Claims.AnyAsync(c => c.ItemId == id && c.RequesterId == actor.Id && (c.Status == "pending" || c.Status == "approved"));
+        return (await Responses([found], actor))[0];
+    }
+
+    private sealed record ItemMedia(Guid ItemId, Guid Id);
+    private sealed record ResponseData(Dictionary<Guid, CustodyHandover> Handovers, ILookup<Guid, ItemMedia> Media,
+        Dictionary<Guid, string> Departments, HashSet<Guid> CanClaim);
+
+    private async Task<object[]> Responses(FoundItem[] items, Actor actor)
+    {
+        if (items.Length == 0) return [];
+        var related = await Related(items, actor);
+        return items.Select(found => Response(found, actor, related)).ToArray();
+    }
+
+    private async Task<ResponseData> Related(FoundItem[] items, Actor actor)
+    {
+        var ids = items.Select(found => found.Id).ToArray();
+        var handovers = await db.Handovers.AsNoTracking().Where(h => ids.Contains(h.ItemId))
+            .OrderByDescending(h => h.CreatedAt).ToArrayAsync();
+        var latestHandovers = handovers.GroupBy(h => h.ItemId).ToDictionary(group => group.Key, group => group.First());
+        var media = await db.Media.AsNoTracking().Where(m => m.ItemId.HasValue && ids.Contains(m.ItemId.Value))
+            .Select(m => new ItemMedia(m.ItemId!.Value, m.Id)).ToArrayAsync();
+        var departmentIds = items.Where(item => item.CustodianDepartmentId.HasValue).Select(item => item.CustodianDepartmentId!.Value)
+            .Concat(handovers.Select(h => h.DepartmentId)).Distinct().ToArray();
+        var departments = await db.Departments.AsNoTracking().Where(d => departmentIds.Contains(d.Id))
+            .ToDictionaryAsync(d => d.Id, d => d.Code);
+        var claimable = items.Where(item => item.State == "available" && !actor.Custodian(item)).Select(item => item.Id).ToArray();
+        if (claimable.Length == 0) return new(latestHandovers, media.ToLookup(m => m.ItemId), departments, []);
+        var validGrants = await db.SearchGrants.AsNoTracking().Where(g => g.UserId == actor.Id && claimable.Contains(g.ItemId) &&
+            g.ExpiresAt > DateTimeOffset.UtcNow).Select(g => g.ItemId).Distinct().ToArrayAsync();
+        var activeClaims = await db.Claims.AsNoTracking().Where(c => validGrants.Contains(c.ItemId) &&
+            c.RequesterId == actor.Id && (c.Status == "pending" || c.Status == "approved")).Select(c => c.ItemId).Distinct().ToArrayAsync();
+        return new(latestHandovers, media.ToLookup(m => m.ItemId), departments, validGrants.Except(activeClaims).ToHashSet());
+    }
+
+    private object Response(FoundItem found, Actor actor, ResponseData related)
+    {
+        related.Handovers.TryGetValue(found.Id, out var handover);
+        var imageId = related.Media[found.Id].Select(m => m.Id).First();
+        var department = found.CustodianDepartmentId is { } departmentId ? related.Departments.GetValueOrDefault(departmentId) : null;
+        var destination = handover is null ? null : related.Departments[handover.DepartmentId];
+        var canClaim = related.CanClaim.Contains(found.Id);
         return new { found.Id, uploaderId = found.UploaderId, custodianId = found.CustodianId, custodianDepartment = department,
             found.Description, found.Place, found.Date, found.Storage, found.State, found.Version, found.CreatedAt,
             mediaUrl = $"/api/v1/media/{imageId}", canClaim,

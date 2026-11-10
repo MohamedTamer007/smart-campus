@@ -4,7 +4,7 @@ This is a local verification report, not a production readiness certificate. PAS
 
 ## Current continuation
 
-The tables below retain the earlier local milestone. Current results supersede its test counts: **99 local backend tests passed**, **54 frontend tests passed**, typecheck/lint/build passed, worker offline **6 passed**, backup/verifier guards **11 passed/1 Windows skip**. See [TEST_REPORT.md](TEST_REPORT.md) and `evidence/backend-release-controls.trx` for named evidence.
+The tables below retain the earlier local milestone. Current results supersede its test counts: **100 local backend tests passed**, **54 frontend tests passed**, typecheck/lint/build passed, worker offline **6 passed**, backup/verifier guards **11 passed/1 Windows skip**. See [TEST_REPORT.md](TEST_REPORT.md) and `evidence/backend-release-controls.trx` for named evidence.
 
 GitHub CI has established PostgreSQL 17 test compatibility, a real encrypted application dump/isolated restore with all 26 application tables/48 rows, constraints/indexes/history compared, a clean full-history Gitleaks scan with two reviewed exact false-positive fingerprints, isolated storage-policy proof, media encryption/restore roundtrip, and actual pinned-model CPU inference (768-dimensional vectors). CI run 42693231390 passed all 36 static and nine integrated browser cases across three engines, API image build and Caddy configuration validation. The complete production API/worker deployment remains unverified. That CI run tested the preceding committed source (92 backend cases); current Resend evidence changes passed 97 local backend cases.
 
