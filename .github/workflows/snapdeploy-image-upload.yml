@@ -1,0 +1,52 @@
+name: Build private SnapDeploy upload image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/backend-integration
+    paths:
+      - .github/workflows/snapdeploy-image-upload.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build-image:
+    name: Build ARM64 Docker image tarball
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out application
+        uses: actions/checkout@v4
+      - name: Enable ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+      - name: Configure Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build uploadable ARM64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/arm64
+          load: true
+          push: false
+          tags: smart-campus:snapdeploy-arm64
+          cache-from: type=gha,scope=snapdeploy-arm64
+          cache-to: type=gha,mode=max,scope=snapdeploy-arm64
+      - name: Save private image as compressed tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect smart-campus:snapdeploy-arm64 --format '{{.Architecture}}')" = "arm64"
+          docker save smart-campus:snapdeploy-arm64 | gzip -1 > smart-campus-arm64.tar.gz
+          test "$(stat -c %s smart-campus-arm64.tar.gz)" -lt 2147483648
+          ls -lh smart-campus-arm64.tar.gz
+      - name: Downloadable private artifact (not an image registry)
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-campus-arm64-image
+          path: smart-campus-arm64.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
