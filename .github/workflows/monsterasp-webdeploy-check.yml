@@ -58,6 +58,38 @@ jobs:
           }
           if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy binary unavailable.' }
           Write-Output 'Microsoft Web Deploy is available.'
+      - name: Verify local WebDeploy dry-run arguments
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          $sourceDir = Join-Path $env:RUNNER_TEMP 'local-msdeploy-input'
+          $targetDir = Join-Path $env:RUNNER_TEMP 'local-msdeploy-target'
+          New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
+          New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+          & $exe '-verb:sync' "-source:contentPath=$sourceDir" "-dest:contentPath=$targetDir" '-whatif' '-enableRule:DoNotDeleteRule' 2>&1 | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Local msdeploy dry-run syntax failed before any remote credentials were involved.'
+          }
+          Write-Output 'Local Microsoft WebDeploy dry-run syntax passed.'
+      - name: Verify publishing port is reachable without credentials
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $serverHost = ([Uri]$rawServer).Host
+          $client = [System.Net.Sockets.TcpClient]::new()
+          try {
+            $result = $client.BeginConnect($serverHost,8172,$null,$null)
+            if (-not $result.AsyncWaitHandle.WaitOne([TimeSpan]::FromSeconds(8))) {
+              throw 'GitHub runner cannot reach port 8172; no server files changed.'
+            }
+            $client.EndConnect($result)
+            Write-Output 'GitHub Windows runner can reach the MonsterASP.NET WebDeploy TCP port.'
+          } finally {
+            $client.Close()
+          }
       - name: Test WebDeploy sync without changing the site (Microsoft -whatif)
         shell: pwsh
         run: |
