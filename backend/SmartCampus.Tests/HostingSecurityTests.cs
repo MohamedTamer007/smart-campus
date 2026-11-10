@@ -3,6 +3,8 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SmartCampus.Infrastructure;
 using Xunit;
 
@@ -55,6 +57,78 @@ public sealed class HostingSecurityTests
     {
         var failure = Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(Config("Release:Mode", "open")));
         Assert.Contains("Release:UniversityApproval", failure.Message);
+    }
+
+    [Fact]
+    public void Hosted_database_key_store_requires_certificate_without_persistent_local_files()
+    {
+        var values = Config().AsEnumerable()
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        values["DataProtection:Store"] = "database";
+        values["DataProtection:Directory"] = null;
+        values["DataProtection:CertificatePath"] = null;
+        values["DataProtection:CertificateBase64"] = "certificate-provided-in-host-secret-manager";
+        values["DataProtection:CertificatePassword"] = "private-value";
+        var config = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        HostingSecurity.Validate(config);
+
+        values["DataProtection:CertificateBase64"] = null;
+        var missing = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+        Assert.Contains("DataProtection:CertificateBase64",
+            Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(missing)).Message);
+        values["DataProtection:Store"] = "unknown";
+        Assert.Contains("DataProtection:Store",
+            Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(
+                new ConfigurationBuilder().AddInMemoryCollection(values).Build())).Message);
+    }
+
+    [DatabaseFact]
+    public void Encrypted_database_keys_survive_restart_without_local_volume()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("SMART_CAMPUS_TEST_DB")!;
+        var parsed = new NpgsqlConnectionStringBuilder(connectionString);
+        if (parsed.Database?.EndsWith("_test", StringComparison.Ordinal) != true ||
+            parsed.Host is not ("localhost" or "127.0.0.1"))
+            throw new InvalidOperationException("Data Protection integration test requires a loopback _test database.");
+
+        var dbOptions = new DbContextOptionsBuilder<CampusDb>()
+            .UseNpgsql(connectionString, options => options.MigrationsHistoryTable("__EFMigrationsHistory", "smart_campus")).Options;
+        using (var db = new CampusDb(dbOptions)) db.Database.Migrate();
+
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest("CN=SmartCampus Database Key Test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddDays(1));
+        var password = "synthetic-test-only-pfx-pass";
+        var base64 = Convert.ToBase64String(certificate.Export(X509ContentType.Pfx, password));
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["ConnectionStrings:Campus"] = connectionString,
+            ["DataProtection:Store"] = "database",
+            ["DataProtection:CertificateBase64"] = base64,
+            ["DataProtection:CertificatePassword"] = password
+        }).Build();
+
+        string protectedValue;
+        var firstServices = new ServiceCollection();
+        HostingSecurity.ConfigureKeys(firstServices, configuration, development: false);
+        using (var first = firstServices.BuildServiceProvider())
+            protectedValue = first.GetRequiredService<IDataProtectionProvider>()
+                .CreateProtector("render-ephemeral-restart").Protect("test-ticket-no-secrets");
+
+        using (var connection = new NpgsqlConnection(connectionString))
+        {
+            connection.Open();
+            using var cmd = new NpgsqlCommand(
+                "SELECT \"Xml\" FROM smart_campus.\"DataProtectionKeys\" ORDER BY \"FriendlyName\" DESC LIMIT 1", connection);
+            var saved = Assert.IsType<string>(cmd.ExecuteScalar());
+            Assert.Contains("encryptedSecret", saved);
+            Assert.DoesNotContain("test-ticket-no-secrets", saved);
+        }
+
+        var secondServices = new ServiceCollection();
+        HostingSecurity.ConfigureKeys(secondServices, configuration, development: false);
+        using var second = secondServices.BuildServiceProvider();
+        Assert.Equal("test-ticket-no-secrets", second.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("render-ephemeral-restart").Unprotect(protectedValue));
     }
 
     [Fact]
