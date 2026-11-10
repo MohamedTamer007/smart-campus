@@ -89,7 +89,9 @@ jobs:
           }
           $root = Join-Path $env:GITHUB_WORKSPACE 'dist-preview'
           $site = $env:WEBSITE_NAME
-          $target = "$site/preview"
+          # ASP.NET Core has a nested wwwroot inside the site document root.
+          # Publish to site/wwwroot/preview so app static middleware can serve /preview/.
+          $target = "$site/wwwroot/preview"
           $endpoint = "https://$($hostUri.Host):8172/msdeploy.axd?site=$site"
           $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
           function Invoke-PrivateDeploy([bool]$dry) {
@@ -124,7 +126,7 @@ jobs:
           Invoke-PrivateDeploy $true
           Write-Output 'No-change preview-path plan succeeded.'
           Invoke-PrivateDeploy $false
-          Write-Output 'Uploaded ONLY files under isolated site/preview path with DoNotDeleteRule.'
+          Write-Output 'Uploaded ONLY files under the app static-assets folder (site/wwwroot/preview), without deleting existing files.'
       - name: Check public preview is visible without submitting data
         shell: pwsh
         run: |
