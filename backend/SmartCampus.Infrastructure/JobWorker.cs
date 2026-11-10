@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using System.Net.Sockets;
+using System.Security.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -15,9 +18,43 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
         {
             try { await RunNext(stoppingToken); }
             catch (Exception exception) when (exception is not OperationCanceledException)
-            { logger.LogWarning("Job worker unavailable: {ExceptionType}", exception.GetType().Name); }
+            {
+                // Never log connection strings, server messages, exception.ToString(), or secrets.
+                // Emit safe error categories so a pooler auth failure can be distinguished
+                // from TLS validation, DNS, network timeouts, or a database outage.
+                logger.LogWarning("Job worker unavailable: {ExceptionType}, {FailureCategory}",
+                    exception.GetType().Name, DatabaseFailureCategory(exception));
+            }
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         }
+    }
+
+    private static string DatabaseFailureCategory(Exception error)
+    {
+        for (Exception? current = error; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException pg)
+                return pg.SqlState switch
+                {
+                    PostgresErrorCodes.InvalidPassword => "invalid_db_password",
+                    PostgresErrorCodes.InvalidAuthorizationSpecification => "db_auth_or_pooler_user",
+                    PostgresErrorCodes.CannotConnectNow => "database_unavailable",
+                    _ => "postgres_sqlstate_" + pg.SqlState
+                };
+            if (current is AuthenticationException) return "tls_certificate_or_handshake";
+            if (current is SocketException socket)
+                return socket.SocketErrorCode switch
+                {
+                    SocketError.HostNotFound => "dns_host_not_found",
+                    SocketError.TryAgain => "dns_retry",
+                    SocketError.ConnectionRefused => "network_connection_refused",
+                    SocketError.TimedOut => "network_timeout",
+                    SocketError.NetworkUnreachable => "network_unreachable",
+                    _ => "socket_" + socket.SocketErrorCode
+                };
+            if (current is TimeoutException) return "connection_timeout";
+        }
+        return "database_or_network_other";
     }
 
     private async Task RunNext(CancellationToken cancellation)
