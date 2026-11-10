@@ -150,7 +150,29 @@ jobs:
             }
             Start-Sleep -Seconds 3
           }
-          $client.Dispose()
           if (-not $ok) {
+            $client.Dispose()
             throw 'Preview files were uploaded, but public /preview/index.html is not verified. Check IIS static routing before continuing.'
           }
+          $assetPaths = @([regex]::Matches($html, '/preview/assets/[^"\s]+') | ForEach-Object { $_.Value } | Sort-Object -Unique)
+          if ($assetPaths.Count -lt 2) {
+            $client.Dispose()
+            throw 'Published preview HTML did not reference the expected script and stylesheet.'
+          }
+          foreach ($assetPath in ($assetPaths + '/preview/o6u-mark.png')) {
+            $assetResponse = $client.GetAsync('http://smartcampus.tryasp.net' + $assetPath).GetAwaiter().GetResult()
+            if (-not $assetResponse.IsSuccessStatusCode) {
+              $client.Dispose()
+              throw "Public preview asset is unavailable: $assetPath (HTTP $([int]$assetResponse.StatusCode))"
+            }
+            $assetResponse.Dispose()
+          }
+          $directoryResponse = $client.GetAsync('http://smartcampus.tryasp.net/preview/').GetAwaiter().GetResult()
+          if ($directoryResponse.IsSuccessStatusCode) {
+            Write-Output 'Short /preview/ URL responds successfully.'
+          } else {
+            Write-Output "Use the verified explicit /preview/index.html URL (directory status $([int]$directoryResponse.StatusCode))."
+          }
+          $directoryResponse.Dispose()
+          $client.Dispose()
+          Write-Output 'Public preview JS, CSS, and logo assets returned successful HTTP responses.'
