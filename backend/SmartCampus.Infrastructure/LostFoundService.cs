@@ -144,12 +144,15 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
     public async Task<object[]> Claims(int page, int pageSize)
     {
         var actor = await access.Current();
-        var claims = await db.Claims.Where(c => c.RequesterId == actor.Id || actor.Admin || db.Items.Any(f => f.Id == c.ItemId &&
-            (f.CustodianId == actor.Id || (actor.Roles.Contains("department") && actor.Scopes.Contains(f.CustodianDepartmentId ?? Guid.Empty)))))
-            .OrderByDescending(c => c.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync();
-        var responses = new List<object>();
-        foreach (var claim in claims) responses.Add(await ClaimDto(claim, actor, (await db.Items.FindAsync(claim.ItemId))!));
-        return responses.ToArray();
+        var claims = await (from claim in db.Claims.AsNoTracking()
+            join item in db.Items on claim.ItemId equals item.Id
+            join requester in db.Users on claim.RequesterId equals requester.Id
+            where claim.RequesterId == actor.Id || actor.Admin || item.CustodianId == actor.Id ||
+                (actor.Roles.Contains("department") && actor.Scopes.Contains(item.CustodianDepartmentId ?? Guid.Empty))
+            orderby claim.CreatedAt descending
+            select new { Claim = claim, Item = item, RequesterName = requester.DisplayName })
+            .Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync();
+        return claims.Select(row => ClaimResponse(row.Claim, actor, row.Item, row.RequesterName)).ToArray();
     }
 
     public async Task<object> ClaimDetail(Guid id)
@@ -251,8 +254,13 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
 
     private async Task<object> ClaimDto(RecoveryRequest claim, Actor actor, FoundItem found)
     {
-        var privateAccess = (claim.RequesterId == actor.Id && claim.Status is "approved" or "closed") || actor.Custodian(found) || actor.Admin;
         var claimant = await db.Users.Where(u => u.Id == claim.RequesterId).Select(u => u.DisplayName).SingleAsync();
+        return ClaimResponse(claim, actor, found, claimant);
+    }
+
+    private static object ClaimResponse(RecoveryRequest claim, Actor actor, FoundItem found, string claimant)
+    {
+        var privateAccess = (claim.RequesterId == actor.Id && claim.Status is "approved" or "closed") || actor.Custodian(found) || actor.Admin;
         return new { claim.Id, claim.ItemId, claimantId = claim.RequesterId, claimantName = claimant, claimantRole = "user",
             claim.CreatedAt, claim.Message, claim.Status, claim.Version, phone = privateAccess ? claim.Phone : null,
             place = privateAccess ? claim.Place : null, instructions = privateAccess ? claim.Instructions : null,
