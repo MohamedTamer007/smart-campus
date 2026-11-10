@@ -1,3 +1,4 @@
+/* global process, URL, document, console */
 import { chromium } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -26,7 +27,9 @@ try {
       try {
         const result = await page.goto(origin, { waitUntil: "domcontentloaded", timeout: 20000 });
         if (result?.ok()) { loaded = true; break; }
-      } catch {}
+      } catch {
+        await page.waitForTimeout(150);
+      }
       await page.waitForTimeout(1200);
     }
     if (!loaded) throw new Error("Public preview failed to load on " + device.label);
