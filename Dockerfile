@@ -19,4 +19,5 @@ COPY --from=backend /publish ./
 COPY --from=frontend /src/dist ./wwwroot
 USER $APP_UID
 ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "SmartCampus.Api.dll"]
