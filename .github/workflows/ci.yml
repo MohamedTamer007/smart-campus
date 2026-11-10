@@ -99,7 +99,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/media-source" "$RUNNER_TEMP/media-ciphertext" "$RUNNER_TEMP/media-restored"
           printf 'synthetic media encryption fixture\n' > "$RUNNER_TEMP/media-source/fixture.bin"
-          rclone --config "$RUNNER_TEMP/test-rclone.conf" config create test-crypt crypt remote "$RUNNER_TEMP/media-ciphertext" password "$(rclone obscure synthetic-ci-only)" filename_encryption standard directory_name_encryption true >/dev/null
+          rclone --config "$RUNNER_TEMP/test-rclone.conf" config create test-crypt crypt remote "$RUNNER_TEMP/media-ciphertext" "password=$(rclone obscure synthetic-ci-only)" filename_encryption standard directory_name_encryption true >/dev/null
           rclone --config "$RUNNER_TEMP/test-rclone.conf" copy "$RUNNER_TEMP/media-source" test-crypt:
           rclone --config "$RUNNER_TEMP/test-rclone.conf" cryptcheck "$RUNNER_TEMP/media-source" test-crypt:
           rclone --config "$RUNNER_TEMP/test-rclone.conf" copy test-crypt: "$RUNNER_TEMP/media-restored"
