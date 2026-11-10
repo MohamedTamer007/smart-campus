@@ -7,6 +7,7 @@ import {
   Field,
   Page,
   Password,
+  useAction,
 } from "../../components/ui";
 import { AsyncView } from "../../components/AsyncView";
 import { accountService } from "../../services/frontend";
@@ -22,6 +23,7 @@ export function Settings() {
   } = useApp();
   const [saved, setSaved] = useState(false);
   const navigate = useNavigate();
+  const { pending: logoutPending, message: logoutError, run: runLogout } = useAction();
   return (
     <Page title={t("حسابي", "My account")}>
       <div className="panel narrow">
@@ -92,15 +94,18 @@ export function Settings() {
       </div>
       <div className="narrow">
         <button
+          type="button"
           className="button danger"
-          onClick={async () => {
+          disabled={logoutPending}
+          onClick={() => void runLogout(async () => {
             await auth.logout();
             updateAccount(guestAccount);
             navigate("/login");
-          }}
+          })}
         >
-          {t("تسجيل الخروج", "Sign out")}
+          {logoutPending ? t("جارٍ التنفيذ…", "Working…") : t("تسجيل الخروج", "Sign out")}
         </button>
+        {logoutError && <Feedback kind="error">{logoutError}</Feedback>
       </div>
     </Page>
   );

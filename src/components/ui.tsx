@@ -106,9 +106,9 @@ export function useAction() {
     try {
       await action();
     } catch (error) {
-      if (!(error instanceof ServiceError)) throw error;
-      setErrorCode(error.code);
-      if (error.code === "expired") expireSession();
+      const code = error instanceof ServiceError ? error.code : "unavailable";
+      setErrorCode(code);
+      if (code === "expired") expireSession();
     } finally {
       inFlight.current = false;
       setPending(false);

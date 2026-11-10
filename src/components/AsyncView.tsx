@@ -20,11 +20,9 @@ export function AsyncView<T>({
         if (active) setState({ data });
       })
       .catch((error) => {
-        if (!(error instanceof ServiceError)) throw error;
-        if (active) {
-          if (error.code === "expired") expireSession();
-          else setState({ error: error.code });
-        }
+        if (!active) return;
+        if (error instanceof ServiceError && error.code === "expired") expireSession();
+        else setState({ error: error instanceof ServiceError ? error.code : "unavailable" });
       });
     return () => {
       active = false;

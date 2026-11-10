@@ -1,3 +1,7 @@
+## 10 November 2026 — Frontend error handling hardening
+
+Source review identified two UI failure paths: unexpected (non-ServiceError) failures from data loaders were rethrown in asynchronous handlers, leaving the view in loading state, and unexpected form-action failures could become unhandled without user feedback. The settings sign-out control also bypassed the shared action error handling. Updated AsyncView, useAction and sign-out to show a recoverable unavailable outcome and allow retry without assuming an operation succeeded. Added two targeted React regression tests for the failure/retry paths. New GitHub CI verification is required; this change does not certify deployment or unblock hosted database, email, university directory, or calibrated AI search.
+
 ## 10 November 2026 — Resend verification preparation
 
 Current local backend regression: 97 passed, zero failed/skipped (`evidence/backend-resend-evidence.trx`); targeted mail safety/evidence cases: 20 passed. The eighth EF migration adds nullable provider-message/failure metadata and was applied only to the isolated development database. Windows PowerShell 5.1 and PowerShell 7 launcher preflight passed. Source, security, test and documentation review checked recipient restrictions, hidden key entry, transport acceptance evidence, encrypted payload cleanup and durable retry behavior.
