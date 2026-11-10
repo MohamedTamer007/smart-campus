@@ -1,10 +1,11 @@
 name: MonsterASP.NET WebDeploy connection check
 
-# Diagnostic only: never changes or uploads files to the hosting website.
+# This checks read-only access. It never uploads or changes production files.
 on:
   push:
     branches: [codex/backend-integration]
-    paths: ['.github/workflows/monsterasp-webdeploy-check.yml']
+    paths:
+      - '.github/workflows/monsterasp-webdeploy-check.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,44 +19,46 @@ jobs:
   verify-connection:
     runs-on: windows-2025
     timeout-minutes: 15
-    environment: null
     env:
       WEBSITE_NAME: ${{ secrets.WEBSITE_NAME }}
       SERVER_COMPUTER_NAME: ${{ secrets.SERVER_COMPUTER_NAME }}
       SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
       SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
     steps:
-      - name: Validate configuration without revealing secrets
+      - name: Validate credential presence and server format
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           foreach ($key in @('WEBSITE_NAME','SERVER_COMPUTER_NAME','SERVER_USERNAME','SERVER_PASSWORD')) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($key))) {
-              throw "Required GitHub Actions secret missing: $key"
+              throw "Required repository secret missing: $key"
             }
           }
           if ($env:WEBSITE_NAME -notmatch '^site[A-Za-z0-9-]+$') {
-            throw 'WEBSITE_NAME must be the MonsterASP.NET site ID (siteXXXX), not the public tryasp.net domain.'
+            throw 'WEBSITE_NAME must be the MonsterASP.NET site ID (siteXXXX).'
           }
           $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
           if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
           $uri = $null
           if (-not [Uri]::TryCreate($rawServer, [UriKind]::Absolute, [ref]$uri)) {
-            throw 'SERVER_COMPUTER_NAME is not a valid MonsterASP.NET hostname or publishing URL.'
+            throw 'SERVER_COMPUTER_NAME must be the publishing hostname or URL.'
           }
-          if ($uri.Scheme -ne 'https' -or $uri.Host -notmatch '^[A-Za-z0-9-]+\.siteasp\.net
-      - name: Install Microsoft Web Deploy if needed
+          if ($uri.Scheme -ne 'https' -or $uri.Host -notmatch '^[A-Za-z0-9-]+\.siteasp\.net$' -or $uri.Port -notin @(443,8172)) {
+            throw 'SERVER_COMPUTER_NAME must point to the HTTPS siteXXXX.siteasp.net publisher on port 8172.'
+          }
+          Write-Output 'Four deployment secrets present; WebDeploy publisher syntax valid.'
+      - name: Check Microsoft Web Deploy executable
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
           if (-not (Test-Path $exe)) {
             choco install webdeploy --yes --no-progress --limit-output
-            if ($LASTEXITCODE -ne 0) { throw 'Microsoft Web Deploy installation failed.' }
+            if ($LASTEXITCODE -ne 0) { throw 'Installing Microsoft Web Deploy failed.' }
           }
-          if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy binary was not found.' }
+          if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy binary unavailable.' }
           Write-Output 'Microsoft Web Deploy is available.'
-      - name: Check site access (read-only, no publishing)
+      - name: Authenticate and enumerate selected site (read-only)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -66,41 +69,9 @@ jobs:
           $serverHost = ([Uri]$rawServer).Host
           $endpoint = "https://$($serverHost):8172/msdeploy.axd?site=$site"
           $source = "-source:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
-          # -verb:dump enumerates the remote application; it does not sync or modify it.
-          # Suppress content and provider errors to avoid accidental credential disclosure in logs.
+          # dump only; suppress provider output to avoid accidental secret disclosure
           & $exe '-verb:dump' $source '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-Null
           if ($LASTEXITCODE -ne 0) {
-            throw 'Read-only WebDeploy connection failed. Confirm the four secrets and port 8172 in MonsterASP.NET. No files were changed.'
+            throw 'WebDeploy read-only login failed. Confirm publishing server/username/password in MonsterASP.NET. No production files changed.'
           }
-          Write-Output 'Read-only WebDeploy authentication and site access passed. No files were changed.'
- -or $uri.Port -notin @(443,8172)) {
-            throw 'SERVER_COMPUTER_NAME must be a siteXXXX.siteasp.net WebDeploy hostname (HTTPS, optional :8172).'
-          }
-          Write-Output 'Four deployment secrets are present and the publishing host format is valid.'
-      - name: Install Microsoft Web Deploy if needed
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
-          if (-not (Test-Path $exe)) {
-            choco install webdeploy --yes --no-progress --limit-output
-            if ($LASTEXITCODE -ne 0) { throw 'Microsoft Web Deploy installation failed.' }
-          }
-          if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy binary was not found.' }
-          Write-Output 'Microsoft Web Deploy is available.'
-      - name: Check site access (read-only, no publishing)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
-          $site = $env:WEBSITE_NAME
-          $base = $env:SERVER_COMPUTER_NAME.TrimEnd('/')
-          $endpoint = if ($base -match '/msdeploy\.axd') { $base } else { "$base/msdeploy.axd?site=$site" }
-          $source = "-source:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
-          # -verb:dump enumerates the remote application; it does not sync or modify it.
-          # Suppress content and provider errors to avoid accidental credential disclosure in logs.
-          & $exe '-verb:dump' $source '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-Null
-          if ($LASTEXITCODE -ne 0) {
-            throw 'Read-only WebDeploy connection failed. Confirm the four secrets and port 8172 in MonsterASP.NET. No files were changed.'
-          }
-          Write-Output 'Read-only WebDeploy authentication and site access passed. No files were changed.'
+          Write-Output 'Read-only WebDeploy check passed; no production files changed.'
