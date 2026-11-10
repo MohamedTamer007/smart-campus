@@ -44,7 +44,7 @@ it("reports unexpected action failures and permits a second attempt", async () =
 });
 
 it("offers retry after an unexpected data-loading failure", async () => {
-  const load = vi.fn().mockRejectedValueOnce(new Error("malformed response")).mockResolvedValue("Recovered");
+  const load = vi.fn(async () => "Recovered").mockRejectedValueOnce(new Error("malformed response"));
   render(
     <MemoryRouter>
       <AppProvider>
