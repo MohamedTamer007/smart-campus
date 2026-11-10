@@ -26,6 +26,36 @@ The provider's recommended secret names are `WEBSITE_NAME`,
 See https://help.monsterasp.net/websites/git-deploy/github-actions.
 Do not paste credentials in chat, an artifact, a PR, or repository files.
 
+## WebDeploy credentials verified for presence, remote access pending (2026-11-10)
+
+The owner confirmed adding four repository secrets: `WEBSITE_NAME`,
+`SERVER_COMPUTER_NAME`, `SERVER_USERNAME`, `SERVER_PASSWORD`.
+The **read-only** GitHub Actions preflight
+`.github/workflows/monsterasp-webdeploy-check.yml` confirmed that all
+four secrets are present, the site ID and publishing server hostname have
+the expected formats, and Microsoft Web Deploy is available on the Windows
+runner. The third-stage attempt to enumerate the remote site returned a
+nonzero exit code with an unclassified provider diagnostic. No remote files
+were changed or uploaded. See
+[run 42874410858](https://github.com/MohamedTamer007/smart-campus/actions/runs/42874410858).
+
+A failed remote `msdeploy -verb:dump` is not proof that a regular
+WebDeploy upload would fail: provider read/enumeration permissions and
+server-side configuration may differ. Verify the site-specific
+**Test connection** in the MonsterASP.NET Deploy panel; confirm that
+WebDeploy remains Enabled and the `SERVER_COMPUTER_NAME` GitHub secret
+matches the **Server** endpoint shown for the selected website. Do not
+disclose the secret values or publish profile.
+
+**Do not deploy the full API just because four publishing secrets exist.**
+The production application fails closed until it has a validated HTTPS
+`PublicOrigin`, restricted PostgreSQL runtime connection, durable protected
+key ring and private certificate, approved external private storage,
+verified sender transport, and explicitly allowed university test emails.
+No one has provided those runtime settings. The Python AI worker
+cannot run on MonsterASP.NET Free alone. A successful package build is
+not a successful release.
+
 ## Current status
 
 The user has an existing MonsterASP.NET onboarding email and a website-creation confirmation, but **no MonsterASP.NET management/WebDeploy/SFTP connector is authorized in this workspace**. An account-confirmation email is not hosting API access or evidence of a successful site deployment. Do not extract/share publish passwords from email or source-control them.
