@@ -71,9 +71,10 @@ jobs:
           $sourceDir = Join-Path $env:RUNNER_TEMP 'empty-webdeploy-whatif'
           New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
           $source = "-source:contentPath=$sourceDir"
-          $dest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic,includeAcls=False"
-          # -whatif + DoNotDeleteRule: no server mutation, even with an empty local source.
-          $diagnostic = & $exe '-verb:sync' '-whatif' $source $dest '-enableRule:DoNotDeleteRule' '-disableLink:AppPoolExtension' '-disableLink:ContentExtension' '-disableLink:CertificateExtension' 2>&1 | Out-String
+          $dest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
+          # Microsoft-documented -whatif performs a dry-run and never writes to the site.
+          # DoNotDeleteRule additionally prevents a delete plan for the empty local source.
+          $diagnostic = & $exe '-verb:sync' $source $dest '-whatif' '-enableRule:DoNotDeleteRule' 2>&1 | Out-String
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0) {
             $reason = 'unclassified WebDeploy connection error'
@@ -90,6 +91,11 @@ jobs:
             } elseif ($diagnostic -match '(?i)unrecognized|syntax|invalid argument') {
               $reason = 'unsupported msdeploy command syntax'
             }
-            throw "No-change WebDeploy trial failed: $reason. No files were uploaded."
+            # Error identifiers are sanitized constants such as ERROR_USER_UNAUTHORIZED.
+            # Never print the raw msdeploy output, which may contain credentials or paths.
+            $codeMatches = [regex]::Matches($diagnostic, '\bERROR_[A-Z0-9_]+\b')
+            $codes = @($codeMatches | ForEach-Object { $_.Value } | Sort-Object -Unique | Select-Object -First 4)
+            $errorCodes = if ($codes.Count -eq 0) { 'no recognizable WebDeploy error code' } else { $codes -join ', ' }
+            throw "No-change WebDeploy trial failed: $reason. Codes: $errorCodes. No files were uploaded."
           }
           Write-Output 'No-change WebDeploy trial passed. No files were uploaded.'
