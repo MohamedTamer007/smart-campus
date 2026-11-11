@@ -63,6 +63,19 @@ export interface OperationsSnapshot {
   quotas: { provider: string; used: number; dailyLimit: number }[];
   worker: "available" | "unavailable" | "hosted_configured" | "hosted_blocked";
   calibrationApproved: boolean;
+  // Optional while an older API build is still deployed.
+  ai?: {
+    provider: string;
+    textConfigured: boolean;
+    imagesConfigured: boolean;
+    taxonomyConfigured: boolean;
+    textTransferEnabled: boolean;
+    imageTransferEnabled: boolean;
+    nvidiaKeyPresent: boolean;
+    openRouterKeyPresent: boolean;
+    nvidiaBudgetConfigured: boolean;
+    openRouterBudgetConfigured: boolean;
+  };
 }
 export const operations = () => api<OperationsSnapshot>("/admin/operations");
 export function calculateStats(

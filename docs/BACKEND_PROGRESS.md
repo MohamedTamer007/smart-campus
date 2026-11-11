@@ -1,3 +1,10 @@
+## 12 November 2026 — Admin AI readiness visibility (feature branch only)
+
+- Added a **read-only admin-only** AI readiness summary to `GET /api/v1/admin/operations`. It reports provider selection, text/image gate status, taxonomy presence, key-presence booleans and whether app-configured budgets are positive. It does not include any credential values, sensitive records, inference prompts or provider requests.
+- Displayed the flags in the admin operations screen, including explicit language that a configured route is **not** a proven successful model response; frontend tolerates an older backend that does not yet return `ai`.
+- Updated isolated database-backed admin API assertions for the new contract. Original guest/student/staff access-denial tests remain in place.
+- No direct provider requests, hosted secret reads, database writes, production deployment, release-flag changes or switch activations were performed. At authoring time the previous [CI run 43121148313](https://github.com/MohamedTamer007/smart-campus/actions/runs/43121148313) was still running. This workspace has no .NET SDK; GitHub CI is required for backend build and tests.
+
 ## 12 November 2026 — Hosted AI image-review routing fix (feature branch only)
 
 - Inspected draft PR #2 on branch `codex/release-readiness-20261111`, the AI routing and maintenance approval code, and the user's design-atlas ZIP. The archive contains diagrams/submission materials, not deployable backend source or a reviewed institutional AI taxonomy.

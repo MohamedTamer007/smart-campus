@@ -15,6 +15,21 @@ export function OperationsStatus() {
           : status.worker === "hosted_blocked" ? t("API معطلة حتى اعتماد الخصوصية", "API disabled pending privacy review")
           : t("غير متاحة", "Unavailable")}</p>
         <p>{t("معايرة البحث", "Search calibration")}: {status.calibrationApproved ? t("مُراجعة ومعتمدة", "Reviewed and approved") : t("بانتظار الاعتماد", "Awaiting approval")}</p>
+        {status.ai && <>
+          <h3>{t("جاهزية إعدادات الذكاء الاصطناعي", "AI configuration readiness")}</h3>
+          <p>{t("توجيه المودلز", "Model routing")}: <bdi>{status.ai.provider}</bdi></p>
+          <p>{t("تحليل النصوص", "Text analysis")}: {status.ai.textConfigured
+            ? t("الإعدادات جاهزة — الاستجابة الفعلية غير مختبرة", "Configured — actual provider response not tested")
+            : t("الإعدادات غير مكتملة", "Configuration incomplete")}</p>
+          <p>{t("تحليل الصور", "Image analysis")}: {status.ai.imagesConfigured
+            ? t("الإعدادات جاهزة — الاستجابة الفعلية غير مختبرة", "Configured — actual provider response not tested")
+            : t("معطل أو الإعدادات غير مكتملة", "Disabled or configuration incomplete")}</p>
+          <p>{t("مفاتيح الخادم (دون عرض قيمها)", "Server API keys (values hidden)")}: NVIDIA {status.ai.nvidiaKeyPresent ? "✓" : "✗"} · OpenRouter {status.ai.openRouterKeyPresent ? "✓" : "✗"}</p>
+          <p>{t("ميزانية الطلبات", "Request budgets")}: NVIDIA {status.ai.nvidiaBudgetConfigured ? "✓" : "✗"} · OpenRouter {status.ai.openRouterBudgetConfigured ? "✓" : "✗"}</p>
+          <p>{t("تصنيفات الصيانة", "Maintenance taxonomy")}: {status.ai.taxonomyConfigured ? t("مُدخلة", "Present") : t("ناقصة", "Missing")}</p>
+          <p>{t("تفعيل إرسال النص والصور للمزودين الخارجيين", "External-provider text/image switches")}: {status.ai.textTransferEnabled ? t("النص مفعّل", "Text on") : t("النص معطّل", "Text off")} · {status.ai.imageTransferEnabled ? t("الصور مفعّلة", "Images on") : t("الصور معطّلة", "Images off")}</p>
+          <p>{t("دي فحوص إعدادات فقط، مش إثبات إن المودلز اشتغلت. لازم مراجعة الخصوصية قبل تشغيل مشاركة بيانات فعلية.", "These are configuration checks, not successful provider tests. Complete privacy review before sharing real data.")}</p>
+        </>}
         <p>{t("ذاكرة الخدمة", "Service memory")}: {Math.round(status.workingSetBytes / 1024 / 1024)} MiB</p>
         <p>{t("محاولات هذا التطبيق وحدّه اليومي للذكاء الاصطناعي بتوقيت UTC", "App AI attempts / daily budget in UTC")}</p>
         <ul>{status.quotas.map((quota) => <li key={quota.provider}><bdi>{quota.provider}</bdi>: {quota.used} / {quota.dailyLimit}</li>)}</ul>

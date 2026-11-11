@@ -13,6 +13,22 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
 {
     private sealed record WorkerHealth(bool Ready, string Model, string Revision);
 
+    // Configuration diagnostics only: do not call providers or reveal secrets here.
+    private static AiReadinessResponse AiReadiness(IConfiguration config) => new(
+        config["AI:Provider"] ?? "openrouter",
+        AiProviders.Configured(config),
+        AiProviders.CanReviewImage(config),
+        new[] { "FaultTypes", "Priorities", "Risks" }.All(key =>
+            (config.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0),
+        config.GetValue<bool>("AI:AllowNonSensitiveInference"),
+        config.GetValue<bool>("AI:AllowNonSensitiveImages"),
+        !string.IsNullOrWhiteSpace(config["AI:NvidiaKey"]),
+        !string.IsNullOrWhiteSpace(config["AI:OpenRouterKey"]),
+        config.GetValue("AI:NvidiaDailyRequestLimit", 0) > 0 &&
+            config.GetValue("AI:NvidiaRequestsPerMinute", 5) > 0,
+        config.GetValue("AI:OpenRouterDailyRequestLimit", 50) > 0 &&
+            config.GetValue("AI:OpenRouterRequestsPerMinute", 20) > 0);
+
     [HttpGet]
     public async Task<ActionResult<OperationsResponse>> Status(CancellationToken cancellation)
     {
@@ -43,6 +59,6 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         }
         using var process = Process.GetCurrentProcess();
         return new OperationsResponse(now, config["Deployment:Commit"] ?? "local", process.WorkingSet64, jobs, quotas, worker,
-            RetrievalService.ApprovedThreshold(config).HasValue);
+            RetrievalService.ApprovedThreshold(config).HasValue, AiReadiness(config));
     }
 }

@@ -27,5 +27,12 @@ public sealed record AccountResponse(Guid Id, string Name, string Email, string[
 public sealed record SearchResponse(Guid[] ItemIds, string RankingVersion, string Calibration);
 public sealed record JobStateResponse(string Kind, string State, int Count, int MaximumAttempts);
 public sealed record ProviderQuotaResponse(string Provider, int Used, int DailyLimit);
+// Admin-only configuration checks; none of these fields proves a provider responded.
+// Only Boolean key presence is exposed, never key contents.
+public sealed record AiReadinessResponse(string Provider, bool TextConfigured, bool ImagesConfigured,
+    bool TaxonomyConfigured, bool TextTransferEnabled, bool ImageTransferEnabled,
+    bool NvidiaKeyPresent, bool OpenRouterKeyPresent, bool NvidiaBudgetConfigured,
+    bool OpenRouterBudgetConfigured);
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
-    JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved);
+    JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,
+    AiReadinessResponse Ai);
