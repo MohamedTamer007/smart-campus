@@ -94,7 +94,9 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
         if (user is { EmailConfirmed: true, Active: true })
         {
             var token = Encode(await users.GeneratePasswordResetTokenAsync(user));
-            await mail.Enqueue(user.Email!, "Smart Campus password reset", $"{Origin()}/reset/{token}?userId={user.Id}");
+            // IIS rejects oversized URL path segments. Keep the token in the query string.
+            await mail.Enqueue(user.Email!, "Smart Campus password reset",
+                $"{Origin()}/reset?userId={user.Id}&token={Uri.EscapeDataString(token)}");
         }
         return new { accepted = true };
     }
