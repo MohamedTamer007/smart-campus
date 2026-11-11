@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using SkiaSharp;
 using SmartCampus.Domain;
 using SmartCampus.Infrastructure;
 using Xunit;
@@ -22,6 +23,7 @@ public sealed class ProviderTests
     {
         public int Requests { get; private set; }
         public string? Model { get; private set; }
+        public JsonElement? Sent { get; private set; }
         public Uri? Destination { get; private set; }
         public HttpClient CreateClient(string name) => new(this, false);
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -30,6 +32,7 @@ public sealed class ProviderTests
             Destination = request.RequestUri;
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
             Model = payload.RootElement.GetProperty("model").GetString();
+            Sent = payload.RootElement.Clone();
             return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
         }
     }
@@ -72,15 +75,30 @@ public sealed class ProviderTests
         Assert.True(AiProviders.Configured(config));
     }
 
+    private static byte[] SyntheticPng()
+    {
+        using var bitmap = new SKBitmap(4, 4);
+        bitmap.Erase(SKColors.Blue);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 90);
+        return encoded.ToArray();
+    }
+
     [Fact]
     public async Task Auto_routes_reviewed_image_to_OpenRouter_Super_VL()
     {
         var config = AutoConfig();
         using var provider = new ProviderBoundary(HttpStatusCode.OK, ValidEnvelope);
         await new AiProviders(provider, config, new AvailableTestBudget())
-            .Assess("Synthetic broken pipe", CancellationToken.None, [0xff, 0xd8, 0xff, 0xd9]);
+            .Assess("Synthetic broken pipe", CancellationToken.None, SyntheticPng());
         Assert.Equal("nvidia/nemotron-3.5-super-vl:free", provider.Model);
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
+        var content = provider.Sent!.Value.GetProperty("messages")[1].GetProperty("content");
+        var url = content[1].GetProperty("image_url").GetProperty("url").GetString();
+        Assert.StartsWith("data:image/jpeg;base64,", url);
+        using var pixels = SKData.CreateCopy(Convert.FromBase64String(url!["data:image/jpeg;base64,".Length..]));
+        using var codec = SKCodec.Create(pixels);
+        Assert.Equal(SKEncodedImageFormat.Jpeg, codec!.EncodedFormat);
     }
 
 
@@ -110,6 +128,17 @@ public sealed class ProviderTests
         settings["AI:AllowNonSensitiveInference"] = "true";
         settings["AI:NvidiaDailyRequestLimit"] = "0";
         Assert.False(AiProviders.CanReviewImage(new ConfigurationBuilder().AddInMemoryCollection(settings).Build()));
+    }
+
+    [Fact]
+    public async Task Invalid_approved_image_is_rejected_before_reserving_or_sending()
+    {
+        var config = AutoConfig();
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, ValidEnvelope);
+        var error = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, config, new AvailableTestBudget())
+            .Assess("TEST ONLY pipe", CancellationToken.None, [0xff, 0xd8, 0xff, 0xd9]));
+        Assert.Equal("invalid_upload", error.Code);
+        Assert.Equal(0, provider.Requests);
     }
 
     [Fact]

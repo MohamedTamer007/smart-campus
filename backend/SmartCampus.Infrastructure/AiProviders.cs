@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using SkiaSharp;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -58,9 +59,9 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
         var model = SelectedModel(config, image is not null);
         object userContent = Rules.Required(description);
-        if (!nvidia && image is not null && config.GetValue<bool>("AI:AllowNonSensitiveImages"))
+        if (!nvidia && image is not null)
             userContent = new object[] { new { type = "text", text = description },
-                new { type = "image_url", image_url = new { url = "data:image/jpeg;base64," + Convert.ToBase64String(image) } } };
+                new { type = "image_url", image_url = new { url = SafeImageDataUrl(image) } } };
         var payload = new Dictionary<string, object> {
             ["model"] = model, ["max_tokens"] = 800, ["temperature"] = 0,
             ["messages"] = new object[] {
@@ -86,6 +87,24 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
         var json = await response.Content.ReadAsStringAsync(cancellation);
         if (json.Length > 100000) throw new RuleException("invalid_ai_response", 503);
         return Parse(json, taxonomy, priorities, risks);
+    }
+
+    // Never forward unprocessed files/EXIF. Normalize JPEG/PNG/WebP to actual
+    // JPEG pixels and enforce image limits before reserving any provider quota.
+    private static string SafeImageDataUrl(byte[] image)
+    {
+        if (image.Length is <= 0 or > 5 * 1024 * 1024) throw new RuleException("invalid_upload");
+        using var data = SKData.CreateCopy(image);
+        using var codec = SKCodec.Create(data);
+        if (codec is null || codec.EncodedFormat is not (SKEncodedImageFormat.Jpeg or SKEncodedImageFormat.Png or SKEncodedImageFormat.Webp) ||
+            codec.Info.Width <= 0 || codec.Info.Height <= 0 ||
+            (long)codec.Info.Width * codec.Info.Height > 16_000_000)
+            throw new RuleException("invalid_upload");
+        using var bitmap = SKBitmap.Decode(data) ?? throw new RuleException("invalid_upload");
+        using var converted = SKImage.FromBitmap(bitmap);
+        using var encoded = converted.Encode(SKEncodedImageFormat.Jpeg, 80);
+        if (encoded is null || encoded.Size > 2_000_000) throw new RuleException("invalid_upload");
+        return "data:image/jpeg;base64," + Convert.ToBase64String(encoded.ToArray());
     }
 
     public static AiSuggestion Parse(string envelope, string[] taxonomy, string[] priorities, string[] risks)

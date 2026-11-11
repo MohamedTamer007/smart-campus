@@ -91,6 +91,8 @@ student reports or the existing production database on MonsterASP.NET Free.
    exact synthetic image and provider transfer. In the source code,
    `AI:Provider=auto` routes staff-approved images to OpenRouter, and the
    `AI:AllowNonSensitiveImages` gate prevents images being forwarded otherwise.
+   Approved JPEG/PNG/WebP bytes are validated and converted to a JPEG data
+   URL by the API; the original uploaded metadata is not sent to the model.
 6. Hosted lost/found embeddings require their *own* provider compatibility
    tests, externally approved data processing and a separately measured
    `Search:MinimumScore`/calibration approval. Text analysis success does not

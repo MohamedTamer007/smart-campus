@@ -1,3 +1,9 @@
+## 12 November 2026 — Approved maintenance image normalization (feature branch only)
+
+- Corrected provider payload generation for reviewed PNG/WebP maintenance photos: previously the raw bytes were labeled `data:image/jpeg` regardless of actual format. Approved images now undergo format/size/dimension checks, decode to pixels and convert to JPEG before the outbound request; metadata/EXIF is not transferred.
+- Added regression tests using an actual synthetic PNG and decoding the outgoing data URL as JPEG; invalid approved image input now fails before a provider request. Previous image-sharing approval gates remain unchanged and default to false.
+- No real student photos, secrets, database records or provider calls were used. CI on the new commit is needed to establish test/build status.
+
 ## 12 November 2026 — Admin AI readiness visibility (feature branch only)
 
 - Added a **read-only admin-only** AI readiness summary to `GET /api/v1/admin/operations`. It reports provider selection, text/image gate status, taxonomy presence, key-presence booleans and whether app-configured budgets are positive. It does not include any credential values, sensitive records, inference prompts or provider requests.
