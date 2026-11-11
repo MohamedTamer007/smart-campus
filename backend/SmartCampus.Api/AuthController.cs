@@ -137,6 +137,50 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
         return NoContent();
     }
 
+    public sealed record DeleteAccountInput(string Password);
+
+    [HttpDelete("account"), Authorize]
+    public async Task<IActionResult> DeleteAccount(DeleteAccountInput input)
+    {
+        var actor = await access.Current();
+        var user = await users.FindByIdAsync(actor.Id.ToString()) ?? throw new RuleException("expired", 401);
+        if (string.IsNullOrEmpty(input.Password) || !await users.CheckPasswordAsync(user, input.Password))
+            throw new RuleException("credentials", 400);
+
+        // Preserve referential integrity of maintenance/lost-property history: erase
+        // login credentials and identifying profile data, leave an anonymous
+        // disabled tombstone for records that still reference this user ID.
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await mail.ForgetPendingFor(user.Email!);
+        await db.Sessions.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+        await db.Notifications.Where(x => x.RecipientId == user.Id).ExecuteDeleteAsync();
+        await db.SearchGrants.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+        await db.Scopes.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+        await db.UserRoles.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+        await db.UserClaims.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+        await db.UserLogins.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+        await db.UserTokens.Where(x => x.UserId == user.Id).ExecuteDeleteAsync();
+
+        user.UserName = "deleted-" + user.Id.ToString("N");
+        user.NormalizedUserName = user.UserName.ToUpperInvariant();
+        user.Email = null;
+        user.NormalizedEmail = null;
+        user.EmailConfirmed = false;
+        user.PasswordHash = null;
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+        user.TwoFactorEnabled = false;
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        user.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+        user.DisplayName = "Deleted account";
+        user.Language = "ar";
+        user.Active = false;
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        await signin.SignOutAsync();
+        return NoContent();
+    }
+
     private async Task<object> Account(CampusUser user)
     {
         var roles = (await users.GetRolesAsync(user)).ToArray();
