@@ -45,3 +45,16 @@ The verifier checks complete per-file size and SHA-256 integrity; it exits nonze
 The collection guide identifies Open Images per-image attribution, non-commercial CC BY-NC use for the Arabic ITSM research material, a separate Stanford original notice, and SNCF ODbL with provenance caveats. Review actual file licenses and source terms before any distribution, publication or fine-tuning. Never commit the 2.67 GB payloads, personal data, provider secrets, generated vector databases or model weights to Git.
 
 **No production dataset migration, AI training, calibration approval or deployment was performed during this intake.**
+
+
+## Independent check of saved experiment evidence (2026-11-11)
+
+The archived experiment ZIP was downloaded from the user's Drive and its saved 200-query retrieval outputs re-aggregated without running the model again. The stored figures reproduced exactly: top-1 **166/200**, top-5 **179/200**. With the correct item excluded, the reconstructed no-match probes were **70/200**, **30/200**, and **2/200** incorrectly accepted at exploratory score cutoffs 0.85, 0.90, and 0.95 respectively; original correct top-1 results retained at these cutoffs were **110/200**, **84/200**, and **34/200**. These are historical bicycle-product scores from the existing ZIP, not newly computed campus embeddings.
+
+To re-check the actual saved ZIP, without extracting image archives:
+
+```sh
+python scripts/review_saved_retrieval.py /path/to/Smart_Campus_AI_Experiments_2026-10-30.zip
+```
+
+Never copy these exploratory cutoffs directly into the live app's `Search__MinimumScore`. A different domain, gallery size and independent positive/absent samples require a new frozen calibration set.
