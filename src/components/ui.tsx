@@ -120,10 +120,12 @@ export function ActionForm({
   children,
   onSubmit,
   label,
+  danger = false,
 }: {
   children: ReactNode;
   onSubmit: (data: FormData) => Promise<void>;
   label: string;
+  danger?: boolean;
 }) {
   const { pending, message, run } = useAction();
   const { t } = useApp();
@@ -150,7 +152,7 @@ export function ActionForm({
     <form onSubmit={submit} className="form-stack">
       {children}
       {message && <Feedback kind="error">{message}</Feedback>}
-      <button className="button primary" disabled={pending}>
+      <button className={danger ? "button danger" : "button primary"} disabled={pending}>
         {pending ? t("جارٍ التنفيذ…", "Working…") : label}
       </button>
     </form>
