@@ -1,3 +1,18 @@
+## 11 November 2026 — SnapDeploy live checks and release gates
+
+The owner supplied a SnapDeploy dashboard screenshot showing the existing `smart-campus-arm-b7d59` container as RUNNING. This establishes that a container exists; it does not establish application or dependency readiness. The dashboard showed the free deployment limit exhausted for the current 12-hour window (about 11h45m remaining at screenshot time), so no deployment was started.
+
+Observed from this session:
+- `GET https://smart-campus-arm-b7d59.containers.snapdeploy.app/health/live` returned HTTP 200 with `{"status":"live"}`.
+- A non-browser `GET /health/ready` returned SnapDeploy's HTTP 503 "Waking up your container..." page. This is a platform wake response, not the application's readiness response, so the runtime database connection is still unverified.
+- Smart Campus CI run [42928125451](https://github.com/MohamedTamer007/smart-campus/actions/runs/42928125451) passed on branch head `a6f363c17e341681729645567ea0d0768cad0e91`. Worker inference run [42928125175](https://github.com/MohamedTamer007/smart-campus/actions/runs/42928125175) passed.
+- ARM64 image build run [42927487772](https://github.com/MohamedTamer007/smart-campus/actions/runs/42927487772) passed on `4172fe281ea2a80d1d72bf58a85b132dbc0c2e9c`. It produced private artifact `smart-campus-arm64-image` (278,073,284 bytes), available until 2026-11-18. The subsequent branch-head change was limited to the public pooler TLS check workflow; the app image source did not change.
+- No new image was uploaded to SnapDeploy because its free deployment quota was exhausted.
+
+**Remaining release gates:** fetch a browser-triggered readiness result from the existing container; verify its runtime database connection without exposing credentials; configure and verify an approved mail sender/test account; run real private-media acceptance; and provide an always-available, free worker host with enough resources for the SigLIP model. No institutional directory, account set or approved sender is available, and no paid services are authorized. Hugging Face's current Spaces documentation says compute Spaces on CPU Basic require a paid plan, have non-persistent disk and sleep on inactivity ([official overview](https://huggingface.co/docs/hub/spaces-overview)); therefore it does not qualify as an always-available free worker host. Image search remains disabled pending a viable host and reviewed calibration.
+
+These results do not certify a full production release. The PR remains Draft and `main` remains unchanged.
+
 ## 10 November 2026 — Verified static MonsterASP.NET preview (no user data)
 
 Owner authorized continued deployment on the existing `smartcampus.tryasp.net` host.
