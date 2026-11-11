@@ -66,6 +66,18 @@ jobs:
         run: dotnet test backend/SmartCampus.slnx --logger 'trx;LogFileName=backend.trx' --results-directory test-results/backend
       - name: Verify reviewed storage policy on isolated fixtures
         run: psql -h 127.0.0.1 -U postgres -d smart_campus_test -v ON_ERROR_STOP=1 -f scripts/sql/test-storage-prefix.sql > test-results/storage-policy.txt
+      - name: Frontend checks
+        run: |
+          npm ci
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build
+          npm audit --audit-level=moderate
+      - name: Worker boundary tests
+        run: python -m unittest discover -s worker -v
+      - name: Backup safety tests
+        run: python -m unittest discover -s scripts/tests -v
       - name: Encrypted database backup and isolated restore
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
@@ -73,8 +85,18 @@ jobs:
           PGUSER: postgres
           PGDATABASE: smart_campus_test
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y age rclone
+          # Ubuntu's Azure mirror can have transient DNS failures; try the
+          # default configured mirror first, then the official Ubuntu mirror.
+          if ! (sudo apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=15 &&
+                sudo apt-get install -y -o Acquire::Retries=2 -o Acquire::http::Timeout=15 age rclone); then
+            echo "Package mirror unavailable; retrying via archive.ubuntu.com"
+            if test -f /etc/apt/sources.list.d/ubuntu.sources; then
+              sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+              sudo sed -i 's|https://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+            fi
+            sudo apt-get update -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=15
+            sudo apt-get install -y -o Acquire::Retries=3 -o Acquire::http::Timeout=15 age rclone
+          fi
           mkdir -p "$RUNNER_TEMP/pg-tools"
           for tool in pg_dump pg_restore psql; do
             cat > "$RUNNER_TEMP/pg-tools/$tool" <<'SH'
@@ -106,18 +128,6 @@ jobs:
           cmp "$RUNNER_TEMP/media-source/fixture.bin" "$RUNNER_TEMP/media-restored/fixture.bin"
           test -z "$(find "$RUNNER_TEMP/media-ciphertext" -name fixture.bin)"
           printf 'Synthetic bytes and filename encryption verified through real rclone crypt and isolated restoration. Hosted S3/OCI integration not exercised.\n' > test-results/media-restore.txt
-      - name: Frontend checks
-        run: |
-          npm ci
-          npm test
-          npm run typecheck
-          npm run lint
-          npm run build
-          npm audit --audit-level=moderate
-      - name: Worker boundary tests
-        run: python -m unittest discover -s worker -v
-      - name: Backup safety tests
-        run: python -m unittest discover -s scripts/tests -v
       - name: Backend dependency advisories
         run: |
           dotnet list backend/SmartCampus.slnx package --vulnerable --include-transitive --format json > test-results/nuget-audit.json
