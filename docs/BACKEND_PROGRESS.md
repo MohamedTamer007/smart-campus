@@ -1,3 +1,12 @@
+## 12 November 2026 — Hosted AI image-review routing fix (feature branch only)
+
+- Inspected draft PR #2 on branch `codex/release-readiness-20261111`, the AI routing and maintenance approval code, and the user's design-atlas ZIP. The archive contains diagrams/submission materials, not deployable backend source or a reviewed institutional AI taxonomy.
+- Fixed a mismatch: `AiProviders.SelectedProvider(auto, hasApprovedImage:true)` routes to OpenRouter, but `MaintenanceService` had required the literal `AI:Provider=openrouter` to expose/accept a reviewed image. Both now use `AiProviders.CanReviewImage`, which requires a configured provider, explicit non-sensitive image approval and an image-capable route.
+- Added a fail-closed provider guard so direct calls to `Assess` with an image reject unapproved images before reserving budget or contacting an external provider. Added isolated mocked-provider unit cases for auto, openrouter, NVIDIA, disabled images, disabled general inference and missing NVIDIA daily budget.
+- Added a synthetic-only smoke-test procedure in `docs/HOSTED_AI_MODELS_2026-11-11.md`. Example taxonomies are *not* university-approved classifications, and no provider/image privacy gate was flipped on the live host.
+- Evidence: GitHub commits `a7b5b1a`, `9d382385`, `62a1dbe` on the draft branch; GitHub CI run [43120917022](https://github.com/MohamedTamer007/smart-campus/actions/runs/43120917022) was **in progress at the time of this note**. This local workspace has no .NET SDK; no local `dotnet build`/`dotnet test` was executed, and no real NVIDIA/OpenRouter request was made.
+- Live hosting was not mutated: no API key was read, no production data was transferred, no database migration, web deployment, PR merge, calibration approval or paid resource was performed. Owner reported that `/health/live` and `/health/ready` returned successful JSON, which proves only basic API/DB readiness, not external AI acceptance.
+
 ## 11 November 2026 — SnapDeploy live checks and release gates
 
 ### Follow-up audit — 11 November 2026
