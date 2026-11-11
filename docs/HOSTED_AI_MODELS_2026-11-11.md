@@ -46,6 +46,60 @@ The Nemotron embedding model is trained/evaluated mostly for document-image retr
 
 The `provider.data_collection=deny` routing parameter is included in the outgoing request to avoid opt-in data collection, but **does not override a free provider's own published logging policy**. Providers that cannot satisfy the restriction may reject the request. Do not bypass the safety gate to make a free model accept private photos.
 
+## Synthetic-only maintenance AI smoke-test plan
+
+This is a **procedure, not a passed live test**. Neither `/health/live` nor
+`/health/ready` makes an AI-provider request. Never run this against real
+student reports or the existing production database on MonsterASP.NET Free.
+
+1. Use a separate, non-personal-data evaluation database and storage project,
+   approved synthetic staff/test accounts, and the non-production feature build.
+   Confirm that the two server-only API keys exist in the host's private
+   environment settings; never copy their values into screenshots or GitHub.
+2. Have the owner/staff reviewer approve a maintenance classification taxonomy.
+   The following is an **illustrative fictional test taxonomy only**, not an
+   authorized university classification:
+
+   ```ini
+   # Synthetic-only example; requires explicit operator permission before activation
+   AI__Provider=auto
+   AI__AllowNonSensitiveInference=true
+   AI__AllowNonSensitiveImages=false
+   AI__FaultTypes__0=plumbing
+   AI__FaultTypes__1=electrical
+   AI__FaultTypes__2=hvac
+   AI__Priorities__0=low
+   AI__Priorities__1=medium
+   AI__Priorities__2=high
+   AI__Risks__0=low
+   AI__Risks__1=medium
+   AI__Risks__2=high
+   ```
+
+   For this synthetic-only test, retain an explicit *positive* daily and
+   per-minute budget for both OpenRouter and NVIDIA. A NVIDIA daily limit of
+   `0` makes `AI:Provider=auto` unavailable even when the key is present.
+3. Have an authorized synthetic student submit a **text-only fictional**
+   maintenance report and an authorized scoped staff member review it, confirm
+   it is non-sensitive, and select text-only AI review. The asynchronous job
+   should route to NVIDIA `openai/gpt-oss-20b`, and a completed suggestion
+   must remain distinct from staff's actual operational decision.
+4. Observe the job/assessment state through the authorized API and worker
+   operations. A quota, provider failure or malformed response is a failed
+   acceptance test; do not call a pending/unavailable result a success.
+5. **Keep image inference disabled** until a separate review authorizes the
+   exact synthetic image and provider transfer. In the source code,
+   `AI:Provider=auto` routes staff-approved images to OpenRouter, and the
+   `AI:AllowNonSensitiveImages` gate prevents images being forwarded otherwise.
+6. Hosted lost/found embeddings require their *own* provider compatibility
+   tests, externally approved data processing and a separately measured
+   `Search:MinimumScore`/calibration approval. Text analysis success does not
+   enable or validate retrieval.
+
+`AI__OpenRouterKey` and `AI__NvidiaKey` are host environment variable names,
+not values to commit to any tracked file. The code change is not automatically
+published by a branch push.
+
 ## Sources
 - https://openrouter.ai/nvidia/nemotron-3.5-embed-8b:free
 - https://openrouter.ai/docs/api/api-reference/embeddings/submit-an-embedding-request
