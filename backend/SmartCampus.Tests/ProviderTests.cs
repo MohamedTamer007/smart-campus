@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using SmartCampus.Domain;
 using SmartCampus.Infrastructure;
@@ -20,11 +21,16 @@ public sealed class ProviderTests
     private sealed class ProviderBoundary(HttpStatusCode status, string body) : HttpMessageHandler, IHttpClientFactory
     {
         public int Requests { get; private set; }
+        public string? Model { get; private set; }
+        public Uri? Destination { get; private set; }
         public HttpClient CreateClient(string name) => new(this, false);
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests++;
-            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+            Destination = request.RequestUri;
+            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+            Model = payload.RootElement.GetProperty("model").GetString();
+            return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
         }
     }
     private static IConfiguration Config() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
@@ -53,6 +59,41 @@ public sealed class ProviderTests
         Assert.Equal("plumbing", suggestion.Type);
         Assert.Equal("urgent", suggestion.Priority);
         Assert.Equal("high", suggestion.Risk);
+    }
+
+    [Fact]
+    public async Task Auto_routes_reviewed_text_to_Nvidia_GPT_OSS_without_image()
+    {
+        var config = AutoConfig();
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, ValidEnvelope);
+        await new AiProviders(provider, config, new AvailableTestBudget()).Assess("Synthetic leak", CancellationToken.None);
+        Assert.Equal("openai/gpt-oss-20b", provider.Model);
+        Assert.Equal("https://integrate.api.nvidia.com/v1/chat/completions", provider.Destination!.ToString());
+        Assert.True(AiProviders.Configured(config));
+    }
+
+    [Fact]
+    public async Task Auto_routes_reviewed_image_to_OpenRouter_Super_VL()
+    {
+        var config = AutoConfig();
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, ValidEnvelope);
+        await new AiProviders(provider, config, new AvailableTestBudget())
+            .Assess("Synthetic broken pipe", CancellationToken.None, [0xff, 0xd8, 0xff, 0xd9]);
+        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", provider.Model);
+        Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
+    }
+
+    private const string ValidEnvelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\\"type\\":\\"plumbing\\",\\"priority\\":\\"urgent\\",\\"risk\\":\\"high\\",\\"explanation\\":\\"Synthetic\\"]"}}]}""";
+
+    private static IConfiguration AutoConfig()
+    {
+        var settings = Config().AsEnumerable().ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        settings["AI:Provider"] = "auto";
+        settings["AI:NvidiaKey"] = "synthetic-nvidia-test-key";
+        settings["AI:NvidiaDailyRequestLimit"] = "3";
+        settings["AI:NvidiaRequestsPerMinute"] = "5";
+        settings["AI:AllowNonSensitiveImages"] = "true";
+        return new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
     }
 
     [Fact]
