@@ -15,7 +15,7 @@ namespace SmartCampus.Tests;
 /// <summary>Never sends real people, campus photos or credentials to a hosted AI vendor.</summary>
 public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
-    private sealed class SyntheticBoundary(IConfiguration config) : HttpMessageHandler, IHttpClientFactory
+    private sealed class SyntheticBoundary : HttpMessageHandler, IHttpClientFactory
     {
         public int Calls { get; private set; }
         public HttpClient CreateClient(string name)
@@ -80,7 +80,7 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
             ["AI:OpenRouterRequestsPerMinute"] = "20"
         }).Build();
 
-        using var boundary = new SyntheticBoundary(config);
+        using var boundary = new SyntheticBoundary();
         var remote = new RemoteEmbeddings(boundary, config, new NoOpBudget());
         var retrieval = new RetrievalService(db, access, boundary, config,
             scope.ServiceProvider.GetRequiredService<PrivateMedia>(), remote);
