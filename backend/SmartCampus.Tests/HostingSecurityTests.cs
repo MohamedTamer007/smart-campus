@@ -123,6 +123,37 @@ public sealed class HostingSecurityTests
                 new ConfigurationBuilder().AddInMemoryCollection(values).Build())).Message);
     }
 
+    [Fact]
+    public void MonsterAsp_private_key_ring_requires_explicit_host_platform()
+    {
+        var values = Config().AsEnumerable().ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        values["DataProtection:Store"] = "monsterasp-private";
+        values["DataProtection:CertificatePath"] = null;
+        values["DataProtection:CertificateBase64"] = null;
+        values["DataProtection:CertificatePassword"] = null;
+        values["DataProtection:Directory"] = null;
+        values["Hosting:Platform"] = "monsterasp";
+        HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+
+        values["Hosting:Platform"] = "snapdeploy";
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build()));
+        Assert.Contains("Hosting:Platform", failure.Message);
+        Assert.DoesNotContain("not-a-real-secret", failure.Message);
+    }
+
+    [Fact]
+    public void MonsterAsp_private_key_ring_is_not_permitted_without_Windows_host()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Hosting:Platform"] = "monsterasp",
+            ["DataProtection:Store"] = "monsterasp-private"
+        }).Build();
+        Assert.Throws<InvalidOperationException>(() => HostingSecurity.ConfigureKeys(
+            new ServiceCollection(), configuration, development: false));
+    }
+
     [DatabaseFact]
     public void Encrypted_database_keys_survive_restart_without_local_volume()
     {
