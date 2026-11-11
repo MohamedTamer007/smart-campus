@@ -65,6 +65,17 @@ public sealed class OptionalEmailProviderTests
         Assert.Empty(boundary.Calls);
     }
 
+    [Fact]
+    public async Task Brevo_rejects_non_UUID_job_keys_before_network()
+    {
+        using var boundary = new Boundary(HttpStatusCode.Created, "{}");
+        var error = await Assert.ThrowsAsync<RuleException>(() =>
+            new BrevoEmailTransport(boundary, BrevoConfig())
+                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "not-a-guid"));
+        Assert.Equal("invalid_email_idempotency", error.Code);
+        Assert.Empty(boundary.Calls);
+    }
+
     [Theory]
     [InlineData(429, "email_rate_limited")]
     [InlineData(422, "email_rejected")]
@@ -84,7 +95,7 @@ public sealed class OptionalEmailProviderTests
     {
         using var boundary = new Boundary(HttpStatusCode.Created, """{"messageId":"<synthetic-brevo-message@relay.test>"}""");
         const string link = "https://campus.example.test/reset/secret-test-token";
-        const string idempotency = "smart-campus/email/synthetic-job";
+        const string idempotency = "smart-campus/email/11111111111111111111111111111111";
         var id = await new BrevoEmailTransport(boundary, BrevoConfig())
             .Send("student@o6u.edu.eg", "Reset", link, idempotency);
         Assert.Equal("<synthetic-brevo-message@relay.test>", id);
@@ -97,7 +108,7 @@ public sealed class OptionalEmailProviderTests
         Assert.Equal("student@o6u.edu.eg", data.RootElement.GetProperty("to")[0].GetProperty("email").GetString());
         Assert.Equal("Reset", data.RootElement.GetProperty("subject").GetString());
         Assert.Equal(link, data.RootElement.GetProperty("textContent").GetString());
-        Assert.Equal(idempotency, data.RootElement.GetProperty("headers").GetProperty("IdempotencyKey").GetString());
+        Assert.Equal("11111111-1111-1111-1111-111111111111", data.RootElement.GetProperty("headers").GetProperty("IdempotencyKey").GetString());
     }
 
     [Theory]
@@ -110,7 +121,7 @@ public sealed class OptionalEmailProviderTests
         using var boundary = new Boundary(HttpStatusCode.Created, "{}");
         var error = await Assert.ThrowsAsync<RuleException>(() =>
             new BrevoEmailTransport(boundary, BrevoConfig(key, sender))
-                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "synthetic-key"));
+                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "11111111111111111111111111111111"));
         Assert.Equal("email_not_configured", error.Code);
         Assert.Empty(boundary.Calls);
     }
@@ -125,7 +136,7 @@ public sealed class OptionalEmailProviderTests
         using var boundary = new Boundary((HttpStatusCode)status, "secret-token-in-provider-error");
         var error = await Assert.ThrowsAsync<RuleException>(() =>
             new BrevoEmailTransport(boundary, BrevoConfig())
-                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "synthetic-key"));
+                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "11111111111111111111111111111111"));
         Assert.Equal(expected, error.Code);
         Assert.DoesNotContain("secret-token-in-provider-error", error.ToString());
     }
@@ -140,7 +151,7 @@ public sealed class OptionalEmailProviderTests
         using var boundary = new Boundary(HttpStatusCode.Created, body);
         var error = await Assert.ThrowsAsync<RuleException>(() =>
             new BrevoEmailTransport(boundary, BrevoConfig())
-                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "synthetic-key"));
+                .Send("student@o6u.edu.eg", "Verify", "https://example.test/verify", "11111111111111111111111111111111"));
         Assert.Equal("invalid_email_response", error.Code);
     }
 }
