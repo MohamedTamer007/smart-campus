@@ -53,6 +53,7 @@ builder.Services.AddSingleton<ReleasePolicy>();
 builder.Services.AddScoped<Events>();
 builder.Services.AddScoped<EmailSender>();
 builder.Services.AddScoped<ResendEmailTransport>();
+builder.Services.AddScoped<EmailJsEmailTransport>();
 builder.Services.AddScoped<PrivateMedia>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped<LostFoundService>();
