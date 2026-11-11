@@ -35,6 +35,6 @@ public sealed class MaintenanceAssessmentProcessor(CampusDb db, PrivateMedia med
         assessment.Priority = suggestion.Priority;
         assessment.Risk = suggestion.Risk;
         assessment.Explanation = suggestion.Explanation;
-        assessment.Model = config["AI:Provider"] == "nvidia" ? "openai/gpt-oss-20b" : "nvidia/nemotron-3.5-super-vl:free";
+        assessment.Model = AiProviders.SelectedModel(config, image is not null);
     }
 }
