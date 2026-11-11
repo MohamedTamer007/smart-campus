@@ -50,10 +50,9 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
             codec.Info.Width <= 0 || codec.Info.Height <= 0 || (long)codec.Info.Width * codec.Info.Height > 16_000_000)
             throw new RuleException("invalid_upload");
         using var bitmap = SKBitmap.Decode(data) ?? throw new RuleException("invalid_upload");
-        var scale = Math.Min(1, 800d / Math.Max(bitmap.Width, bitmap.Height));
-        using var resized = scale < 1 ? bitmap.Resize(new SKImageInfo(
-            Math.Max(1, (int)(bitmap.Width * scale)), Math.Max(1, (int)(bitmap.Height * scale))), SKFilterQuality.Medium) : null;
-        using var imageObject = SKImage.FromBitmap(resized ?? bitmap);
+        // Keep the codec-decoded pixels, dropping original file metadata.
+        // Reject oversized outgoing JPEGs instead of silently sending large files.
+        using var imageObject = SKImage.FromBitmap(bitmap);
         using var encoded = imageObject.Encode(SKEncodedImageFormat.Jpeg, 80);
         if (encoded is null || encoded.Size > 2_000_000) throw new RuleException("invalid_upload");
         return Embed("data:image/jpeg;base64," + Convert.ToBase64String(encoded.ToArray()), "image", "passage", cancellation);
