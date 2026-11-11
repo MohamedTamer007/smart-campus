@@ -75,6 +75,7 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
             ["Search:ExternalImagesApproved"] = "false",
             ["Search:MinimumScore"] = "0.9",
             ["Search:CalibrationApproval"] = "TEST ONLY — not a real score approval",
+            ["Search:CalibrationRevision"] = "nemotron35-8b-openrouter-1024-v1",
             ["AI:OpenRouterKey"] = "synthetic-not-real-key",
             ["AI:OpenRouterDailyRequestLimit"] = "50",
             ["AI:OpenRouterRequestsPerMinute"] = "20"
