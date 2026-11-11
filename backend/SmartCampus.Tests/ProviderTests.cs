@@ -83,6 +83,48 @@ public sealed class ProviderTests
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
     }
 
+
+    [Theory]
+    [InlineData("auto", true, true)]
+    [InlineData("openrouter", true, true)]
+    [InlineData("nvidia", true, false)]
+    [InlineData("auto", false, false)]
+    [InlineData("openrouter", false, false)]
+    public void Staff_image_review_gate_matches_selected_provider_and_explicit_image_approval(
+        string selectedProvider, bool imagesApproved, bool expected)
+    {
+        var settings = AutoConfig().AsEnumerable().ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        settings["AI:Provider"] = selectedProvider;
+        settings["AI:AllowNonSensitiveImages"] = imagesApproved.ToString();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        Assert.Equal(expected, AiProviders.CanReviewImage(config));
+    }
+
+    [Fact]
+    public void Image_review_does_not_bypass_general_inference_or_nvidia_quota_gates()
+    {
+        var settings = AutoConfig().AsEnumerable().ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        settings["AI:AllowNonSensitiveInference"] = "false";
+        Assert.False(AiProviders.CanReviewImage(new ConfigurationBuilder().AddInMemoryCollection(settings).Build()));
+
+        settings["AI:AllowNonSensitiveInference"] = "true";
+        settings["AI:NvidiaDailyRequestLimit"] = "0";
+        Assert.False(AiProviders.CanReviewImage(new ConfigurationBuilder().AddInMemoryCollection(settings).Build()));
+    }
+
+    [Fact]
+    public async Task Unapproved_image_is_rejected_before_an_external_provider_request()
+    {
+        var settings = AutoConfig().AsEnumerable().ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+        settings["AI:AllowNonSensitiveImages"] = "false";
+        var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, ValidEnvelope);
+        var error = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, config, new AvailableTestBudget())
+            .Assess("TEST ONLY pipe", CancellationToken.None, [0xff, 0xd8, 0xff, 0xd9]));
+        Assert.Equal("ai_images_not_permitted", error.Code);
+        Assert.Equal(0, provider.Requests);
+    }
+
     private const string ValidEnvelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
 
     private static IConfiguration AutoConfig()
