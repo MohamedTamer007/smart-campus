@@ -18,6 +18,46 @@ public sealed class ReleaseTests(CampusFixture campus) : IClassFixture<CampusFix
             config.AddInMemoryCollection(settings);
         }));
 
+    [Theory]
+    [InlineData("student@o6u.edu.eg", true)]
+    [InlineData("STUDENT@O6U.EDU.EG", true)]
+    [InlineData("student@gmail.com", false)]
+    [InlineData("student@o6u.edu.eg.attacker.example", false)]
+    public void University_mode_allows_only_the_exact_campus_email_domain(string email, bool expected)
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Release:Mode"] = "university"
+        }).Build();
+        Assert.Equal(expected, new ReleasePolicy(config).Allows(email));
+    }
+
+    [DatabaseFact]
+    public async Task University_mode_registers_any_campus_email_and_requires_confirmation_before_login()
+    {
+        using var host = campus.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Release:Mode"] = "university",
+                ["Release:AllowedEmails:0"] = null,
+                ["Release:UniversityApproval"] = null
+            })));
+        using var client = host.CreateClient();
+        await CampusFixture.Csrf(client);
+        var email = "any-campus-" + Guid.NewGuid().ToString("N") + "@o6u.edu.eg";
+        var response = await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/register", new {
+            name = "Synthetic new campus student", email, password = campus.Password, confirmation = campus.Password
+        }));
+        Assert.True(response.GetProperty("verificationRequired").GetBoolean());
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = campus.Password });
+        Assert.Equal(HttpStatusCode.Forbidden, login.StatusCode);
+        Assert.Contains("unverified", await login.Content.ReadAsStringAsync());
+
+        var externalEmail = "external-" + Guid.NewGuid().ToString("N") + "@other.example";
+        var rejected = await client.PostAsJsonAsync("/api/v1/auth/register", new {
+            name = "Not a campus student", email = externalEmail, password = campus.Password, confirmation = campus.Password
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+    }
+
     [DatabaseFact]
     public async Task Controlled_release_blocks_unlisted_registration_and_login()
     {
