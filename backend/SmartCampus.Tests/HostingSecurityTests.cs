@@ -53,6 +53,47 @@ public sealed class HostingSecurityTests
     }
 
     [Fact]
+    public void Brevo_requires_private_api_key_and_explicitly_confirmed_sender()
+    {
+        var values = Config().AsEnumerable()
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        values["Email:Provider"] = "brevo";
+        values["Email:BrevoKey"] = "synthetic-brevo-key";
+        values["Email:BrevoSenderVerified"] = "true";
+        HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+
+        values["Email:BrevoKey"] = null;
+        Assert.Contains("Email:BrevoKey", Assert.Throws<InvalidOperationException>(() =>
+            HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build())).Message);
+        values["Email:BrevoKey"] = "synthetic-brevo-key";
+        values["Email:BrevoSenderVerified"] = "false";
+        Assert.Contains("Email:BrevoSenderVerified", Assert.Throws<InvalidOperationException>(() =>
+            HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build())).Message);
+    }
+
+    [Fact]
+    public void EmailJS_requires_private_credentials_and_explicit_trial_approval()
+    {
+        var values = Config().AsEnumerable()
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        values["Email:Provider"] = "emailjs";
+        values["Email:EmailJsServiceId"] = "test-service";
+        values["Email:EmailJsTemplateId"] = "test-template";
+        values["Email:EmailJsPublicKey"] = "test-public";
+        values["Email:EmailJsPrivateKey"] = "test-private";
+        values["Email:EmailJsTrialApproved"] = "true";
+        HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+
+        values["Email:EmailJsPrivateKey"] = null;
+        Assert.Contains("Email:EmailJsPrivateKey", Assert.Throws<InvalidOperationException>(() =>
+            HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build())).Message);
+        values["Email:EmailJsPrivateKey"] = "test-private";
+        values["Email:EmailJsTrialApproved"] = null;
+        Assert.Contains("Email:EmailJsTrialApproved", Assert.Throws<InvalidOperationException>(() =>
+            HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build())).Message);
+    }
+
+    [Fact]
     public void Open_university_release_requires_explicit_operational_approval_reference()
     {
         var failure = Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(Config("Release:Mode", "open")));
