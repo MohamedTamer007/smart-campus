@@ -11,10 +11,11 @@ namespace SmartCampus.Infrastructure;
 
 public sealed record EmbeddingResponse(string Model, string Revision, int Dimension, float[] Vector);
 
-public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFactory clients, IConfiguration config, PrivateMedia media)
+public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFactory clients, IConfiguration config, PrivateMedia media, RemoteEmbeddings remote)
 {
     public const string Model = "google/siglip2-base-patch16-224";
     public const string Revision = "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2";
+    private bool Hosted => config["Search:Provider"] == "hosted";
     public static double? ApprovedThreshold(IConfiguration configuration)
     {
         var threshold = configuration.GetValue<double?>("Search:MinimumScore");
@@ -24,6 +25,8 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
     {
         var actor = await access.Current();
         Rules.Required(description);
+        if (Hosted && !RemoteEmbeddings.Configured(config))
+            throw new RuleException("search_provider_not_configured", 503);
         var threshold = ApprovedThreshold(config);
         if (threshold is null)
             throw new RuleException("search_calibration_required", 503);
@@ -44,20 +47,22 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         var candidates = await Candidates(actor, text, image, threshold.Value);
         foreach (var id in candidates) db.SearchGrants.Add(new() { UserId = actor.Id, ItemId = id, ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15) });
         await db.SaveChangesAsync();
-        return new { itemIds = candidates, rankingVersion = "siglip2-v1", calibration = config["Search:CalibrationApproval"] };
+        return new { itemIds = candidates, rankingVersion = Hosted ? RemoteEmbeddings.Revision(config) : "siglip2-v1", calibration = config["Search:CalibrationApproval"] };
     }
 
     public async Task Index(Guid id)
     {
         var found = await db.Items.FindAsync(id) ?? throw new RuleException("not_found", 404);
-        var description = await EmbedText(found.Description);
+        if (Hosted && !RemoteEmbeddings.Configured(config))
+            throw new RuleException("search_provider_not_configured", 503);
+        var description = Hosted ? await remote.Passage(found.Description) : await EmbedText(found.Description);
         await Store(found.Id, found.Id, "description", description);
         var images = await db.Media.Where(m => m.ItemId == id).ToArrayAsync();
         foreach (var image in images) await Store(id, image.Id, "image", await EmbedImage(await media.Read(image)));
     }
 
-    public Task<EmbeddingResponse> EmbedText(string text) => Embed("embed/text", JsonContent.Create(new { text = Rules.Required(text) }));
-    private Task<EmbeddingResponse> EmbedImage(byte[] image) => Embed("embed/image", new ByteArrayContent(image));
+    public Task<EmbeddingResponse> EmbedText(string text) => Hosted ? remote.Query(text) : Embed("embed/text", JsonContent.Create(new { text = Rules.Required(text) }));
+    private Task<EmbeddingResponse> EmbedImage(byte[] image) => Hosted ? remote.Image(image) : Embed("embed/image", new ByteArrayContent(image));
     private async Task<EmbeddingResponse> Embed(string route, HttpContent content)
     {
         using (content)
@@ -84,6 +89,8 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
 
     private Task Store(Guid id, Guid source, string kind, EmbeddingResponse embedding)
     {
+        if (Hosted) RemoteEmbeddings.Validate(embedding, config);
+        else Validate(embedding);
         var vector = Vector(embedding.Vector);
         return db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO smart_campus.\"Embeddings\" (\"ItemId\",\"SourceId\",\"Kind\",\"Model\",\"Revision\",\"Dimension\",\"Vector\") VALUES ({id},{source},{kind},{embedding.Model},{embedding.Revision},{embedding.Dimension},CAST({vector} AS vector)) ON CONFLICT (\"SourceId\",\"Revision\") DO UPDATE SET \"Vector\"=EXCLUDED.\"Vector\",\"Dimension\"=EXCLUDED.\"Dimension\"");
     }
@@ -110,7 +117,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         command.Parameters.AddWithValue("text", Vector(text.Vector));
         command.Parameters.AddWithValue("image", Vector((image ?? text).Vector));
         command.Parameters.AddWithValue("hasimage", image is not null);
-        command.Parameters.AddWithValue("revision", Revision);
+        command.Parameters.AddWithValue("revision", Hosted ? RemoteEmbeddings.Revision(config) : Revision);
         command.Parameters.AddWithValue("dimension", text.Dimension);
         command.Parameters.AddWithValue("user", actor.Id);
         command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
