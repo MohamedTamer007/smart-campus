@@ -25,6 +25,13 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
                 (configuration.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0);
     }
 
+    // An approved image must be routed to the image-capable provider, and all
+    // privacy, quota, key, and taxonomy gates must be satisfied first.
+    public static bool CanReviewImage(IConfiguration configuration) =>
+        Configured(configuration) &&
+        configuration.GetValue<bool>("AI:AllowNonSensitiveImages") &&
+        SelectedProvider(configuration, hasApprovedImage: true) == "openrouter";
+
     public static string SelectedProvider(IConfiguration config, bool hasApprovedImage)
     {
         var selection = config["AI:Provider"] ?? "openrouter";
@@ -37,6 +44,7 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
     public async Task<AiSuggestion> Assess(string description, CancellationToken cancellation, byte[]? image = null)
     {
         if (!config.GetValue<bool>("AI:AllowNonSensitiveInference")) throw new RuleException("ai_not_configured", 503);
+        if (image is not null && !CanReviewImage(config)) throw new RuleException("ai_images_not_permitted", 503);
         var taxonomy = config.GetSection("AI:FaultTypes").Get<string[]>() ?? [];
         var priorities = config.GetSection("AI:Priorities").Get<string[]>() ?? [];
         var risks = config.GetSection("AI:Risks").Get<string[]>() ?? [];
