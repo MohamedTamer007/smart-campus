@@ -9,7 +9,7 @@ using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
 
-public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend, ReleasePolicy release)
+public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend, EmailJsEmailTransport emailJs, ReleasePolicy release)
 {
     private readonly IDataProtector protector = protection.CreateProtector("SmartCampus.OutboundEmail.v1");
     private sealed record EmailPayload(string Recipient, string Subject, string Link);
@@ -47,6 +47,11 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         if (config["Email:Provider"] == "resend" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
         {
             return await resend.Send(recipient, subject, link, idempotencyKey ?? "smart-campus/email/" + Guid.NewGuid().ToString("N"));
+        }
+        if (config["Email:Provider"] == "emailjs" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
+        {
+            await emailJs.Send(recipient, subject, link);
+            return null; // EmailJS returns acceptance only, not a provider message ID.
         }
         var sender = config["Email:From"];
         if (string.IsNullOrWhiteSpace(sender))
