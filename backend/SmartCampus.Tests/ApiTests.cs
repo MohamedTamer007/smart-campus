@@ -223,20 +223,71 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         var parameters = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(link).Query);
         var verification = new { userId = parameters["userId"].ToString(), token = parameters["token"].ToString() };
         await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/verify", verification));
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/auth/verify", verification)).StatusCode);
+        var repeatedVerification = await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/verify", verification));
+        Assert.True(repeatedVerification.GetProperty("alreadyVerified").GetBoolean());
         var login = await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = campus.Password }));
         Assert.Equal("user", login.GetProperty("role").GetString());
         await CampusFixture.Csrf(client);
         await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/recover", new { email }));
-        link = await MailLink(email, "/reset/");
+        link = await MailLink(email, "/reset?");
         var uri = new Uri(link);
-        var reset = new { userId = verification.userId, token = uri.AbsolutePath.Split('/').Last(), password = campus.Password + "changed", confirmation = campus.Password + "changed" };
+        Assert.Equal("/reset", uri.AbsolutePath);
+        var resetParameters = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        var reset = new { userId = resetParameters["userId"].ToString(), token = resetParameters["token"].ToString(), password = campus.Password + "changed", confirmation = campus.Password + "changed" };
         await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/reset", reset));
         await CampusFixture.Csrf(client);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/auth/reset", reset)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
         var unknown = await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/recover", new { email = "nonexistent@o6u.edu.eg" }));
         Assert.True(unknown.GetProperty("accepted").GetBoolean());
+    }
+
+    [DatabaseFact]
+    public async Task Deleting_own_account_removes_identity_and_sessions_but_preserves_anonymous_report_history()
+    {
+        var accountId = Guid.NewGuid();
+        var address = "delete-" + accountId.ToString("N") + "@o6u.edu.eg";
+        var reportId = Guid.NewGuid();
+        using (var setup = campus.Services.CreateScope())
+        {
+            var users = setup.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<CampusUser>>();
+            var result = await users.CreateAsync(new CampusUser {
+                Id = accountId, UserName = address, Email = address,
+                EmailConfirmed = true, DisplayName = "Delete me" }, campus.Password);
+            Assert.True(result.Succeeded);
+            var database = setup.ServiceProvider.GetRequiredService<CampusDb>();
+            database.Reports.Add(new SmartCampus.Domain.MaintenanceReport {
+                Id = reportId, ReporterId = accountId,
+                FacultyId = campus.Faculty, BuildingId = campus.Building, FloorId = campus.Floor,
+                DepartmentId = campus.Department, Description = "Synthetic history"
+            });
+            await database.SaveChangesAsync();
+        }
+
+        using var client = campus.CreateClient();
+        await CampusFixture.Csrf(client);
+        await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/login", new { email = address, password = campus.Password }));
+        await CampusFixture.Csrf(client);
+        using var wrongRequest = new HttpRequestMessage(HttpMethod.Delete, "/api/v1/auth/account") {
+            Content = JsonContent.Create(new { password = "wrong-password" })
+        };
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(wrongRequest)).StatusCode);
+        using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, "/api/v1/auth/account") {
+            Content = JsonContent.Create(new { password = campus.Password })
+        };
+        Assert.Equal(HttpStatusCode.NoContent, (await client.SendAsync(deleteRequest)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
+
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        var deleted = await db.Users.SingleAsync(x => x.Id == accountId);
+        Assert.False(deleted.Active);
+        Assert.Null(deleted.Email);
+        Assert.Null(deleted.PasswordHash);
+        Assert.Equal("Deleted account", deleted.DisplayName);
+        Assert.False(await db.Sessions.AnyAsync(x => x.UserId == accountId));
+        Assert.True(await db.Reports.AnyAsync(x => x.Id == reportId && x.ReporterId == accountId));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/auth/me")).StatusCode);
     }
 
     [DatabaseFact]
