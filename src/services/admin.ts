@@ -61,7 +61,7 @@ export interface OperationsSnapshot {
   workingSetBytes: number;
   jobs: { kind: string; state: string; count: number; maximumAttempts: number }[];
   quotas: { provider: string; used: number; dailyLimit: number }[];
-  worker: "available" | "unavailable";
+  worker: "available" | "unavailable" | "hosted_configured" | "hosted_blocked";
   calibrationApproved: boolean;
 }
 export const operations = () => api<OperationsSnapshot>("/admin/operations");
