@@ -1,6 +1,8 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using System.Text.Json;
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -22,12 +24,36 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         await db.SaveChangesAsync();
     }
 
+    public async Task ForgetPendingFor(string recipient)
+    {
+        // Avoid sending reset/verification links after account deletion.
+        var queued = await db.OutboundEmails.Where(x => x.SentAt == null && x.ProtectedPayload != "").ToArrayAsync();
+        foreach (var email in queued)
+        {
+            try
+            {
+                var payload = JsonSerializer.Deserialize<EmailPayload>(protector.Unprotect(email.ProtectedPayload));
+                if (!string.Equals(payload?.Recipient, recipient, StringComparison.OrdinalIgnoreCase)) continue;
+                email.ProtectedPayload = "";
+                email.FailureCode = "account_deleted";
+            }
+            catch (CryptographicException) { /* An unreadable old payload is not exposed. */ }
+            catch (JsonException) { /* A malformed payload is not exposed. */ }
+        }
+    }
+
     public async Task Deliver(Guid id)
     {
         var email = await db.OutboundEmails.FindAsync(id) ?? throw new RuleException("email_unavailable", 503);
-        if (email.SentAt.HasValue) return;
+        if (email.SentAt.HasValue || email.FailureCode == "account_deleted") return;
         var payload = JsonSerializer.Deserialize<EmailPayload>(protector.Unprotect(email.ProtectedPayload))!;
         release.Require(payload.Recipient);
+        if (!await db.Users.AnyAsync(u => u.Email == payload.Recipient && u.Active))
+        {
+            email.ProtectedPayload = "";
+            email.FailureCode = "account_deleted";
+            return;
+        }
         try
         {
             email.ProviderMessageId = await Send(payload.Recipient, payload.Subject, payload.Link, "smart-campus/email/" + email.Id.ToString("N"));
