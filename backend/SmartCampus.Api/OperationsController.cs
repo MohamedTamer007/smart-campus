@@ -27,8 +27,10 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             new ProviderQuotaResponse("openrouter", used.GetValueOrDefault("openrouter"), config.GetValue("AI:OpenRouterDailyRequestLimit", 50)),
             new ProviderQuotaResponse("nvidia", used.GetValueOrDefault("nvidia"), config.GetValue("AI:NvidiaDailyRequestLimit", 0))
         };
-        var worker = "unavailable";
-        if (Uri.TryCreate(config["Search:WorkerUrl"] ?? "http://127.0.0.1:8123/", UriKind.Absolute, out var endpoint) && endpoint.IsLoopback && endpoint.Scheme == "http")
+        var worker = config["Search:Provider"] == "hosted"
+            ? RemoteEmbeddings.Configured(config) ? "hosted_configured" : "hosted_blocked"
+            : "unavailable";
+        if (config["Search:Provider"] != "hosted" && Uri.TryCreate(config["Search:WorkerUrl"] ?? "http://127.0.0.1:8123/", UriKind.Absolute, out var endpoint) && endpoint.IsLoopback && endpoint.Scheme == "http")
         {
             try
             {
