@@ -72,7 +72,7 @@ public static class HostingSecurity
         }
         else invalid.Add("Email:Provider");
         var releaseMode = config["Release:Mode"] ?? "controlled";
-        if (releaseMode is not ("controlled" or "open")) invalid.Add("Release:Mode");
+        if (releaseMode is not ("controlled" or "university" or "open")) invalid.Add("Release:Mode");
         if (releaseMode == "open" && string.IsNullOrWhiteSpace(config["Release:UniversityApproval"])) invalid.Add("Release:UniversityApproval");
         if (releaseMode == "controlled")
         {
