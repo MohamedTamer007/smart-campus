@@ -38,7 +38,8 @@ public sealed class BrevoEmailTransport(IHttpClientFactory clients, IConfigurati
             sender = new { name = string.IsNullOrWhiteSpace(mailbox.Name) ? "Smart Campus" : mailbox.Name, email = mailbox.Address },
             to = new[] { new { email = recipient } },
             subject,
-            textContent = link,
+            textContent = content.Text,
+            htmlContent = content.Html,
             // This key is already stable for a queued email. Brevo may use it
             // for correlating/retries, but it does not replace outbox deduplication.
             headers = new Dictionary<string, string> { ["IdempotencyKey"] = jobId.ToString("D") }
