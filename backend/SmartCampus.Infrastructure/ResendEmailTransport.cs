@@ -29,7 +29,8 @@ public sealed class ResendEmailTransport(IHttpClientFactory clients, IConfigurat
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         request.Headers.Add("Idempotency-Key", idempotencyKey);
-        request.Content = JsonContent.Create(new { from = sender, to = new[] { recipient }, subject, text = link });
+        var content = CampusEmailContent.Create(subject, link);
+        request.Content = JsonContent.Create(new { from = sender, to = new[] { recipient }, subject, text = content.Text, html = content.Html });
         using var client = clients.CreateClient("email");
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
