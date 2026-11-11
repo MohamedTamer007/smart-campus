@@ -107,7 +107,9 @@ public sealed class OptionalEmailProviderTests
         Assert.Equal("verify@example.test", data.RootElement.GetProperty("sender").GetProperty("email").GetString());
         Assert.Equal("student@o6u.edu.eg", data.RootElement.GetProperty("to")[0].GetProperty("email").GetString());
         Assert.Equal("Reset", data.RootElement.GetProperty("subject").GetString());
-        Assert.Equal(link, data.RootElement.GetProperty("textContent").GetString());
+        Assert.Contains(link, data.RootElement.GetProperty("textContent").GetString()!);
+        Assert.Contains(link, data.RootElement.GetProperty("htmlContent").GetString()!);
+        Assert.Contains("Smart Campus", data.RootElement.GetProperty("htmlContent").GetString()!);
         Assert.Equal("11111111-1111-1111-1111-111111111111", data.RootElement.GetProperty("headers").GetProperty("IdempotencyKey").GetString());
     }
 
