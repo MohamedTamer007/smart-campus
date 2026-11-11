@@ -13,13 +13,27 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
 {
     public static bool Configured(IConfiguration configuration)
     {
-        var provider = configuration["AI:Provider"] ?? "openrouter";
-        return (provider is "openrouter" or "nvidia") && configuration.GetValue<bool>("AI:AllowNonSensitiveInference") &&
-            !string.IsNullOrWhiteSpace(configuration[provider == "nvidia" ? "AI:NvidiaKey" : "AI:OpenRouterKey"]) &&
-            new[] { "FaultTypes", "Priorities", "Risks" }.All(key => (configuration.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0) &&
+        var selection = configuration["AI:Provider"] ?? "openrouter";
+        if (selection is not ("openrouter" or "nvidia" or "auto") ||
+            !configuration.GetValue<bool>("AI:AllowNonSensitiveInference"))
+            return false;
+        var required = selection == "auto" ? new[] { "openrouter", "nvidia" } : new[] { selection };
+        return required.All(provider => !string.IsNullOrWhiteSpace(configuration[provider == "nvidia" ? "AI:NvidiaKey" : "AI:OpenRouterKey"]) &&
             configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaDailyRequestLimit" : "OpenRouterDailyRequestLimit"), provider == "nvidia" ? 0 : 50) > 0 &&
-            configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaRequestsPerMinute" : "OpenRouterRequestsPerMinute"), provider == "nvidia" ? 5 : 20) > 0;
+            configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaRequestsPerMinute" : "OpenRouterRequestsPerMinute"), provider == "nvidia" ? 5 : 20) > 0) &&
+            new[] { "FaultTypes", "Priorities", "Risks" }.All(key =>
+                (configuration.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0);
     }
+
+    public static string SelectedProvider(IConfiguration config, bool hasApprovedImage)
+    {
+        var selection = config["AI:Provider"] ?? "openrouter";
+        return selection == "auto" ? hasApprovedImage ? "openrouter" : "nvidia" : selection;
+    }
+    public static string SelectedModel(IConfiguration config, bool hasApprovedImage) =>
+        SelectedProvider(config, hasApprovedImage) == "nvidia"
+            ? "openai/gpt-oss-20b" : "nvidia/nemotron-3.5-super-vl:free";
+
     public async Task<AiSuggestion> Assess(string description, CancellationToken cancellation, byte[]? image = null)
     {
         if (!config.GetValue<bool>("AI:AllowNonSensitiveInference")) throw new RuleException("ai_not_configured", 503);
@@ -27,14 +41,14 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
         var priorities = config.GetSection("AI:Priorities").Get<string[]>() ?? [];
         var risks = config.GetSection("AI:Risks").Get<string[]>() ?? [];
         if (taxonomy.Length == 0 || priorities.Length == 0 || risks.Length == 0) throw new RuleException("taxonomy_unavailable", 503);
-        var provider = config["AI:Provider"] ?? "openrouter";
+        var provider = SelectedProvider(config, image is not null);
         if (provider is not ("openrouter" or "nvidia")) throw new RuleException("ai_not_configured", 503);
         var nvidia = provider == "nvidia";
         var key = config[nvidia ? "AI:NvidiaKey" : "AI:OpenRouterKey"];
         if (string.IsNullOrEmpty(key)) throw new RuleException("ai_not_configured", 503);
         using var client = clients.CreateClient("inference");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
-        var model = nvidia ? "openai/gpt-oss-20b" : "nvidia/nemotron-3.5-super-vl:free";
+        var model = SelectedModel(config, image is not null);
         object userContent = Rules.Required(description);
         if (!nvidia && image is not null && config.GetValue<bool>("AI:AllowNonSensitiveImages"))
             userContent = new object[] { new { type = "text", text = description },
