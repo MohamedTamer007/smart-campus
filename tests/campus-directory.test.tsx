@@ -36,9 +36,9 @@ it("adds an institution-approved receiving department without creating users or 
   const create = vi.spyOn(campusDirectory, "createDepartment").mockResolvedValue({ id: "new-security" });
   renderAdmin();
   await screen.findByText("No departments have been configured yet.");
-  await userEvent.type(screen.getAllByLabelText("Department code")[0], "security");
-  await userEvent.type(screen.getAllByLabelText("Arabic name")[0], "الأمن");
-  await userEvent.type(screen.getAllByLabelText("English name")[0], "Security");
+  await userEvent.type(screen.getAllByLabelText(/^Department code/)[0], "security");
+  await userEvent.type(screen.getAllByLabelText(/^Arabic name/)[0], "الأمن");
+  await userEvent.type(screen.getAllByLabelText(/^English name/)[0], "Security");
   await userEvent.click(screen.getByLabelText("Authorized to receive found items"));
   await userEvent.click(screen.getByRole("button", { name: "Add department" }));
   await waitFor(() => expect(create).toHaveBeenCalledWith({
@@ -54,9 +54,9 @@ it("assigns an official maintenance department to the top-level faculty route", 
   const create = vi.spyOn(campusDirectory, "createLocation").mockResolvedValue({ id: "faculty-id" });
   renderAdmin();
   await screen.findByRole("option", { name: "Maintenance" });
-  await userEvent.type(screen.getAllByLabelText("Arabic name")[1], "كلية");
-  await userEvent.type(screen.getAllByLabelText("English name")[1], "Faculty");
-  await userEvent.selectOptions(screen.getByLabelText("Responsible maintenance department"), "maintenance-id");
+  await userEvent.type(screen.getAllByLabelText(/^Arabic name/)[1], "كلية");
+  await userEvent.type(screen.getAllByLabelText(/^English name/)[1], "Faculty");
+  await userEvent.selectOptions(screen.getByLabelText(/^Responsible maintenance department/), "maintenance-id");
   await userEvent.click(screen.getByRole("button", { name: "Add location" }));
   await waitFor(() => expect(create).toHaveBeenCalledWith({
     kind: "faculty", parentId: null, ar: "كلية", en: "Faculty",
@@ -71,10 +71,10 @@ it("creates a building under the selected faculty without inventing a department
   const create = vi.spyOn(campusDirectory, "createLocation").mockResolvedValue({ id: "building-id" });
   renderAdmin();
   await screen.findByText("Faculty");
-  await userEvent.selectOptions(screen.getByLabelText("Location kind"), "building");
-  await userEvent.selectOptions(screen.getByLabelText("Faculty or facility"), "faculty-id");
-  await userEvent.type(screen.getAllByLabelText("Arabic name")[1], "مبنى");
-  await userEvent.type(screen.getAllByLabelText("English name")[1], "Building A");
+  await userEvent.selectOptions(screen.getByLabelText(/^Location kind/), "building");
+  await userEvent.selectOptions(screen.getByLabelText(/^Faculty or facility/), "faculty-id");
+  await userEvent.type(screen.getAllByLabelText(/^Arabic name/)[1], "مبنى");
+  await userEvent.type(screen.getAllByLabelText(/^English name/)[1], "Building A");
   await userEvent.click(screen.getByRole("button", { name: "Add location" }));
   await waitFor(() => expect(create).toHaveBeenCalledWith({
     kind: "building", parentId: "faculty-id", ar: "مبنى", en: "Building A",
