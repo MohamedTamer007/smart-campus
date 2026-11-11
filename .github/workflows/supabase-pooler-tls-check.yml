@@ -1,0 +1,27 @@
+name: Verify Supabase pooler TLS without credentials
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/backend-integration]
+    paths:
+      - .github/workflows/supabase-pooler-tls-check.yml
+permissions:
+  contents: read
+jobs:
+  verify-public-tls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Validate CA file and test pooler hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt -o supabase-root-ca.crt
+          fingerprint="$(openssl x509 -in supabase-root-ca.crt -noout -fingerprint -sha256 | cut -d= -f2 | tr -d ':')"
+          test "$fingerprint" = "807025AD50D4ED219D2C9C7D299C004F824EB00CF7F65AFEF607D07B72E6CAFA"
+          timeout 30 openssl s_client -starttls postgres -connect aws-0-eu-west-1.pooler.supabase.com:5432 -servername aws-0-eu-west-1.pooler.supabase.com -verify_hostname aws-0-eu-west-1.pooler.supabase.com -verify_return_error -CAfile supabase-root-ca.crt < /dev/null > tls-output.txt 2>&1 || {
+            grep -E 'verify error|Verify return code|unable to|certificate' tls-output.txt | tail -15 || true
+            exit 1
+          }
+          grep -q 'Verify return code: 0 (ok)' tls-output.txt
+          echo 'Pooler SSL trust and hostname verification succeeded'
