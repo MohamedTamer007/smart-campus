@@ -91,7 +91,7 @@ public sealed class AdministrationController(CampusDb db, Access access, UserMan
     public async Task<object> Accounts(int page = 1, int pageSize = 50)
     {
         Access.Require((await access.Current()).Admin);
-        var accounts = await db.Users.OrderBy(u => u.Email).Skip((Math.Max(page, 1) - 1) * Math.Clamp(pageSize, 1, 100)).Take(Math.Clamp(pageSize, 1, 100)).ToArrayAsync();
+        var accounts = await db.Users.Where(u => u.Active).OrderBy(u => u.Email).Skip((Math.Max(page, 1) - 1) * Math.Clamp(pageSize, 1, 100)).Take(Math.Clamp(pageSize, 1, 100)).ToArrayAsync();
         var entries = new List<object>();
         foreach (var user in accounts)
         {
@@ -116,6 +116,7 @@ public sealed class AdministrationController(CampusDb db, Access access, UserMan
         Access.Require(await db.UserRoles.AnyAsync(r => r.UserId == actor.Id && db.Roles.Any(role => role.Id == r.RoleId && role.Name == "admin")));
         var user = await db.Users.FromSqlInterpolated($"SELECT * FROM smart_campus.\"AspNetUsers\" WHERE \"Id\"={id} FOR UPDATE").SingleOrDefaultAsync()
             ?? throw new RuleException("not_found", 404);
+        if (!user.Active) throw new RuleException("not_found", 404);
         if (user.ConcurrencyStamp != input.Version) throw new RuleException("conflict", 409);
         if (!user.EmailConfirmed) throw new RuleException("unverified", 409);
         if (await db.Departments.CountAsync(d => input.DepartmentIds.Contains(d.Id) && d.Active) != input.DepartmentIds.Distinct().Count()) throw new RuleException("invalid_department");
