@@ -22,6 +22,12 @@ public sealed class BrevoEmailTransport(IHttpClientFactory clients, IConfigurati
             !MailboxAddress.TryParse(sender, out var mailbox))
             throw new RuleException("email_not_configured", 503);
 
+        // Brevo requires a UUID-format idempotency key. The durable outbox
+        // already uses a stable UUID (in N format); retain it across retries.
+        var rawJobId = idempotencyKey[(idempotencyKey.LastIndexOf('/') + 1)..];
+        if (!Guid.TryParse(rawJobId, out var jobId) || jobId == Guid.Empty)
+            throw new RuleException("invalid_email_idempotency", 503);
+
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
         request.Headers.TryAddWithoutValidation("api-key", apiKey);
         request.Content = JsonContent.Create(new
@@ -32,7 +38,7 @@ public sealed class BrevoEmailTransport(IHttpClientFactory clients, IConfigurati
             textContent = link,
             // This key is already stable for a queued email. Brevo may use it
             // for correlating/retries, but it does not replace outbox deduplication.
-            headers = new Dictionary<string, string> { ["IdempotencyKey"] = idempotencyKey }
+            headers = new Dictionary<string, string> { ["IdempotencyKey"] = jobId.ToString("D") }
         });
         using var client = clients.CreateClient("email");
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
