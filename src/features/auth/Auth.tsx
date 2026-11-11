@@ -15,6 +15,7 @@ import { universityEmail } from "../../services/validation";
 export function Auth({ register = false }: { register?: boolean }) {
   const { t, updateAccount } = useApp();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [confirmationError, setConfirmationError] = useState(false);
@@ -57,6 +58,9 @@ export function Auth({ register = false }: { register?: boolean }) {
       )}
     >
       <div className="panel narrow">
+        {!register && params.get("deleted") === "1" && <Feedback kind="success">
+          {t("تم حذف بيانات حسابك وتعطيله. تقدر تعمل حساب جديد بنفس الإيميل.", "Your account details were removed and the account disabled. You can register again with the same email.")}
+        </Feedback>}
         <ActionForm
           onSubmit={submit}
           label={
