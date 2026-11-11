@@ -79,10 +79,19 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
     {
         if (!Guid.TryParse(input.UserId, out _)) throw new RuleException("invalid_token");
         var user = await users.FindByIdAsync(input.UserId);
-        if (user is null || user.EmailConfirmed) throw new RuleException("invalid_token");
+        if (user is null || !user.Active) throw new RuleException("invalid_token");
         if (!release.Allows(user.Email!)) throw new RuleException("invalid_token");
-        Check(await users.ConfirmEmailAsync(user, Decode(input.Token)));
-        return new { verified = true };
+        var token = Decode(input.Token);
+        if (user.EmailConfirmed)
+        {
+            // Only reveal an existing verified state to someone holding a valid
+            // confirmation token; never turn this endpoint into account enumeration.
+            if (!await users.VerifyUserTokenAsync(user, "Email24", "EmailConfirmation", token))
+                throw new RuleException("invalid_token");
+            return new { verified = true, alreadyVerified = true };
+        }
+        Check(await users.ConfirmEmailAsync(user, token));
+        return new { verified = true, alreadyVerified = false };
     }
 
     [HttpPost("recover")]
