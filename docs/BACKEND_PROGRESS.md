@@ -1,5 +1,15 @@
 ## 11 November 2026 — SnapDeploy live checks and release gates
 
+### Follow-up audit — 11 November 2026
+
+The current Draft PR head is `cb658c74f82d39e830a6269d90817dd0ae338a6a`. CI run [42929593009](https://github.com/MohamedTamer007/smart-campus/actions/runs/42929593009), the Windows package run [42929592842](https://github.com/MohamedTamer007/smart-campus/actions/runs/42929592842), and real SigLIP inference run [42929592876](https://github.com/MohamedTamer007/smart-campus/actions/runs/42929592876) completed successfully on that source. These results do not prove that the public SnapDeploy container is healthy.
+
+The latest public probes in this session returned HTTP 503 from the SnapDeploy edge for both `/health/live` and `/health/ready`. The earlier live check returned HTTP 200. The application is currently unreachable from these probes, so database readiness is unverified. No redeploy was attempted. This session has no SnapDeploy or Modal account connector, and the supplied dashboard screenshot showed the free deployment quota exhausted.
+
+Read-only Supabase inspection identified project `mninpcrhqsaafoshjqpn` (Postgres 17.11). The management migration list contains three hosted entries (`core_schema`, `policies_and_workflows`, `smart_campus_backend_ef_core_schema_20261110`), separate from the application's EF migration history. Security advisors reported an exposed `public.ai_trial_records` table with RLS enabled but no policy, a mutable search path on `public.apply_ai_suggestion`, and public/authenticated execute grants on multiple `SECURITY DEFINER` functions. Performance advisors reported nine unindexed foreign keys and RLS init-plan warnings. These include legacy public objects; no SQL, policy, account, or storage changes were made. Before remediation, compare the exact hosted grants/functions and bucket policy against repository SQL and preserve legacy AI records.
+
+Real-account acceptance remains blocked: no Outlook/Entra delegated `Mail.Send` consent or verified message delivery, no Modal account/budget evidence or deployed worker URL, and no OpenRouter secret are available in this session. Credentials must be entered only into their provider or intended secret store. Email remains incomplete until a real recipient confirms delivery and completes the link; search remains disabled until the hosted worker and calibration pass. Keep PR #1 Draft and `main` unchanged.
+
 The owner supplied a SnapDeploy dashboard screenshot showing the existing `smart-campus-arm-b7d59` container as RUNNING. This establishes that a container exists; it does not establish application or dependency readiness. The dashboard showed the free deployment limit exhausted for the current 12-hour window (about 11h45m remaining at screenshot time), so no deployment was started.
 
 Observed from this session:
@@ -151,3 +161,4 @@ MaintenanceService.List now reads the authorized page once and batches related h
 `Maintenance_page_batches_reads_and_keeps_assessments_and_assignees_within_staff_scope` uses real PostgreSQL and an EF command interceptor. The original implementation failed: one owner report used eight reader commands versus 52 for twelve reports. The new implementation passes constant-read assertions for both owners and staff, preserves history/location/media mappings, excludes object keys and confidential assessment/history content, restricts assignees and keeps current assessments separate from stale versions. Cross-account/department and mixed staff-owner cases pass. Full backend: 99 passed, zero failed/skipped (`evidence/backend-maintenance-list.trx`). No hosting latency/capacity claim is made.
 
 Code, security, test and documentation review passed. Found-item inventory lists still use per-item detail reads and remain an independent performance follow-up. Real email is still pending the private launcher startup/key setup; no real send, delivery or owner verification is claimed. External deployment and calibration gates remain open.
+
