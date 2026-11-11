@@ -26,6 +26,11 @@ public sealed class RetrievalTests(CampusFixture campus) : IClassFixture<CampusF
         }
     }
 
+    private sealed class NoInferenceBudget : IInferenceBudget
+    {
+        public Task Reserve(string provider, CancellationToken cancellation) => Task.CompletedTask;
+    }
+
     [DatabaseFact]
     public async Task Pgvector_ranking_filters_candidates_and_persists_user_specific_result_grants()
     {
@@ -44,7 +49,8 @@ public sealed class RetrievalTests(CampusFixture campus) : IClassFixture<CampusF
             ["Search:CalibrationApproval"] = "TEST ONLY - synthetic vectors", ["Search:MinimumScore"] = "0.9"
         }).Build();
         using var encoder = new EncoderBoundary();
-        var retrieval = new RetrievalService(db, access, encoder, config, scope.ServiceProvider.GetRequiredService<PrivateMedia>());
+        var retrieval = new RetrievalService(db, access, encoder, config, scope.ServiceProvider.GetRequiredService<PrivateMedia>(),
+            new RemoteEmbeddings(encoder, config, new NoInferenceBudget()));
         await retrieval.Index(blueId);
         await retrieval.Index(redId);
         await db.Jobs.Where(j => j.Kind == "index" && (j.EntityId == blueId || j.EntityId == redId)).ExecuteUpdateAsync(update => update.SetProperty(j => j.State, "completed"));
