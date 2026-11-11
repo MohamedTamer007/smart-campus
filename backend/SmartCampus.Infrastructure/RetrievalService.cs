@@ -57,6 +57,9 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             throw new RuleException("search_provider_not_configured", 503);
         var description = Hosted ? await remote.Passage(found.Description) : await EmbedText(found.Description);
         await Store(found.Id, found.Id, "description", description);
+        // A university must approve third-party transfer of private photos separately.
+        // Descriptions may still be indexed after text-processing approval.
+        if (Hosted && !config.GetValue<bool>("Search:ExternalImagesApproved")) return;
         var images = await db.Media.Where(m => m.ItemId == id).ToArrayAsync();
         foreach (var image in images) await Store(id, image.Id, "image", await EmbedImage(await media.Read(image)));
     }
@@ -110,8 +113,11 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
                 AND f."CustodianId" IS DISTINCT FROM @user AND f."UploaderId"<>@user
                 AND (f."CustodianDepartmentId" IS NULL OR NOT (f."CustodianDepartmentId"=ANY(@scopes)))
               GROUP BY e."ItemId"
-            ), scored AS (SELECT "ItemId", CASE WHEN @hasimage THEN (0.7*image_text+0.3*finder_text+image_image)/2
-              ELSE 0.7*image_text+0.3*finder_text END AS score FROM ranked)
+            ), scored AS (SELECT "ItemId", CASE WHEN @hasimage THEN
+                (COALESCE(0.7*image_text+0.3*finder_text, image_text, finder_text)
+                 + COALESCE(image_image, image_text, finder_text))/2
+              ELSE COALESCE(0.7*image_text+0.3*finder_text, image_text, finder_text)
+              END AS score FROM ranked)
             SELECT "ItemId" FROM scored WHERE score>=@threshold ORDER BY score DESC,"ItemId" LIMIT 5
             """;
         command.Parameters.AddWithValue("text", Vector(text.Vector));
