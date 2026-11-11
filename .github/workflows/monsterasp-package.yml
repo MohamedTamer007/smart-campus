@@ -55,6 +55,13 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/publish.ps1 -Destination "$env:RUNNER_TEMP/monsterasp-publish"
+      - name: Remove optional debug symbol files from upload
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'monsterasp-publish'
+          # These symbols are not required for runtime deployment and can
+          # dominate ZIP size (including SkiaSharp native Win32 PDB files).
+          Get-ChildItem -Path $root -Recurse -File -Filter '*.pdb' | Remove-Item -Force
       - name: Verify IIS entrypoint, SPA and secret exclusions
         shell: pwsh
         run: |
