@@ -42,11 +42,13 @@ public sealed class EmailTransportTests
             Assert.Equal("Bearer test-only-email-key", request.Authorization);
             Assert.Equal("smart-campus/email/test-id", request.IdempotencyKey);
             using var document = JsonDocument.Parse(request.Body);
-            Assert.Equal(4, document.RootElement.EnumerateObject().Count());
+            Assert.Equal(5, document.RootElement.EnumerateObject().Count());
             Assert.Equal("Smart Campus <verification@example.test>", document.RootElement.GetProperty("from").GetString());
             Assert.Equal("student@o6u.edu.eg", document.RootElement.GetProperty("to")[0].GetString());
             Assert.Equal("Verify Smart Campus", document.RootElement.GetProperty("subject").GetString());
-            Assert.Equal(link, document.RootElement.GetProperty("text").GetString());
+            Assert.Contains(link, document.RootElement.GetProperty("text").GetString()!);
+            Assert.Contains("Verify your email", document.RootElement.GetProperty("html").GetString()!);
+            Assert.Contains(link, document.RootElement.GetProperty("html").GetString()!);
         });
     }
 
