@@ -1,6 +1,21 @@
 name: MonsterASP.NET Windows publish package
 
 on:
+  # A direct push build does not depend on PR workflow approval gates.
+  # Only the controlled release branch may publish this inert ZIP artifact.
+  push:
+    branches:
+      - codex/release-readiness-20261111
+    paths:
+      - '.github/workflows/monsterasp-package.yml'
+      - 'backend/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - 'scripts/publish.ps1'
   workflow_dispatch:
   pull_request:
     paths:
