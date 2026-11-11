@@ -10,7 +10,10 @@ export function OperationsStatus() {
     <h2>{t("حالة التشغيل", "Operational status")}</h2>
     <AsyncView key={account.id} load={operations}>
       {(status) => <>
-        <p>{t("خدمة المطابقة", "Matching worker")}: {status.worker === "available" ? t("متاحة", "Available") : t("غير متاحة", "Unavailable")}</p>
+        <p>{t("خدمة المطابقة", "Matching worker")}: {status.worker === "available" ? t("متاحة", "Available")
+          : status.worker === "hosted_configured" ? t("API مُعدّة — لم تُختبر النتائج بعد", "API configured — retrieval not yet validated")
+          : status.worker === "hosted_blocked" ? t("API معطلة حتى اعتماد الخصوصية", "API disabled pending privacy review")
+          : t("غير متاحة", "Unavailable")}</p>
         <p>{t("معايرة البحث", "Search calibration")}: {status.calibrationApproved ? t("مُراجعة ومعتمدة", "Reviewed and approved") : t("بانتظار الاعتماد", "Awaiting approval")}</p>
         <p>{t("ذاكرة الخدمة", "Service memory")}: {Math.round(status.workingSetBytes / 1024 / 1024)} MiB</p>
         <p>{t("محاولات هذا التطبيق وحدّه اليومي للذكاء الاصطناعي بتوقيت UTC", "App AI attempts / daily budget in UTC")}</p>
