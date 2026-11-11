@@ -19,7 +19,9 @@ public sealed class BrevoEmailTransport(IHttpClientFactory clients, IConfigurati
         var apiKey = config["Email:BrevoKey"];
         var sender = config["Email:From"];
         if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(sender) ||
-            !MailboxAddress.TryParse(sender, out var mailbox))
+            !MailboxAddress.TryParse(sender, out var mailbox) ||
+            !System.Net.Mail.MailAddress.TryCreate(mailbox.Address, out var parsedAddress) ||
+            !parsedAddress.Address.Contains('@'))
             throw new RuleException("email_not_configured", 503);
 
         // Brevo requires a UUID-format idempotency key. The durable outbox
