@@ -32,6 +32,7 @@ public sealed class BrevoEmailTransport(IHttpClientFactory clients, IConfigurati
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
         request.Headers.TryAddWithoutValidation("api-key", apiKey);
+        var content = CampusEmailContent.Create(subject, link);
         request.Content = JsonContent.Create(new
         {
             sender = new { name = string.IsNullOrWhiteSpace(mailbox.Name) ? "Smart Campus" : mailbox.Name, email = mailbox.Address },
