@@ -131,33 +131,42 @@ export function Auth({ register = false }: { register?: boolean }) {
 }
 
 export function Verification() {
-  const { t } = useApp();
+  const { t, account } = useApp();
+  const alreadySignedIn = account.role !== "guest" && account.role !== "unverified";
   const [params] = useSearchParams();
   const [verified, setVerified] = useState(false);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [resent, setResent] = useState(false);
   return (
     <Page title={t("تأكيد البريد الجامعي", "Verify university email")}>
       <div className="panel narrow">
-        <Feedback>
-          {t(
-            "افتح رابط التأكيد من بريدك الجامعي ثم أكد أدناه.",
-            "Open the link from your university inbox, then confirm below.",
-          )}
-        </Feedback>
-        {verified && <Feedback kind="success">{t("تم تأكيد البريد. يمكنك تسجيل الدخول.", "Email verified. You can now sign in.")}</Feedback>}
+        {alreadySignedIn ? (
+          <Feedback kind="success">
+            {t("حسابك مؤكّد بالفعل ✅ مش محتاج تأكيد البريد مرة تانية.", "Your account is already verified ✅ No further confirmation is needed.")}
+          </Feedback>
+        ) : (
+          <Feedback>
+            {t("افتح رابط التأكيد من بريدك الجامعي ثم أكد أدناه.", "Open the link from your university inbox, then confirm below.")}
+          </Feedback>
+        )}
+        {verified && <Feedback kind="success">{alreadyVerified
+          ? t("بريدك مؤكّد بالفعل، مش محتاج تأكيده تاني.", "Your email is already verified. No need to verify again.")
+          : t("تم تأكيد البريد. يمكنك تسجيل الدخول.", "Email verified. You can now sign in.")}</Feedback>}
         {resent && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً.", "Check your inbox if the address is eligible.")}</Feedback>}
-        {!verified && params.get("token") && <ActionForm label={t("تأكيد البريد", "Confirm email")} onSubmit={async () => {
-          await auth.verify(params.get("userId") ?? "", params.get("token") ?? "");
+        {!alreadySignedIn && !verified && params.get("token") && <ActionForm label={t("تأكيد البريد", "Confirm email")} onSubmit={async () => {
+          const result = await auth.verify(params.get("userId") ?? "", params.get("token") ?? "");
+          setAlreadyVerified(Boolean(result.alreadyVerified));
           setVerified(true);
         }}><p>{t("تأكيد عنوان البريد الجامعي.", "Verify your university email address.")}</p></ActionForm>}
-        <ActionForm
+        {!alreadySignedIn && !verified && <ActionForm
           label={t("إعادة إرسال رابط التأكيد", "Resend verification link")}
           onSubmit={async data => { await auth.resend(String(data.get("email"))); setResent(true); }}
         >
           <Field label={t("البريد الجامعي", "University email")} required>
             <input required type="email" dir="ltr" name="email" />
           </Field>
-        </ActionForm>
+        </ActionForm>}
+        {alreadySignedIn && <Link className="text-link" to="/settings">{t("الذهاب لحسابي", "Go to my account")}</Link>}
         <Link className="text-link" to="/login">
           {t("تسجيل الدخول", "Sign in")}
         </Link>
@@ -188,8 +197,9 @@ export function Recovery() {
 
 export function ResetPassword() {
   const { t } = useApp();
-  const { token = "" } = useParams();
+  const { token: pathToken = "" } = useParams();
   const [params] = useSearchParams();
+  const token = params.get("token") ?? pathToken;
   const [completed, setCompleted] = useState(false);
   return (
     <Page title={t("تعيين كلمة مرور جديدة", "Set a new password")}>
