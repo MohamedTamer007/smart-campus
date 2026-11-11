@@ -47,6 +47,15 @@ public static class HostingSecurity
         {
             if (string.IsNullOrWhiteSpace(config["Email:Host"])) invalid.Add("Email:Host");
         }
+        else if (provider == "emailjs")
+        {
+            foreach (var key in new[] { "Email:EmailJsServiceId", "Email:EmailJsTemplateId",
+                "Email:EmailJsPublicKey", "Email:EmailJsPrivateKey" })
+                if (string.IsNullOrWhiteSpace(config[key])) invalid.Add(key);
+            // EmailJS has no provider delivery receipt. Do not activate its
+            // backend mail channel without explicitly reviewing this limitation.
+            if (!config.GetValue<bool>("Email:EmailJsTrialApproved")) invalid.Add("Email:EmailJsTrialApproved");
+        }
         else invalid.Add("Email:Provider");
         var releaseMode = config["Release:Mode"] ?? "controlled";
         if (releaseMode is not ("controlled" or "open")) invalid.Add("Release:Mode");
