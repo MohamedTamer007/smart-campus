@@ -118,7 +118,7 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
             canViewAssessment = staff, canUpdate = staff && report.CancelledAt is null && report.Status is not ("resolved" or "rejected"),
             canReviewAiInput = staff && report.CancelledAt is null && (report.Status is "submitted" or "review") &&
                 assessmentRecord is { ReviewedAt: null } && assessmentRecord.State != "completed" && AiProviders.Configured(config),
-            canReviewAiImage = staff && (config["AI:Provider"] ?? "openrouter") == "openrouter" && config.GetValue<bool>("AI:AllowNonSensitiveImages") && attachment.HasValue };
+            canReviewAiImage = staff && AiProviders.CanReviewImage(config) && attachment.HasValue };
     }
 
     public async Task<object> ReviewAi(Guid id, AiReviewInput input)
@@ -138,7 +138,7 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         if (job.State == "running") throw new RuleException("conflict", 409);
         if (input.IncludeImage)
         {
-            if ((config["AI:Provider"] ?? "openrouter") != "openrouter" || !config.GetValue<bool>("AI:AllowNonSensitiveImages"))
+            if (!AiProviders.CanReviewImage(config))
                 throw new RuleException("ai_images_not_permitted", 503);
             assessment.ReviewedImageId = await db.Media.Where(m => m.ReportId == id).Select(m => (Guid?)m.Id).SingleOrDefaultAsync()
                 ?? throw new RuleException("invalid_upload");
