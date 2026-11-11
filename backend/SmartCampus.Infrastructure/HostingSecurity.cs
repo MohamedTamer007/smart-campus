@@ -36,6 +36,13 @@ public static class HostingSecurity
             foreach (var key in new[] { "DataProtection:Directory", "DataProtection:CertificatePath" })
                 if (string.IsNullOrWhiteSpace(config[key])) invalid.Add(key);
         }
+        else if (keyStore == "monsterasp-private")
+        {
+            // MonsterASP.NET documents a persistent, writable private folder
+            // next to the public web root, even on the free Windows plan.
+            // No user profile, DPAPI or PFX import is available/reliable there.
+            if (config["Hosting:Platform"] != "monsterasp") invalid.Add("Hosting:Platform");
+        }
         else invalid.Add("DataProtection:Store");
         if (config.GetValue<bool>("Email:LocalSink")) invalid.Add("Email:LocalSink");
         var provider = config["Email:Provider"] ?? "smtp";
@@ -110,6 +117,18 @@ public static class HostingSecurity
             finally { System.Security.Cryptography.CryptographicOperations.ZeroMemory(bytes); }
             services.Configure<KeyManagementOptions>(options =>
                 options.XmlRepository = new PostgresKeyRepository(connectionString));
+        }
+        else if (keyStore == "monsterasp-private")
+        {
+            if (!OperatingSystem.IsWindows() || config["Hosting:Platform"] != "monsterasp")
+                throw new InvalidOperationException("MonsterASP private key storage requires the approved Windows host.");
+            // The website is installed at .../wwwroot and /private is its
+            // host-provided nonpublic, persistent sibling (not an HTTP route).
+            var privateKeys = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "private", "keys"));
+            protection.PersistKeysToFileSystem(new DirectoryInfo(privateKeys));
+            // MonsterASP.NET Free has no app-pool Windows user profile, so
+            // ProtectKeysWithDpapi() throws. Their documented private folder
+            // provides filesystem-only access control to the XML key ring.
         }
         else if (keyStore == "file")
         {
