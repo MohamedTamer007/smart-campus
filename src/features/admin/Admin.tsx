@@ -191,6 +191,9 @@ export function AdminOverview() {
         <Link className="button secondary" to="/admin/accounts">
           {t("المستخدمون والصلاحيات", "Accounts and permissions")}
         </Link>
+        <Link className="button secondary" to="/admin/directory">
+          {t("دليل الجهات والمواقع", "Departments and locations")}
+        </Link>
         <Link className="button" to="/staff">
           {t("بلاغات الصيانة", "Maintenance queue")}
         </Link>
