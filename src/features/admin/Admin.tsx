@@ -410,15 +410,17 @@ export function AdminAccounts() {
                     </select>
                   </Field>
                   {role === "maintenance" && (
-                    <Field label={t("النطاق", "Scope")}>
-                      <select name="scope">
+                    <Field label={t("النطاق", "Scope")} required>
+                      <select name="scope" required defaultValue="">
+                        <option value="">{t("اختر جهة الصيانة", "Choose maintenance department")}</option>
                         <DirectoryOptions kind="maintenance" />
                       </select>
                     </Field>
                   )}
                   {role === "department" && (
                     <Field label={t("الجهة", "Department")} required>
-                      <select name="scope">
+                      <select name="scope" required defaultValue="">
+                        <option value="">{t("اختر الجهة", "Choose department")}</option>
                         <DirectoryOptions />
                       </select>
                     </Field>
