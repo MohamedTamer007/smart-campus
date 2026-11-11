@@ -56,6 +56,13 @@ public static class HostingSecurity
             // backend mail channel without explicitly reviewing this limitation.
             if (!config.GetValue<bool>("Email:EmailJsTrialApproved")) invalid.Add("Email:EmailJsTrialApproved");
         }
+        else if (provider == "brevo")
+        {
+            if (string.IsNullOrWhiteSpace(config["Email:BrevoKey"])) invalid.Add("Email:BrevoKey");
+            // Real sender verification/domain ownership is an external provider gate.
+            // Do not enable without a deliberate review of the authorized sender.
+            if (!config.GetValue<bool>("Email:BrevoSenderVerified")) invalid.Add("Email:BrevoSenderVerified");
+        }
         else invalid.Add("Email:Provider");
         var releaseMode = config["Release:Mode"] ?? "controlled";
         if (releaseMode is not ("controlled" or "open")) invalid.Add("Release:Mode");
