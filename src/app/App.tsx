@@ -24,6 +24,7 @@ import {
 } from "../features/auth/Auth";
 import { Settings, Notifications } from "../features/account/Account";
 import { Access } from "./access";
+import { AdminCampusDirectory } from "../features/admin/CampusDirectory";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
 import { AppProvider, useApp } from "./context";
 import { BrandMark, Icon } from "../components/Icon";
@@ -149,6 +150,14 @@ function Shell() {
             element={
               <Access roles={["admin"]}>
                 <AdminOverview />
+              </Access>
+            }
+          />
+          <Route
+            path="/admin/directory"
+            element={
+              <Access roles={["admin"]}>
+                <AdminCampusDirectory />
               </Access>
             }
           />
