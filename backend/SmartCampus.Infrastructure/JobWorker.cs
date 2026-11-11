@@ -80,7 +80,7 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
         catch (Exception exception) when (exception is RuleException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or MailKit.ServiceNotConnectedException or MailKit.Security.AuthenticationException or MailKit.Net.Smtp.SmtpCommandException or System.IO.IOException)
         {
             if (exception is RuleException { Code: "ai_quota_exhausted" }) job.Attempts--;
-            job.State = job.Attempts >= 3 || exception is RuleException { Code: "ai_not_configured" or "taxonomy_unavailable" or "ai_quota_not_configured" or "ai_input_review_required" or "email_not_configured" or "email_test_recipient_required" or "email_recipient_not_allowed" or "email_rejected" or "release_restricted" } ? "unavailable" : "pending";
+            job.State = job.Attempts >= 3 || exception is RuleException { Code: "ai_not_configured" or "search_provider_not_configured" or "search_external_images_not_approved" or "taxonomy_unavailable" or "ai_quota_not_configured" or "ai_input_review_required" or "email_not_configured" or "email_test_recipient_required" or "email_recipient_not_allowed" or "email_rejected" or "release_restricted" } ? "unavailable" : "pending";
             job.AvailableAt = exception is RuleException { RetryAt: { } retryAt } ? retryAt : DateTimeOffset.UtcNow.AddMinutes(job.Attempts * 2);
             var assessment = await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == job.EntityId && a.InputVersion == job.InputVersion, cancellation);
             if (assessment is not null) { assessment.State = "unavailable"; assessment.FailureCode = exception is RuleException rule ? rule.Code : "provider_unavailable"; }
