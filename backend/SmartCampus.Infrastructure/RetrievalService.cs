@@ -18,6 +18,11 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
     private bool Hosted => config["Search:Provider"] == "hosted";
     public static double? ApprovedThreshold(IConfiguration configuration)
     {
+        // An approval for historical SigLIP2 must never authorize a different
+        // vector space or score threshold after migrating to hosted inference.
+        if (configuration["Search:Provider"] == "hosted" &&
+            configuration["Search:CalibrationRevision"] != RemoteEmbeddings.Revision(configuration))
+            return null;
         var threshold = configuration.GetValue<double?>("Search:MinimumScore");
         return !string.IsNullOrWhiteSpace(configuration["Search:CalibrationApproval"]) && threshold is >= -1 and <= 1 && double.IsFinite(threshold.Value) ? threshold : null;
     }
