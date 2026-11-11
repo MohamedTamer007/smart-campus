@@ -9,7 +9,7 @@ using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
 
-public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend, EmailJsEmailTransport emailJs, ReleasePolicy release)
+public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend, EmailJsEmailTransport emailJs, BrevoEmailTransport brevo, ReleasePolicy release)
 {
     private readonly IDataProtector protector = protection.CreateProtector("SmartCampus.OutboundEmail.v1");
     private sealed record EmailPayload(string Recipient, string Subject, string Link);
@@ -53,6 +53,8 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
             await emailJs.Send(recipient, subject, link);
             return null; // EmailJS returns acceptance only, not a provider message ID.
         }
+        if (config["Email:Provider"] == "brevo" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
+            return await brevo.Send(recipient, subject, link, idempotencyKey ?? "smart-campus/email/" + Guid.NewGuid().ToString("N"));
         var sender = config["Email:From"];
         if (string.IsNullOrWhiteSpace(sender))
         {
