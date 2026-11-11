@@ -83,7 +83,7 @@ public sealed class ProviderTests
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
     }
 
-    private const string ValidEnvelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\\"type\\":\\"plumbing\\",\\"priority\\":\\"urgent\\",\\"risk\\":\\"high\\",\\"explanation\\":\\"Synthetic\\"]"}}]}""";
+    private const string ValidEnvelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
 
     private static IConfiguration AutoConfig()
     {
