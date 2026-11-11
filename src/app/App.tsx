@@ -229,6 +229,7 @@ function Shell() {
           <Route path="/register" element={<Auth register />} />
           <Route path="/verify" element={<Verification />} />
           <Route path="/recover" element={<Recovery />} />
+          <Route path="/reset" element={<ResetPassword />} />
           <Route path="/reset/:token" element={<ResetPassword />} />
           <Route
             path="/settings"
