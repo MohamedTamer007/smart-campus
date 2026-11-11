@@ -94,6 +94,16 @@ public sealed class HostingSecurityTests
     }
 
     [Fact]
+    public void University_domain_mode_needs_no_manual_allowlist_or_claimed_approval()
+    {
+        var values = Config().AsEnumerable().ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        values["Release:Mode"] = "university";
+        values["Release:AllowedEmails:0"] = null;
+        values["Release:UniversityApproval"] = null;
+        HostingSecurity.Validate(new ConfigurationBuilder().AddInMemoryCollection(values).Build());
+    }
+
+    [Fact]
     public void Open_university_release_requires_explicit_operational_approval_reference()
     {
         var failure = Assert.Throws<InvalidOperationException>(() => HostingSecurity.Validate(Config("Release:Mode", "open")));
