@@ -109,15 +109,17 @@ public sealed class RemoteEmbeddingsTests
     }
 
     [Fact]
-    public async Task Embeddings_reject_non_free_response_model()
+    public async Task Embeddings_accept_canonical_model_id_when_free_variant_is_requested()
     {
         using var boundary = new Boundary(HttpStatusCode.OK, Envelope(RemoteEmbeddings.Model));
 
-        var failure = await Assert.ThrowsAsync<RuleException>(() =>
-            new RemoteEmbeddings(boundary, Config(), new Budget()).Query("Synthetic red bag"));
+        var result = await new RemoteEmbeddings(boundary, Config(), new Budget()).Query("Synthetic red bag");
 
-        Assert.Equal("invalid_embedding", failure.Code);
+        Assert.Equal(RemoteEmbeddings.Model, result.Model);
         Assert.Equal(1, boundary.Requests);
+        Assert.Equal(RemoteEmbeddings.OpenRouterModel, boundary.Sent!.Value.GetProperty("model").GetString());
+        Assert.False(boundary.Sent.Value.GetProperty("provider").GetProperty("allow_fallbacks").GetBoolean());
+        Assert.Equal(0, boundary.Sent.Value.GetProperty("provider").GetProperty("max_price").GetProperty("prompt").GetInt32());
     }
 
     [Fact]

@@ -102,7 +102,12 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
             using var json = JsonDocument.Parse(bytes.AsMemory(0, count));
             var root = json.RootElement;
             var actualModel = root.GetProperty("model").GetString();
-            if (actualModel != OpenRouterModel)
+            // OpenRouter may normalize the response model to the canonical
+            // model slug and omit the :free routing suffix. The request itself
+            // remains pinned to :free with provider fallbacks disabled and a
+            // zero max price, so accept only that canonical alias or the exact
+            // requested variant; reject every other model ID.
+            if (actualModel is not (OpenRouterModel or Model))
                 throw new RuleException("invalid_embedding", 503);
             var data = root.GetProperty("data");
             if (data.ValueKind != JsonValueKind.Array || data.GetArrayLength() != 1 ||
