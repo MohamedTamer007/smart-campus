@@ -72,6 +72,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
 
             Assert.Equal("https://openrouter.ai/api/v1/embeddings", request.RequestUri.ToString());
             Assert.Equal(RemoteEmbeddings.OpenRouterModel, payload.RootElement.GetProperty("model").GetString());
+            Assert.Equal("allow", payload.RootElement.GetProperty("provider").GetProperty("data_collection").GetString());
             var inputType = payload.RootElement.GetProperty("input_type").GetString();
             if (inputType == "query")
                 Assert.Contains("TEST ONLY", payload.RootElement.GetProperty("input").GetString());

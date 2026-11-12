@@ -202,7 +202,8 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             ["AI:Risks:2"] = "high",
             ["Search:Provider"] = "hosted",
             ["Search:ExternalProcessingApproved"] = "true",
-            ["Search:ExternalImagesApproved"] = "true"
+            ["Search:ExternalImagesApproved"] = "true",
+            ["Search:ProviderDataCollection"] = "allow"
         };
         return new ConfigurationBuilder().AddInMemoryCollection(syntheticConfig).Build();
     }

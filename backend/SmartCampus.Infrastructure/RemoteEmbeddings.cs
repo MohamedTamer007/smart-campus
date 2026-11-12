@@ -76,7 +76,11 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
             ["encoding_format"] = "float",
             ["dimensions"] = Dimension
         };
-        payload["provider"] = new { allow_fallbacks = false, data_collection = "deny", max_price = new { prompt = 0, completion = 0 } };
+        payload["provider"] = new {
+            allow_fallbacks = false,
+            data_collection = config["Search:ProviderDataCollection"] ?? "deny",
+            max_price = new { prompt = 0, completion = 0 }
+        };
 
         await budget.Reserve("openrouter", cancellation);
         using var client = clients.CreateClient("retrieval");
