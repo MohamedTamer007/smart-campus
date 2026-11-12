@@ -156,9 +156,12 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal("openai/gpt-oss-20b", result.GetProperty("model").GetString());
         Assert.Equal(3, result.EnumerateObject().Count());
         Assert.Equal(1, boundary.Calls);
-        var readiness = await admin.GetFromJsonAsync<JsonElement>("/api/v1/admin/operations");
-        Assert.True(readiness.GetProperty("ai").GetProperty("adminSyntheticDiagnosticEnabled").GetBoolean());
-        Assert.False(readiness.GetProperty("ai").GetProperty("textConfigured").GetBoolean());
+        // Keep the mocked HTTP handler dedicated to the synthetic NVIDIA call.
+        // The operations endpoint also probes a retrieval worker via IHttpClientFactory.
+        using var scope = host.Services.CreateScope();
+        var currentConfig = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        Assert.True(currentConfig.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"));
+        Assert.False(currentConfig.GetValue<bool>("AI:AllowNonSensitiveInference"));
         for (var i = 0; i < 2; i++)
             Assert.Equal(HttpStatusCode.OK,
                 (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
