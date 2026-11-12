@@ -177,7 +177,7 @@ public sealed class ProviderTests
         var envelope = JsonSerializer.Serialize(new {
             choices = new[] { new {
                 finish_reason = "stop",
-                message = new { content = "\`\`\`json\n{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"TEST ONLY\"}\n\`\`\`" }
+                message = new { content = "```json\n{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"TEST ONLY\"}\n```" }
             }}
         });
         using var provider = new ProviderBoundary(HttpStatusCode.OK, envelope);
