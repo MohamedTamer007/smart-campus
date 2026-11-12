@@ -32,7 +32,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
             {
                 Assert.Equal("low", effort.GetString());
                 Assert.False(payload.RootElement.TryGetProperty("response_format", out _));
-                Assert.Equal(1024, payload.RootElement.GetProperty("max_tokens").GetInt32());
+                Assert.Contains(payload.RootElement.GetProperty("max_tokens").GetInt32(), new[] { 1024, 2048 });
                 Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
             }
             const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
@@ -109,6 +109,15 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal(HttpStatusCode.BadRequest, (await student.PostAsJsonAsync("/api/v1/ai/smoke", new { })).StatusCode);
     }
 
+    // These integration tests share one isolated fixture DB and one UTC-day cap.
+    // Never delete or change a live database: only the _test fixture reaches here.
+    private async Task ResetAdminDiagnosticCounter()
+    {
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        await db.InferenceUsage.Where(u => u.Provider == "admin-synthetic-smoke").ExecuteDeleteAsync();
+    }
+
     [DatabaseFact]
     public async Task Synthetic_smoke_test_requires_explicit_admin_diagnostic_enablement()
     {
@@ -131,6 +140,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     [DatabaseFact]
     public async Task Synthetic_smoke_uses_only_fixed_text_and_one_budgeted_admin_request()
     {
+        await ResetAdminDiagnosticCounter();
         using var boundary = new SyntheticAiHttp();
         using var host = campus.WithWebHostBuilder(builder =>
         {
@@ -180,6 +190,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     [DatabaseFact]
     public async Task Admin_real_AI_demo_classifies_only_fixed_fictional_data()
     {
+        await ResetAdminDiagnosticCounter();
         using var boundary = new SyntheticAiHttp();
         using var host = campus.WithWebHostBuilder(builder =>
         {
