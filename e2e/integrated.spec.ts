@@ -9,9 +9,10 @@ async function login(page: Page, role: string) {
   await page.goto("/login");
   const english = page.getByRole("button", { name: "English", exact: true });
   if (await english.isVisible()) await english.click();
-  await page.getByLabel(/^University email/).fill(accounts.accounts[role].email);
-  await page.getByLabel(/^Password \*/).fill(accounts.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  const form = page.getByRole("button", { name: "Sign in", exact: true }).locator("xpath=ancestor::form");
+  await form.getByLabel(/^University email/).fill(accounts.accounts[role].email);
+  await form.getByLabel(/^Password \*/).fill(accounts.password);
+  await form.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading", { name: "My requests", exact: true })).toBeVisible();
 }
 
