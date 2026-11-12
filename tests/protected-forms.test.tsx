@@ -152,14 +152,46 @@ it("keeps lost-item matching unavailable while AI search is deferred", async () 
   expect(search).not.toHaveBeenCalled();
 });
 
-it("keeps maintenance AI suggestions and external review submission deferred", async () => {
+it("requires explicit text approval before staff can enqueue AI analysis", async () => {
   const actor: Account = { id: "ai-staff-test", name: "Staff", email: "", role: "maintenance" };
-  const report: MaintenanceReport = { id: "reviewed-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 4, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canReviewAiInput: true, canReviewAiImage: true, assessment: { state: "unavailable", type: "", priority: "", risk: "" } };
+  const report: MaintenanceReport = { id: "reviewed-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 4, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canReviewAiInput: true, canReviewAiImage: false };
+  vi.spyOn(maintenance, "detail").mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, version: 5, assessment: { state: "pending", type: null, priority: null, risk: null } });
+  const review = vi.spyOn(maintenance, "reviewAi").mockResolvedValue(report);
+  renderForActor(actor, <MaintenanceDetail />);
+  const submit = await screen.findByRole("button", { name: "Send approved content for analysis" });
+  const consent = screen.getByLabelText(/I confirm the description contains no personal or confidential data/);
+  await userEvent.click(submit);
+  expect(review).not.toHaveBeenCalled();
+  await userEvent.click(consent);
+  await userEvent.click(submit);
+  expect(review).toHaveBeenCalledExactlyOnceWith("reviewed-report", 4, true, false);
+  expect(await screen.findByText(/Analysis is queued/i)).toBeTruthy();
+});
+
+it("sends an image only after separate opt-in and displays AI suggestions apart from staff decisions", async () => {
+  const actor: Account = { id: "ai-staff-image-test", name: "Staff", email: "", role: "maintenance" };
+  const report: MaintenanceReport = { id: "reviewed-image-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 8, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canUpdate: true, canReviewAiInput: true, canReviewAiImage: true, decision: { type: "staff-confirmed", priority: "low", risk: "low" } };
+  vi.spyOn(maintenance, "detail").mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, version: 9, assessment: { state: "completed", type: "plumbing", priority: "medium", risk: "high", explanation: "Synthetic explanation." } });
+  const review = vi.spyOn(maintenance, "reviewAi").mockResolvedValue(report);
+  renderForActor(actor, <MaintenanceDetail />);
+  await userEvent.click(await screen.findByLabelText(/I confirm the description contains no personal or confidential data/));
+  await userEvent.click(screen.getByLabelText(/Include the report photo/));
+  await userEvent.click(screen.getByRole("button", { name: "Send approved content for analysis" }));
+  expect(review).toHaveBeenCalledExactlyOnceWith("reviewed-image-report", 8, true, true);
+  expect(await screen.findByText("AI suggestion — staff review required")).toBeTruthy();
+  expect(screen.getByText("Suggested fault type").nextElementSibling?.textContent).toBe("plumbing");
+  expect(screen.getByText("Synthetic explanation.")).toBeTruthy();
+  expect((screen.getByLabelText("Operational fault type") as HTMLInputElement).value).toBe("staff-confirmed");
+});
+
+it("does not offer AI submission when the server blocks external processing", async () => {
+  const actor: Account = { id: "ai-staff-blocked-test", name: "Staff", email: "", role: "maintenance" };
+  const report: MaintenanceReport = { id: "blocked-ai-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 4, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canReviewAiInput: false, canReviewAiImage: false };
   vi.spyOn(maintenance, "detail").mockResolvedValue(report);
   const review = vi.spyOn(maintenance, "reviewAi");
   renderForActor(actor, <MaintenanceDetail />);
-  expect(await screen.findByText(/AI maintenance analysis is deferred/i)).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Send reviewed content for analysis" })).toBeNull();
+  expect(await screen.findByText(/External processing is not enabled/i)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Send approved content for analysis" })).toBeNull();
   expect(screen.queryByText("Suggested fault type")).toBeNull();
   expect(review).not.toHaveBeenCalled();
 });

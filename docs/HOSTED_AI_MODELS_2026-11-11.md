@@ -34,7 +34,7 @@ Search__CalibrationApproval=
 # Search__MinimumScore must only be set after real-world calibration
 ```
 
-Before enabling maintenance processing, provide a reviewed taxonomy under `AI:FaultTypes`, `AI:Priorities`, `AI:Risks`, staff approve the submitted text and image, select explicit request budgets and authorize the relevant external provider. `AI:Provider=auto` **does not switch vendors on failure**: text always uses NVIDIA GPT-OSS and an approved image always uses OpenRouter Super VL.
+The application defaults now provide maintenance labels `plumbing`, `water`, `electrical`, `hvac`, `lighting`, `furniture`, `doors`, `safety`, `other`, with `low`/`medium`/`high` priority and risk values. These are broad suggestions drawn from the project examples, not an institutional taxonomy; environment values may override them when the university supplies exact labels. Staff still approve every report and the specific image before transfer, and AI output remains separate from the saved staff decision. `AI:Provider=auto` **does not switch vendors on failure**: text always uses NVIDIA GPT-OSS and an approved image always uses OpenRouter Super VL.
 
 Before enabling hosted retrieval:
 1. Approve **external transfer of even description text**, including the actual university data classification, provider policies, and sender/recipient obligations. Only then set `Search:ExternalProcessingApproved=true`. The code does not redact personally identifying data.

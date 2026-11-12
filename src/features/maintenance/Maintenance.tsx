@@ -276,8 +276,8 @@ export function NewMaintenance() {
 function SyntheticAiCheck() {
   const { t } = useApp();
   return <Feedback>{t(
-    "تحليل الصيانة بالذكاء الاصطناعي مؤجل حاليًا. تُراجع البلاغات يدويًا، ولا تُعرض توصيات آلية.",
-    "AI maintenance analysis is currently deferred. Staff review reports manually; automated suggestions are not shown.",
+    "اقتراحات AI لا يراها إلا موظفو الصيانة المخولون بعد مراجعة البلاغ والموافقة على المحتوى.",
+    "AI suggestions are visible only to authorized maintenance staff after they review and approve the report content.",
   )}</Feedback>;
 }
 
@@ -548,16 +548,51 @@ function Detail({
       {staff && (
         <>
           <div className="panel">
-            <h2>
-              {t(
-                "تحليل الصيانة بالذكاء الاصطناعي مؤجل",
-                "AI maintenance analysis is deferred",
-              )}
-            </h2>
-            <Feedback>{t(
-              "اقتراحات التحليل مؤجلة. يعتمد القرار والإجراء على مراجعة الموظف للبلاغ فقط.",
-              "Automated analysis is deferred. Decisions and actions rely on staff review of the report.",
-            )}</Feedback>
+            <h2>{t("اقتراح تحليل الصيانة", "Maintenance analysis suggestion")}</h2>
+            <p>{t(
+              "التحليل اختياري. عند موافقتك، يُرسل وصف البلاغ إلى مزود AI خارجي. لا ترسل بيانات شخصية أو سرية. النتيجة اقتراح للموظف ولا تغيّر القرار التشغيلي.",
+              "Analysis is optional. With your approval, the report description is sent to an external AI provider. Do not send personal or confidential data. The result is a staff suggestion and never changes the operational decision.",
+            )}</p>
+            {report.assessment?.state === "completed" && (
+              <div className="feedback">
+                <b>{t("اقتراح AI — يحتاج مراجعة الموظف", "AI suggestion — staff review required")}</b>
+                <dl className="details-grid">
+                  <div><dt>{t("نوع العطل المقترح", "Suggested fault type")}</dt><dd>{report.assessment.type || "—"}</dd></div>
+                  <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{report.assessment.priority || "—"}</dd></div>
+                  <div><dt>{t("الخطورة المقترحة", "Suggested risk")}</dt><dd>{report.assessment.risk || "—"}</dd></div>
+                </dl>
+                {report.assessment.explanation && <p>{report.assessment.explanation}</p>}
+              </div>
+            )}
+            {report.assessment?.state === "pending" && <Feedback>{t("التحليل قيد التنفيذ. حدّث بيانات البلاغ بعد قليل.", "Analysis is queued. Refresh the report shortly.")}</Feedback>}
+            {report.assessment?.state === "unavailable" && <Feedback>{t("التحليل غير متاح حاليًا. راجع البلاغ يدويًا؛ لم يُسجّل اقتراح.", "Analysis is currently unavailable. Review the report manually; no suggestion was recorded.")}</Feedback>}
+            {report.canReviewAiInput && (
+              <ActionForm
+                label={t("إرسال المحتوى الموافق عليه للتحليل", "Send approved content for analysis")}
+                onSubmit={async (data) => {
+                  await maintenance.reviewAi(
+                    report.id,
+                    report.version,
+                    data.get("confirmedNonSensitive") === "on",
+                    data.get("includeImage") === "on",
+                  );
+                  onChanged();
+                }}
+              >
+                <label className="field">
+                  <span>{t("أؤكد أن الوصف لا يحتوي على بيانات شخصية أو سرية، وأن إرساله إلى مزود خارجي مسموح.", "I confirm the description contains no personal or confidential data and is approved for transfer to an external provider.")}</span>
+                  <input type="checkbox" name="confirmedNonSensitive" required />
+                </label>
+                {report.canReviewAiImage && <label className="field">
+                  <span>{t("أرسل صورة البلاغ أيضًا؛ أؤكد أنها لا تحتوي على بيانات شخصية أو سرية وأن إرسالها مسموح.", "Include the report photo; I confirm it contains no personal or confidential data and is approved for transfer.")}</span>
+                  <input type="checkbox" name="includeImage" />
+                </label>}
+              </ActionForm>
+            )}
+            {!report.canReviewAiInput && report.assessment?.state !== "completed" && report.assessment?.state !== "pending" && report.assessment?.state !== "unavailable" && <Feedback>{t(
+              "المعالجة الخارجية غير مفعّلة لهذا البلاغ أو لم تسمح بها إعدادات الخصوصية والميزانية.",
+              "External processing is not enabled for this report or is blocked by privacy and budget settings.",
+            )}</Feedback>}
           </div>
           {report.canUpdate && <StaffActions
             key={`${report.id}-${report.version}`}

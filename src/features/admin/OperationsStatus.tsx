@@ -5,7 +5,7 @@ import { operations, smokeAi, demoAi, smokeOpenRouter, type AiDemoResult, type O
 import { ServiceError } from "../../services/contracts";
 const openRouterErrorMessages: Record<string, [string, string]> = {
   ai_smoke_disabled: ["تشخيص OpenRouter غير مفعّل.", "OpenRouter diagnostics are disabled."],
-  ai_smoke_limit: ["تم استخدام اختبار OpenRouter اليوم؛ يتجدد الحد عند منتصف الليل UTC.", "Today's OpenRouter diagnostic was used; the limit resets at midnight UTC."],
+  ai_smoke_limit: ["وصلت ميزانية تشخيص OpenRouter اليومية؛ تتجدد منتصف الليل UTC.", "The OpenRouter diagnostic budget is exhausted; it resets at midnight UTC."],
   ai_not_configured: ["مفتاح OpenRouter أو ميزانيته غير جاهزة.", "The OpenRouter key or budget is not configured."],
   ai_quota_exhausted: ["حصة OpenRouter اليومية أو للدقيقة لا تكفي للفحص.", "OpenRouter's daily or per-minute budget is too low for this diagnostic."],
   ai_rate_limited: ["OpenRouter وصل حد الطلبات.", "OpenRouter rate-limited the diagnostic."],
@@ -44,7 +44,7 @@ export function OperationsStatus() {
         ai_rate_limited: ["NVIDIA وصل لحد الطلبات (429).", "NVIDIA rate-limited the request (429)."],
         ai_unavailable: ["NVIDIA رجع خطأ في الخدمة.", "NVIDIA returned a provider error."],
         invalid_ai_response: ["الرد وصل لكن تصنيفه غير صالح أو غير مكتمل.", "NVIDIA responded but the classification was invalid or incomplete."],
-        ai_smoke_limit: ["استهلكت 5 محاولات تشخيص اليوم؛ الحد بيتجدد منتصف الليل UTC.", "Five diagnostic attempts are used; resets at midnight UTC."],
+        ai_smoke_limit: ["وصلت لميزانية NVIDIA اليومية؛ تتجدد منتصف الليل UTC.", "The NVIDIA daily diagnostic budget is exhausted; it resets at midnight UTC."],
         ai_quota_exhausted: ["رصيد طلبات التطبيق انتهى.", "The application request budget is exhausted."],
         internal: ["السيرفر واجه استثناء غير متوقع؛ راجع سجلات الاستضافة.", "The server encountered an unexpected error; check hosting logs."]
       };
@@ -74,7 +74,7 @@ export function OperationsStatus() {
         ai_connection_failed: ["السيرفر مش قادر يتصل بـ NVIDIA عبر HTTPS.", "The server could not establish HTTPS to NVIDIA."],
         ai_timeout: ["انتهت مهلة اتصال السيرفر بـ NVIDIA.", "NVIDIA connection timed out."],
         ai_invalid_response: ["NVIDIA رجّع استجابة ناقصة أو غير متوقعة.", "NVIDIA returned an incomplete or unexpected response."],
-        ai_smoke_limit: ["وصلت لـ 5 محاولات تشخيص اليوم (UTC).", "Five diagnostic attempts used today (UTC)."],
+        ai_smoke_limit: ["وصلت لميزانية NVIDIA اليومية (UTC).", "The NVIDIA daily diagnostic budget is exhausted (UTC)."],
         ai_quota_exhausted: ["حصة NVIDIA في التطبيق خلصت.", "The application NVIDIA quota is exhausted."],
         ai_not_configured: ["مفتاح NVIDIA أو ميزانية الطلبات ناقصة.", "NVIDIA key or quota configuration is incomplete."]
       };
@@ -126,12 +126,12 @@ export function OperationsStatus() {
           <p>{t("دي فحوص إعدادات فقط، مش إثبات إن المودلز اشتغلت. لازم مراجعة الخصوصية قبل تشغيل مشاركة بيانات فعلية.", "These are configuration checks, not successful provider tests. Complete privacy review before sharing real data.")}</p>
           {status.ai.adminSyntheticDiagnosticEnabled && status.ai.nvidiaKeyPresent && status.ai.nvidiaBudgetConfigured && (
             <div>
-              <p>{t("اختبار آمن لنص وهمي ثابت على NVIDIA فقط. لا يرسل أي بلاغ أو صورة أو بيانات مستخدم، ولا يفعّل تحليل الصيانة الحقيقي. الحد 5 محاولات يوميًا، وكل محاولة تستهلك طلبًا من حصة المزود.", "Admin-only diagnostic using a fixed fictional text on NVIDIA. Never sends reports, photos or user data, and does not enable actual maintenance AI. Up to 5 attempts per UTC day; each attempt uses one provider request.")}</p>
+              <p>{t("اختبار آمن لنص وهمي ثابت على NVIDIA فقط. لا يرسل أي بلاغ أو صورة أو بيانات مستخدم، ولا يفعّل تحليل الصيانة الحقيقي. يسمح حتى ميزانية NVIDIA اليومية المضبوطة، وكل محاولة تستهلك طلبًا من حصة المزود.", "Admin-only diagnostic using a fixed fictional text on NVIDIA. Never sends reports, photos or user data, and does not enable actual maintenance AI. Allows up to the configured NVIDIA daily budget; each attempt uses one provider request.")}</p>
               <button type="button" className="button" disabled={smokeBusy} onClick={() => { void testSyntheticAi(); }}>
                 {smokeBusy ? t("جارٍ اختبار المودل...", "Testing model...") : t("اختبار المودل بالنص الوهمي", "Test model with fictional text")}
               </button>
               {smokeMessage && <p role="status">{smokeMessage}</p>}
-              <p>{t("اختبار تحليل حقيقي: يرسل عطلًا خياليًا ثابتًا فقط، ويعرض التصنيف الذي يرجعه مودل NVIDIA. يشترك مع اختبار الاتصال في نفس حد 5 محاولات يوميًا.", "Live classification demo: sends only a fixed fictional fault and displays the actual NVIDIA model classification. Shares the same 5-per-day limit.")}</p>
+              <p>{t("اختبار تحليل حقيقي: يرسل عطلًا خياليًا ثابتًا فقط، ويعرض التصنيف الذي يرجعه مودل NVIDIA. يشترك مع اختبار الاتصال في نفس ميزانية NVIDIA اليومية.", "Live classification demo: sends only a fixed fictional fault and displays the actual NVIDIA model classification. Shares the same configured NVIDIA daily budget.")}</p>
               <button type="button" className="button secondary" disabled={smokeBusy || demoBusy} onClick={() => { void testRealSyntheticClassification(); }}>
                 {demoBusy ? t("جارٍ التحليل…", "Classifying…") : t("جرّب تحليل عطل وهمي بالـ AI الحقيقي", "Classify a fictional fault with real AI")}
               </button>

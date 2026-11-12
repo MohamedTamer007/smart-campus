@@ -64,7 +64,7 @@ work/worker-venv/Scripts/python.exe worker/worker.py --port 8123
 
 Configure the identical `Search:WorkerKey` on the API. Keep the worker on loopback. Allow several GB of free disk for weights, dependencies and cache. The pinned model weights alone are approximately 1.5 GB. Worker startup loads the selected revision; its response carries the actual vector dimension. No fixed embedding dimension is imposed by the migration.
 
-Set provider keys securely, supply reviewed `AI:FaultTypes`, `AI:Priorities` and `AI:Risks`, then enable non-sensitive inference only for inputs permitted by the provider terms. Image forwarding requires its separate explicit flag. NVIDIA is text-only. No automatic provider fallback or paid routing exists.
+Set provider keys securely and review the broad maintenance labels shipped in `smartcampus.defaults.json`; environment values can override them if the university supplies an exact taxonomy. Enable non-sensitive inference only for inputs permitted by provider terms. Staff approval is required per report, image forwarding has a separate flag, and results remain suggestions. NVIDIA is text-only. No automatic provider fallback or paid routing exists.
 
 General search remains unavailable until `Search:CalibrationApproval` and `Search:MinimumScore` record a reviewed calibration. Jobs must also complete indexing. Failed workers/indexes are not treated as empty results.
 

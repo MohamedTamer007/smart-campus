@@ -37,8 +37,9 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
 
     // Strict admin-only, fixed-fictional-input diagnostic. It NEVER enables real
     // maintenance AI, forwards user content, or changes production AI gates.
-    // At most five attempts per UTC day on the whole deployment. Existing
-    // provider quota is charged; no provider text/keys are returned.
+    // Attempts are capped at the configured provider daily budget. The shared
+    // inference budget remains authoritative and charges every provider call.
+    // No provider text/keys are returned.
     [HttpPost("ai-smoke")]
     public async Task<ActionResult<AiSmokeResponse>> AiSmoke(CancellationToken cancellation)
     {
@@ -114,7 +115,7 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
     }
 
     // Real model inference, but only against fixed fictional text.
-    // Shares the same five-per-UTC-day cap as the connectivity diagnostic.
+    // Shares the configured NVIDIA daily budget cap with the connectivity diagnostic.
     // Never accepts text, media, report identifiers, or actual user data.
     [HttpPost("ai-demo")]
     public async Task<ActionResult<AiDemoResponse>> AiDemo(CancellationToken cancellation)
@@ -166,7 +167,7 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         var daily = config.GetValue("AI:OpenRouterDailyRequestLimit", 0);
         var perMinute = config.GetValue("AI:OpenRouterRequestsPerMinute", 0);
         ValidateOpenRouterDiagnosticConfig(key, daily, perMinute);
-        await ReserveDiagnosticAttempt("admin-openrouter-smoke", 1, cancellation);
+        await ReserveDiagnosticAttempt("admin-openrouter-smoke", daily, cancellation);
         var diagnosticConfiguration = OpenRouterDiagnosticConfiguration(key!, daily, perMinute);
         await RunOpenRouterDiagnostic(diagnosticConfiguration, cancellation);
         return OpenRouterDiagnosticResponse(diagnosticConfiguration);
@@ -238,7 +239,10 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
     }
 
     private async Task ReserveSyntheticAttempt(CancellationToken cancellation)
-        => await ReserveDiagnosticAttempt("admin-synthetic-smoke", 5, cancellation);
+    {
+        var daily = config.GetValue("AI:NvidiaDailyRequestLimit", 0);
+        await ReserveDiagnosticAttempt("admin-synthetic-smoke", daily, cancellation);
+    }
 
     private async Task ReserveDiagnosticAttempt(string counterName, int dailyLimit, CancellationToken cancellation)
     {

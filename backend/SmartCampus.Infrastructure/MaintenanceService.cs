@@ -101,7 +101,8 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         var staff = actor.Admin || actor.Maintenance(report.DepartmentId);
         related.Assessments.TryGetValue(report.Id, out var assessmentRecord);
         var assessment = assessmentRecord is null ? null : new { state = assessmentRecord.State, type = assessmentRecord.FaultType,
-            priority = assessmentRecord.Priority, risk = assessmentRecord.Risk, inputReviewed = assessmentRecord.ReviewedAt.HasValue };
+            priority = assessmentRecord.Priority, risk = assessmentRecord.Risk, explanation = assessmentRecord.Explanation,
+            inputReviewed = assessmentRecord.ReviewedAt.HasValue };
         var attachment = related.Media[report.Id].Select(m => (Guid?)m.Id).FirstOrDefault();
         var locationRecords = related.Locations;
         var allowedAssignees = staff ? related.Assignees[report.DepartmentId].Select(a => new { a.Id, name = a.Name }).ToArray() : [];

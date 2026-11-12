@@ -176,7 +176,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
-    public async Task Admin_openrouter_diagnostic_uses_only_fixed_synthetic_image_and_text_and_caps_daily_attempts()
+    public async Task Admin_openrouter_diagnostic_uses_only_fixed_synthetic_image_and_text_and_allows_configured_budget()
     {
         await ResetOpenRouterDiagnosticCounter();
         using var boundary = new SyntheticOpenRouterHttp();
@@ -218,9 +218,9 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.DoesNotContain("\"vector\"", result.GetRawText());
         Assert.DoesNotContain("PRIVATE USER CONTENT", result.GetRawText());
 
-        Assert.Equal(HttpStatusCode.TooManyRequests,
-            (await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { })).StatusCode);
-        Assert.Equal(3, boundary.Calls);
+        var second = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { });
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(6, boundary.Calls);
     }
 
     [DatabaseFact]
@@ -256,7 +256,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
                 ["AI:AllowNonSensitiveImages"] = "false",
                 ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
                 ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
-                ["AI:NvidiaDailyRequestLimit"] = "1000",
+                ["AI:NvidiaDailyRequestLimit"] = "5",
                 ["AI:NvidiaRequestsPerMinute"] = "1000",
                 // Deliberately omit actual maintenance taxonomy: synthetic diagnostic must still work.
             }));

@@ -11,7 +11,10 @@
     "AllowNonSensitiveImages": false,
     "SyntheticSmokeTestsEnabled": false,
     "SyntheticUserSmokeTestsEnabled": false,
-    "AdminSyntheticDiagnosticEnabled": true
+    "AdminSyntheticDiagnosticEnabled": true,
+    "FaultTypes": [ "plumbing", "water", "electrical", "hvac", "lighting", "furniture", "doors", "safety", "other" ],
+    "Priorities": [ "low", "medium", "high" ],
+    "Risks": [ "low", "medium", "high" ]
   },
   "Search": {
     "ExternalProcessingApproved": false,

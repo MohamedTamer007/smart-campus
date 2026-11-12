@@ -2073,6 +2073,7 @@
           "type",
           "priority",
           "risk",
+          "explanation",
           "inputReviewed"
         ],
         "type": "object",
@@ -2093,6 +2094,12 @@
             ]
           },
           "risk": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "explanation": {
             "type": [
               "null",
               "string"

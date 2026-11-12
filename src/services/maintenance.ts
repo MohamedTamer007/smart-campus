@@ -32,7 +32,7 @@ export interface MaintenanceReport extends MaintenanceInput {
   createdAt: string;
   assignee: string;
   history: MaintenanceEvent[];
-  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null; inputReviewed?: boolean } | null;
+  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null; explanation?: string | null; inputReviewed?: boolean } | null;
   decision?: OperationalDecision | null;
   mediaUrl?: string | null;
   reference?: string;

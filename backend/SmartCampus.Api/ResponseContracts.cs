@@ -5,7 +5,7 @@ public sealed record BilingualName(string Ar, string En);
 public sealed record LocationNames(BilingualName Faculty, BilingualName Building, BilingualName Floor);
 public sealed record AssigneeResponse(Guid Id, string Name);
 public sealed record HistoryResponse(DateTimeOffset At, Guid Actor, string Status, string Note, Guid? Assignee);
-public sealed record AssessmentResponse(string State, string? Type, string? Priority, string? Risk, bool InputReviewed);
+public sealed record AssessmentResponse(string State, string? Type, string? Priority, string? Risk, string? Explanation, bool InputReviewed);
 public sealed record DecisionResponse(string? Type, string? Priority, string? Risk);
 public sealed record MaintenanceResponse(Guid Id, string Reference, Guid OwnerId, string Description, Guid Faculty, Guid Building,
     Guid Floor, string Details, string Status, DateTimeOffset? CancelledAt, LocationNames LocationNames, int Version,

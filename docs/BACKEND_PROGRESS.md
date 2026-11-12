@@ -1,3 +1,9 @@
+## 12 November 2026 — Admin AI diagnostics use the configured application budget
+
+- Removed the extra one-per-day OpenRouter diagnostic cap and fixed five-per-day NVIDIA cap. Each admin-only diagnostic may now use up to the provider's configured daily application budget; OpenRouter's diagnostic requires three requests per attempt, so the shared request budget and per-minute limit stop it before it can exceed the configured provider allowance.
+- The endpoints still require an authenticated administrator and send only fixed fictional prompts plus a generated 32×32 synthetic image. Provider keys remain server-side, and diagnostic payloads cannot include caller-supplied content. This does not change provider-side free-plan quotas or guarantee availability.
+- Updated the admin status text and integration coverage to permit a second OpenRouter diagnostic while preserving the shared provider budget tests. No hosted environment variables or counters were changed/reset.
+
 ## 12 November 2026 — Traceable AI demo failures without additional external inference
 
 - The hosted admin fictional-classification route returned an uncaught `internal` (500). Hosted PostgreSQL usage counters had incremented, so the endpoint passed initial quota reservation but the true provider outcome was not established. No provider response or underlying exception details were available.
@@ -233,6 +239,16 @@ The restore comparison failure was reproduced locally and traced to PostgreSQL d
 - `dotnet build backend/SmartCampus.slnx --configuration Release`: passed, 0 warnings/errors. `dotnet test backend/SmartCampus.slnx --configuration Release`: 178 passed, 0 failed/skipped.
 - Frontend: `npm test -- --run` — 65 passed; `npm run typecheck`, `npm run lint` and `npm run build` passed. Playwright Chromium/WebKit: 28 passed. Firefox: 14 could not launch on this Windows host (`spawn UNKNOWN`), before test bodies executed.
 - `git diff --check`: passed. No hosted demo data/settings, DNS records, email provider state, push, or deployment were changed here. Full encrypted database backup is still unavailable on the current free hosted database plan; do not enable demo preparation on the hosted site until a complete backup and restore path exists. Real sender/domain authentication and delivery remain unverified.
+
+## Staff maintenance AI review UI — 12 November
+
+- Replaced the obsolete “AI deferred” staff detail panel with the existing server-gated review flow. Staff must explicitly confirm that report text is non-sensitive and approved for external processing; image inclusion requires a separate optional confirmation. The UI presents completed output as an AI suggestion, separate from the staff operational decision, and reports queued/unavailable states without fabricating output.
+- Exposed the already-persisted model explanation only with the existing staff-scoped assessment response and updated the API schema additively.
+- The API still controls role, report scope, content version, provider budget, approval and image policy. No provider keys, environment variables, search gates, or deployment settings were changed.
+- Frontend: `vitest run` — 67 passed; `tsc --noEmit`, targeted ESLint, Vite production build, and `git diff --check` passed. Added `requires explicit text approval before staff can enqueue AI analysis`, `sends an image only after separate opt-in and displays AI suggestions apart from staff decisions`, and `does not offer AI submission when the server blocks external processing`. Backend `dotnet test backend/SmartCampus.slnx --configuration Release` compiled and ran 122 passed, zero failed, 56 skipped; database-dependent tests skipped because no isolated test database is configured. `Reviewed_analysis_stays_private_and_never_sets_staff_decision` now asserts the model explanation is returned to staff with the suggestion.
+- Live NVIDIA/OpenRouter provider calls and independent retrieval calibration were not completed: the admin synthetic diagnostics were capped before network calls, and no isolated PostgreSQL test connection is configured locally. Accordingly no live-model success, calibration approval, push, or deployment is claimed; general lost/found search remains closed.
+- Follow-up live admin inspection after sign-in verified model routing `auto`, both server keys present, both app budgets configured, external text/image approvals enabled, and maintenance taxonomy incomplete. The dashboard showed application budget use OpenRouter 2/50 and NVIDIA 5/50. The fixed OpenRouter diagnostic returned its once-per-UTC-day cap, and the fixed NVIDIA classification returned its five-per-day admin diagnostic cap before either provider call; neither result proves provider connectivity. Search privacy approval is disabled and calibration is unapproved. No environment values were changed.
+- Added broad project-derived maintenance suggestion labels to version-controlled defaults and the example configuration, leaving all host environment values untouched. Existing environment values override those defaults. This resolves the taxonomy-missing readiness condition on the next application deployment; no live deployment or provider result is inferred from the source change.
 
 ## Recovery-list query follow-up — 10 November
 

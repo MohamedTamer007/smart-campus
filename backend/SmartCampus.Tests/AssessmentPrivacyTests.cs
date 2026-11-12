@@ -103,6 +103,7 @@ public sealed class AssessmentPrivacyTests(CampusFixture campus) : IClassFixture
         Assert.Equal(System.Text.Json.JsonValueKind.Null, ownerView.GetProperty("assessment").ValueKind);
         var staffView = await CampusFixture.Response(await staff.GetAsync($"/api/v1/maintenance/{id}"));
         Assert.Equal("completed", staffView.GetProperty("assessment").GetProperty("state").GetString());
+        Assert.Equal("Synthetic suggestion", staffView.GetProperty("assessment").GetProperty("explanation").GetString());
         Assert.Equal(System.Text.Json.JsonValueKind.Null, staffView.GetProperty("decision").GetProperty("type").ValueKind);
         Assert.Equal("submitted", staffView.GetProperty("status").GetString());
     }
