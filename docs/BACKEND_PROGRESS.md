@@ -1,3 +1,10 @@
+## 12 November 2026 — Traceable AI demo failures without additional external inference
+
+- The hosted admin fictional-classification route returned an uncaught `internal` (500). Hosted PostgreSQL usage counters had incremented, so the endpoint passed initial quota reservation but the true provider outcome was not established. No provider response or underlying exception details were available.
+- `AiProviders.Assess` now maps TLS/network (`HttpRequestException`, read `IOException`) and non-client-cancelled timeout failures to sanitized `ai_connection_failed` and `ai_timeout` rule codes; it distinguishes key rejection (401), access rejection (403), invalid parameters (400/422) and preserves existing provider and parser failures. The UI explains each code without rendering provider bodies, URLs, or credentials.
+- NVIDIA inference requests get a bounded 90-second hosted timeout, up from 45 seconds, to permit slower model cold starts. Existing staff privacy gates, inference budget, daily diagnostic cap (5), credentials and deployment strategy remain unchanged. The current day's usage cap is **not** reset or bypassed.
+- Added purely simulated HTTP handler tests for SSL/transport failures, timeout and rejection responses. A subsequent successful build/deploy does not prove NVIDIA itself works; owner must inspect the next safe error code after the UTC quota reset.
+
 ## 12 November 2026 — Admin fictional AI diagnostic remains bounded
 
 - Increased the *admin-only, fixed-fictional-input* diagnostic cap from 3 to 5 attempts per UTC day. This permits two additional troubleshooting attempts after the three already recorded today; preserves all usage rows and the provider's distinct 50/day app quota; makes no modifications to real student-report transfer or AI privacy switches.

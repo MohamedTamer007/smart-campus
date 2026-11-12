@@ -18,8 +18,24 @@ export function OperationsStatus() {
     try {
       setDemoResult(await demoAi());
     } catch (error) {
-      const reason = error instanceof ServiceError ? (error.detail ?? error.code) : "unknown";
-      setDemoError(t("فشل التحليل الفعلي للبلاغ الوهمي: ", "Live classification of fictional report failed: ") + reason);
+      const code = error instanceof ServiceError ? (error.detail ?? error.code) : "unknown";
+      const explanations: Record<string, [string, string]> = {
+        ai_connection_failed: ["السيرفر مش قادر يتصل بـ NVIDIA عبر HTTPS. راجع صلاحية الاتصال الخارجي من الاستضافة.", "The host could not connect to NVIDIA over HTTPS. Check outbound host connectivity."],
+        ai_timeout: ["NVIDIA لم يرد خلال المهلة المحددة. قد يكون المودل بطيئًا أو الاتصال متعطلًا.", "NVIDIA did not respond before timeout; the model or connection may be slow."],
+        ai_key_rejected: ["NVIDIA رفض مفتاح الـ API (401).", "NVIDIA rejected the API key (401)."],
+        ai_access_denied: ["NVIDIA رفض صلاحية الوصول (403).", "NVIDIA denied access (403)."],
+        ai_request_rejected: ["NVIDIA رفض صيغة الطلب (400/422).", "NVIDIA rejected the request format (400/422)."],
+        ai_rate_limited: ["NVIDIA وصل لحد الطلبات (429).", "NVIDIA rate-limited the request (429)."],
+        ai_unavailable: ["NVIDIA رجع خطأ في الخدمة.", "NVIDIA returned a provider error."],
+        invalid_ai_response: ["الرد وصل لكن تصنيفه غير صالح أو غير مكتمل.", "NVIDIA responded but the classification was invalid or incomplete."],
+        ai_smoke_limit: ["استهلكت 5 محاولات تشخيص اليوم؛ الحد بيتجدد منتصف الليل UTC.", "Five diagnostic attempts are used; resets at midnight UTC."],
+        ai_quota_exhausted: ["رصيد طلبات التطبيق انتهى.", "The application request budget is exhausted."],
+        internal: ["السيرفر واجه استثناء غير متوقع؛ راجع سجلات الاستضافة.", "The server encountered an unexpected error; check hosting logs."]
+      };
+      const explanation = explanations[code];
+      setDemoError(explanation
+        ? t(explanation[0], explanation[1])
+        : t("فشل تحليل العطل الوهمي، رمز التشخيص: ", "Fictional classification failed, code: ") + code);
     } finally {
       setDemoBusy(false);
     }

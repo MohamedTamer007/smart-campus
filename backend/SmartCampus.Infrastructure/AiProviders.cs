@@ -85,17 +85,41 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
             payload["provider"] = new { allow_fallbacks = false, max_price = new { prompt = 0, completion = 0 } };
         }
         await budget.Reserve(provider, cancellation);
-        using var response = await client.PostAsJsonAsync(nvidia ? "https://integrate.api.nvidia.com/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions", payload, cancellation);
-        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        try
         {
-            var now = DateTimeOffset.UtcNow;
-            var retry = response.Headers.RetryAfter?.Date ?? now.Add(response.Headers.RetryAfter?.Delta ?? TimeSpan.FromMinutes(1));
-            throw new RuleException("ai_rate_limited", 503, now.AddSeconds(Math.Clamp((retry - now).TotalSeconds, 60, 86400)));
+            using var response = await client.PostAsJsonAsync(
+                nvidia ? "https://integrate.api.nvidia.com/v1/chat/completions"
+                       : "https://openrouter.ai/api/v1/chat/completions", payload, cancellation);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new RuleException("ai_key_rejected", 503);
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new RuleException("ai_access_denied", 503);
+            if (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                throw new RuleException("ai_request_rejected", 503);
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                var now = DateTimeOffset.UtcNow;
+                var retry = response.Headers.RetryAfter?.Date ?? now.Add(response.Headers.RetryAfter?.Delta ?? TimeSpan.FromMinutes(1));
+                throw new RuleException("ai_rate_limited", 503, now.AddSeconds(Math.Clamp((retry - now).TotalSeconds, 60, 86400)));
+            }
+            if (!response.IsSuccessStatusCode) throw new RuleException("ai_unavailable", 503);
+            var json = await response.Content.ReadAsStringAsync(cancellation);
+            if (json.Length > 100000) throw new RuleException("invalid_ai_response", 503);
+            return Parse(json, taxonomy, priorities, risks);
         }
-        if (!response.IsSuccessStatusCode) throw new RuleException("ai_unavailable", 503);
-        var json = await response.Content.ReadAsStringAsync(cancellation);
-        if (json.Length > 100000) throw new RuleException("invalid_ai_response", 503);
-        return Parse(json, taxonomy, priorities, risks);
+        catch (HttpRequestException)
+        {
+            // Do not leak provider response bodies, keys, URLs or TLS diagnostics.
+            throw new RuleException("ai_connection_failed", 503);
+        }
+        catch (System.IO.IOException)
+        {
+            throw new RuleException("ai_connection_failed", 503);
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+        {
+            throw new RuleException("ai_timeout", 503);
+        }
     }
 
     // Never forward unprocessed files/EXIF. Normalize JPEG/PNG/WebP to actual

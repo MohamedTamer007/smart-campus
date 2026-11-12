@@ -68,7 +68,8 @@ builder.Services.AddScoped<IInferenceBudget, InferenceBudget>();
 builder.Services.AddScoped<RemoteEmbeddings>();
 builder.Services.AddScoped<RetrievalService>();
 builder.Services.AddHttpClient("storage", c => c.Timeout = TimeSpan.FromSeconds(30));
-builder.Services.AddHttpClient("inference", c => c.Timeout = TimeSpan.FromSeconds(45));
+// Hosted NVIDIA inference may need a longer cold-start window; retain a finite timeout.
+builder.Services.AddHttpClient("inference", c => c.Timeout = TimeSpan.FromSeconds(90));
 builder.Services.AddHttpClient("worker", c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddHttpClient("retrieval", c => c.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddHttpClient("email", c => c.Timeout = TimeSpan.FromSeconds(30));

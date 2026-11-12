@@ -41,6 +41,46 @@ public sealed class ProviderTests
         ["AI:Priorities:0"] = "urgent", ["AI:Risks:0"] = "high"
     }).Build();
 
+    private sealed class ThrowingProvider(Exception failure) : HttpMessageHandler, IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new(this, false);
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(failure);
+    }
+
+    [Fact]
+    public async Task Failed_https_request_returns_sanitized_rule_error()
+    {
+        using var provider = new ThrowingProvider(new HttpRequestException("Synthetic SSL/TLS failure, never a real provider secret"));
+        var failure = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, AutoConfig(), new AvailableTestBudget())
+            .Assess("TEST ONLY imaginary pipe", CancellationToken.None));
+        Assert.Equal("ai_connection_failed", failure.Code);
+        Assert.Equal(503, failure.Status);
+    }
+
+    [Fact]
+    public async Task Provider_timeout_returns_sanitized_rule_error()
+    {
+        using var provider = new ThrowingProvider(new TaskCanceledException("Synthetic provider timeout"));
+        var failure = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, AutoConfig(), new AvailableTestBudget())
+            .Assess("TEST ONLY imaginary pipe", CancellationToken.None));
+        Assert.Equal("ai_timeout", failure.Code);
+        Assert.Equal(503, failure.Status);
+    }
+
+    [Theory]
+    [InlineData(400, "ai_request_rejected")]
+    [InlineData(401, "ai_key_rejected")]
+    [InlineData(403, "ai_access_denied")]
+    public async Task NVIDIA_rejection_status_is_classified_without_exposing_details(int status, string expected)
+    {
+        using var provider = new ProviderBoundary((HttpStatusCode)status, "{\"secret\":\"must never be returned\"}");
+        var failure = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, AutoConfig(), new AvailableTestBudget())
+            .Assess("TEST ONLY imaginary leak", CancellationToken.None));
+        Assert.Equal(expected, failure.Code);
+        Assert.Equal(503, failure.Status);
+    }
+
     [Theory]
     [InlineData(429, "{}", "ai_rate_limited")]
     [InlineData(503, "{}", "ai_unavailable")]
