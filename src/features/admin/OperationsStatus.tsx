@@ -146,7 +146,7 @@ export function OperationsStatus() {
           )}
           {status.ai.adminSyntheticDiagnosticEnabled && status.ai.openRouterKeyPresent && status.ai.openRouterBudgetConfigured && (
             <div>
-              <p>{t("فحص OpenRouter ثابت بمدخلات خيالية فقط: تحليل صورة وembedding للنص والصورة. يستهلك 3 طلبات كحد أقصى، مرة واحدة يوميًا، ولا يفتح البحث العام.", "Fixed OpenRouter diagnostic using fictional inputs only: image analysis plus text and image embeddings. Uses up to 3 requests, at most once daily, and does not enable public search.")}</p>
+              <p>{t("فحص OpenRouter ثابت بمدخلات خيالية فقط: تحليل صورة وembedding للنص والصورة. يستهلك 3 طلبات لكل محاولة، ويستمر حتى بلوغ ميزانية المزوّد اليومية أو حد الدقيقة؛ ولا يفتح البحث العام.", "Fixed OpenRouter diagnostic using fictional inputs only: image analysis plus text and image embeddings. Uses three requests per attempt and remains available within the configured provider daily and per-minute budgets; it does not enable public search.")}</p>
               <button type="button" className="button secondary" disabled={openRouterBusy} onClick={() => { void testSyntheticOpenRouter(); }}>
                 {openRouterBusy ? t("جارٍ فحص OpenRouter...", "Testing OpenRouter...") : t("اختبار الصور والبحث الوهمي على OpenRouter", "Test fictional image and search on OpenRouter")}
               </button>
@@ -169,3 +169,4 @@ function openRouterDiagnosticError(code: string, translate: (arabic: string, eng
   const message = openRouterErrorMessages[code];
   return message ? translate(message[0], message[1]) : translate(`فشل الفحص، رمز التشخيص: ${code}`, `Diagnostic failed, code: ${code}`);
 }
+

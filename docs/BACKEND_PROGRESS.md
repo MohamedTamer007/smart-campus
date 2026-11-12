@@ -3,6 +3,7 @@
 - Removed the extra one-per-day OpenRouter diagnostic cap and fixed five-per-day NVIDIA cap. Each admin-only diagnostic may now use up to the provider's configured daily application budget; OpenRouter's diagnostic requires three requests per attempt, so the shared request budget and per-minute limit stop it before it can exceed the configured provider allowance.
 - The endpoints still require an authenticated administrator and send only fixed fictional prompts plus a generated 32×32 synthetic image. Provider keys remain server-side, and diagnostic payloads cannot include caller-supplied content. This does not change provider-side free-plan quotas or guarantee availability.
 - Updated the admin status text and integration coverage to permit a second OpenRouter diagnostic while preserving the shared provider budget tests. No hosted environment variables or counters were changed/reset.
+- Live verification on commit `94e36a1`: the OpenRouter synthetic diagnostic passed twice, validating image analysis and text/image embeddings with the configured hosted model. NVIDIA's fictional classification and simple connectivity probes both timed out at the application timeout; NVIDIA text inference is not confirmed working. Public recovery search remains disabled pending privacy approval and calibration.
 
 ## 12 November 2026 — Traceable AI demo failures without additional external inference
 
@@ -265,4 +266,5 @@ MaintenanceService.List now reads the authorized page once and batches related h
 `Maintenance_page_batches_reads_and_keeps_assessments_and_assignees_within_staff_scope` uses real PostgreSQL and an EF command interceptor. The original implementation failed: one owner report used eight reader commands versus 52 for twelve reports. The new implementation passes constant-read assertions for both owners and staff, preserves history/location/media mappings, excludes object keys and confidential assessment/history content, restricts assignees and keeps current assessments separate from stale versions. Cross-account/department and mixed staff-owner cases pass. Full backend: 99 passed, zero failed/skipped (`evidence/backend-maintenance-list.trx`). No hosting latency/capacity claim is made.
 
 Code, security, test and documentation review passed. Found-item inventory lists still use per-item detail reads and remain an independent performance follow-up. Real email is still pending the private launcher startup/key setup; no real send, delivery or owner verification is claimed. External deployment and calibration gates remain open.
+
 
