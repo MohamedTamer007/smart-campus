@@ -40,14 +40,14 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
             (actor.Roles.Contains("maintenance") && actor.Scopes.Contains(r.DepartmentId)));
         var reports = await query.AsNoTracking().OrderByDescending(r => r.CreatedAt)
             .Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync();
-        return await Responses(reports, actor);
+        return await Responses(reports, actor, includeAiExplanation: false);
     }
 
     public async Task<object> Detail(Guid id)
     {
         var actor = await access.Current();
         var report = await db.Reports.FindAsync(id) ?? throw new RuleException("not_found", 404);
-        return (await Responses([report], actor))[0];
+        return (await Responses([report], actor, includeAiExplanation: true))[0];
     }
 
     private sealed record Assignee(Guid DepartmentId, Guid Id, string Name);
@@ -55,12 +55,12 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
     private sealed record ResponseData(ILookup<Guid, MaintenanceHistory> History, Dictionary<Guid, Assessment> Assessments,
         ILookup<Guid, Attachment> Media, Dictionary<Guid, CampusLocation> Locations, ILookup<Guid, Assignee> Assignees);
 
-    private async Task<object[]> Responses(MaintenanceReport[] reports, Actor actor)
+    private async Task<object[]> Responses(MaintenanceReport[] reports, Actor actor, bool includeAiExplanation)
     {
         if (reports.Length == 0) return [];
         foreach (var report in reports) Access.Require(actor.Admin || actor.Maintenance(report.DepartmentId) || report.ReporterId == actor.Id);
         var related = await Related(reports, actor);
-        return reports.Select(report => Response(report, actor, related)).ToArray();
+        return reports.Select(report => Response(report, actor, related, includeAiExplanation)).ToArray();
     }
 
     private async Task<ResponseData> Related(MaintenanceReport[] reports, Actor actor)
@@ -96,12 +96,13 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
             select new Assignee(scope.DepartmentId, user.Id, user.DisplayName)).Distinct().ToArrayAsync();
     }
 
-    private object Response(MaintenanceReport report, Actor actor, ResponseData related)
+    private object Response(MaintenanceReport report, Actor actor, ResponseData related, bool includeAiExplanation)
     {
         var staff = actor.Admin || actor.Maintenance(report.DepartmentId);
         related.Assessments.TryGetValue(report.Id, out var assessmentRecord);
         var assessment = assessmentRecord is null ? null : new { state = assessmentRecord.State, type = assessmentRecord.FaultType,
-            priority = assessmentRecord.Priority, risk = assessmentRecord.Risk, explanation = assessmentRecord.Explanation,
+            priority = assessmentRecord.Priority, risk = assessmentRecord.Risk,
+            explanation = includeAiExplanation ? assessmentRecord.Explanation : null,
             inputReviewed = assessmentRecord.ReviewedAt.HasValue };
         var attachment = related.Media[report.Id].Select(m => (Guid?)m.Id).FirstOrDefault();
         var locationRecords = related.Locations;

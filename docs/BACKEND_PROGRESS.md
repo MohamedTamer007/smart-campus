@@ -4,6 +4,7 @@
 - The endpoints still require an authenticated administrator and send only fixed fictional prompts plus a generated 32×32 synthetic image. Provider keys remain server-side, and diagnostic payloads cannot include caller-supplied content. This does not change provider-side free-plan quotas or guarantee availability.
 - Updated the admin status text and integration coverage to permit a second OpenRouter diagnostic while preserving the shared provider budget tests. No hosted environment variables or counters were changed/reset.
 - Live verification on commit `94e36a1`: the OpenRouter synthetic diagnostic passed twice, validating image analysis and text/image embeddings with the configured hosted model. NVIDIA's fictional classification and simple connectivity probes both timed out at the application timeout; NVIDIA text inference is not confirmed working. Public recovery search remains disabled pending privacy approval and calibration.
+- PostgreSQL CI exposed three test failures. The operational-summary assertion now matches the default fictional taxonomy, the quota integration fixture clears provider usage in its isolated test database, and bulk maintenance lists omit the AI explanation while staff report details retain it.
 
 ## 12 November 2026 — Traceable AI demo failures without additional external inference
 

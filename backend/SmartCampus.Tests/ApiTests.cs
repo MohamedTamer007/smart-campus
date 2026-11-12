@@ -165,14 +165,14 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     {
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
-        await db.InferenceUsage.Where(u => u.Provider == "admin-synthetic-smoke").ExecuteDeleteAsync();
+        await db.InferenceUsage.Where(u => u.Provider == "admin-synthetic-smoke" || u.Provider == "nvidia").ExecuteDeleteAsync();
     }
 
     private async Task ResetOpenRouterDiagnosticCounter()
     {
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
-        await db.InferenceUsage.Where(u => u.Provider == "admin-openrouter-smoke").ExecuteDeleteAsync();
+        await db.InferenceUsage.Where(u => u.Provider == "admin-openrouter-smoke" || u.Provider == "openrouter").ExecuteDeleteAsync();
     }
 
     [DatabaseFact]
@@ -243,7 +243,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
-    public async Task Synthetic_smoke_uses_only_fixed_text_and_one_budgeted_admin_request()
+    public async Task Synthetic_smoke_uses_only_fixed_text_and_respects_configured_daily_budget()
     {
         await ResetAdminDiagnosticCounter();
         using var boundary = new SyntheticAiHttp();
@@ -364,7 +364,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal("openrouter", ai.GetProperty("provider").GetString());
         Assert.False(ai.GetProperty("textConfigured").GetBoolean());
         Assert.False(ai.GetProperty("imagesConfigured").GetBoolean());
-        Assert.False(ai.GetProperty("taxonomyConfigured").GetBoolean());
+        Assert.True(ai.GetProperty("taxonomyConfigured").GetBoolean());
         Assert.False(ai.GetProperty("textTransferEnabled").GetBoolean());
         Assert.False(ai.GetProperty("imageTransferEnabled").GetBoolean());
         Assert.False(ai.GetProperty("nvidiaKeyPresent").GetBoolean());
