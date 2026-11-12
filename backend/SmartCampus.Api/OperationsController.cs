@@ -36,7 +36,7 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
 
     // Strict admin-only, fixed-fictional-input diagnostic. It NEVER enables real
     // maintenance AI, forwards user content, or changes production AI gates.
-    // At most three attempts per UTC day on the whole deployment. Existing
+    // At most five attempts per UTC day on the whole deployment. Existing
     // provider quota is charged; no provider text/keys are returned.
     [HttpPost("ai-smoke")]
     public async Task<ActionResult<AiSmokeResponse>> AiSmoke(CancellationToken cancellation)
@@ -113,7 +113,7 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
     }
 
     // Real model inference, but only against fixed fictional text.
-    // Shares the same three-per-UTC-day cap as the connectivity diagnostic.
+    // Shares the same five-per-UTC-day cap as the connectivity diagnostic.
     // Never accepts text, media, report identifiers, or actual user data.
     [HttpPost("ai-demo")]
     public async Task<ActionResult<AiDemoResponse>> AiDemo(CancellationToken cancellation)
@@ -164,7 +164,7 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             INSERT INTO smart_campus."InferenceUsage" ("Key", "Provider", "Window", "WindowStart", "Count")
             VALUES ({id}, {"admin-synthetic-smoke"}, {"day"}, {day}, 1)
             ON CONFLICT ("Key") DO UPDATE SET "Count" = "InferenceUsage"."Count" + 1
-            WHERE "InferenceUsage"."Count" < 3
+            WHERE "InferenceUsage"."Count" < 5
             """, cancellation);
         if (reserved != 1)
             throw new SmartCampus.Domain.RuleException("ai_smoke_limit", 429, day.AddDays(1));

@@ -179,12 +179,12 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         var currentConfig = scope.ServiceProvider.GetRequiredService<IConfiguration>();
         Assert.True(currentConfig.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"));
         Assert.False(currentConfig.GetValue<bool>("AI:AllowNonSensitiveInference"));
-        for (var i = 0; i < 2; i++)
+        for (var i = 0; i < 4; i++)
             Assert.Equal(HttpStatusCode.OK,
                 (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests,
             (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
-        Assert.Equal(3, boundary.Calls);
+        Assert.Equal(5, boundary.Calls);
     }
 
     [DatabaseFact]

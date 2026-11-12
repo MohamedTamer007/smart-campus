@@ -1,3 +1,9 @@
+## 12 November 2026 — Admin fictional AI diagnostic remains bounded
+
+- Increased the *admin-only, fixed-fictional-input* diagnostic cap from 3 to 5 attempts per UTC day. This permits two additional troubleshooting attempts after the three already recorded today; preserves all usage rows and the provider's distinct 50/day app quota; makes no modifications to real student-report transfer or AI privacy switches.
+- The same cap applies to both NVIDIA connectivity and the real-model fictional-classification demo. The UI and integration-test cap assertions now match 5.
+- Increasing an application's diagnostic cap does not prove provider connectivity or fix provider failures: require a live admin test and inspect the safe error response.
+
 ## 12 November 2026 — Real AI classifications on fictional data, no student-data release
 
 - Added admin-only `POST /api/v1/admin/operations/ai-demo` with a fixed fictional maintenance report, no request-body intake, CSRF/admin checks, and server-owned NVIDIA key. It calls the *actual* AiProviders classification pathway, validates the response labels, and displays the returned type/priority/risk/explanation. Both diagnostics share the preexisting three-per-UTC-day provider attempt cap.
