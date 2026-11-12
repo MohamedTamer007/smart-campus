@@ -9,6 +9,7 @@ on:
       - 'scripts/deploy-monsterasp.ps1'
       - 'scripts/publish.ps1'
       - 'backend/**'
+      - 'e2e/**'
       - 'src/**'
       - 'public/**'
       - 'index.html'
