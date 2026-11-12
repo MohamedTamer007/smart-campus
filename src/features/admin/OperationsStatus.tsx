@@ -1,9 +1,25 @@
+import { useState } from "react";
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
-import { operations } from "../../services/admin";
+import { operations, smokeAi } from "../../services/admin";
 
 export function OperationsStatus() {
   const { t, account } = useApp();
+  const [smokeBusy, setSmokeBusy] = useState(false);
+  const [smokeMessage, setSmokeMessage] = useState<string | null>(null);
+  async function testSyntheticAi() {
+    setSmokeBusy(true);
+    setSmokeMessage(null);
+    try {
+      const result = await smokeAi();
+      setSmokeMessage(t("تم اختبار الاستجابة الحقيقية والتحقق من صيغة النتيجة", "Real provider response and result format validated") +
+        ` (${result.provider}: ${result.model})`);
+    } catch {
+      setSmokeMessage(t("اختبار المودل لم ينجح. افحص حالة المفتاح والحصة والمودل من الخادم.", "Model test failed. Check server key, quota, and provider status."));
+    } finally {
+      setSmokeBusy(false);
+    }
+  }
   const kinds: Record<string, string> = { maintenance: t("تقييم الصيانة", "Maintenance assessment"), index: t("فهرسة المعثورات", "Found-item indexing"), email: t("البريد", "Email") };
   const states: Record<string, string> = { pending: t("بالانتظار", "Pending"), running: t("قيد التنفيذ", "Running"), completed: t("مكتملة", "Completed"), unavailable: t("متعذرة", "Unavailable") };
   return <section className="panel">
@@ -29,6 +45,15 @@ export function OperationsStatus() {
           <p>{t("تصنيفات الصيانة", "Maintenance taxonomy")}: {status.ai.taxonomyConfigured ? t("مُدخلة", "Present") : t("ناقصة", "Missing")}</p>
           <p>{t("تفعيل إرسال النص والصور للمزودين الخارجيين", "External-provider text/image switches")}: {status.ai.textTransferEnabled ? t("النص مفعّل", "Text on") : t("النص معطّل", "Text off")} · {status.ai.imageTransferEnabled ? t("الصور مفعّلة", "Images on") : t("الصور معطّلة", "Images off")}</p>
           <p>{t("دي فحوص إعدادات فقط، مش إثبات إن المودلز اشتغلت. لازم مراجعة الخصوصية قبل تشغيل مشاركة بيانات فعلية.", "These are configuration checks, not successful provider tests. Complete privacy review before sharing real data.")}</p>
+          {status.ai.syntheticSmokeTestsEnabled && status.ai.textConfigured && (
+            <div>
+              <p>{t("اختبار اختياري لبلاغ وهمي ثابت. بيستهلك طلب واحد من رصيد المزود، وممنوع تشغيله إلا في بيئة اختبار معزولة.", "Optional test with a fixed fictional report. Uses one provider request; run only in an isolated test environment.")}</p>
+              <button type="button" className="button" disabled={smokeBusy} onClick={() => { void testSyntheticAi(); }}>
+                {smokeBusy ? t("جارٍ اختبار المودل...", "Testing model...") : t("اختبار المودل بالنص الوهمي", "Test model with fictional text")}
+              </button>
+              {smokeMessage && <p role="status">{smokeMessage}</p>}
+            </div>
+          )}
         </>}
         <p>{t("ذاكرة الخدمة", "Service memory")}: {Math.round(status.workingSetBytes / 1024 / 1024)} MiB</p>
         <p>{t("محاولات هذا التطبيق وحدّه اليومي للذكاء الاصطناعي بتوقيت UTC", "App AI attempts / daily budget in UTC")}</p>

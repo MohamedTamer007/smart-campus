@@ -1,3 +1,9 @@
+## 12 November 2026 — Opt-in admin synthetic AI smoke check (feature branch only)
+
+- Added a disabled-by-default `AI:SyntheticSmokeTestsEnabled` switch and admin + CSRF protected `POST /api/v1/admin/operations/ai-smoke`. On explicit admin request in an isolated test host, it submits only a hard-coded fictional maintenance description through the existing, quota-limited AI provider adapter. The minimal response contains status/provider/model, never credentials or model text. The UI describes consumption of one provider request and shows a button only when the smoke switch and text configuration are enabled.
+- Added backend isolated-database tests for the default-disabled state, staff denial, and one successful synthetic provider call using a mock HTTP boundary. These tests do NOT contact NVIDIA. Added test-only setup instructions; no configuration switch was toggled on the deployed site and no real provider call was performed.
+- Earlier current-head CI run 43122270924 finished successfully (Backend/Frontend/Browser/Packaging); this new change needs a fresh CI run. Real AI provider acceptance remains unresolved.
+
 ## 12 November 2026 — Approved maintenance image normalization (feature branch only)
 
 - Corrected provider payload generation for reviewed PNG/WebP maintenance photos: previously the raw bytes were labeled `data:image/jpeg` regardless of actual format. Approved images now undergo format/size/dimension checks, decode to pixels and convert to JPEG before the outbound request; metadata/EXIF is not transferred.

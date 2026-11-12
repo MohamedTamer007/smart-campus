@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MimeKit;
@@ -11,6 +14,79 @@ namespace SmartCampus.Tests;
 
 public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
+    private sealed class SyntheticAiHttp : HttpMessageHandler, IHttpClientFactory
+    {
+        public int Calls { get; private set; }
+        public HttpClient CreateClient(string _) => new(this, disposeHandler: false);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
+        {
+            Calls++;
+            Assert.Equal("https://integrate.api.nvidia.com/v1/chat/completions", request.RequestUri!.ToString());
+            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellation));
+            Assert.Equal("openai/gpt-oss-20b", payload.RootElement.GetProperty("model").GetString());
+            var textOnly = payload.RootElement.GetProperty("messages")[1].GetProperty("content").GetString();
+            Assert.Contains("TEST ONLY", textOnly);
+            const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
+        }
+    }
+
+    [DatabaseFact]
+    public async Task Synthetic_smoke_test_is_disabled_by_default_even_for_admin()
+    {
+        using var admin = await campus.Login(campus.Admin);
+        var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Contains("ai_smoke_disabled", await response.Content.ReadAsStringAsync());
+    }
+
+    [DatabaseFact]
+    public async Task Synthetic_smoke_uses_only_fixed_text_and_one_budgeted_admin_request()
+    {
+        using var boundary = new SyntheticAiHttp();
+        using var host = campus.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["AI:Provider"] = "auto",
+                ["AI:SyntheticSmokeTestsEnabled"] = "true",
+                ["AI:AllowNonSensitiveInference"] = "true",
+                ["AI:AllowNonSensitiveImages"] = "false",
+                ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
+                ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
+                ["AI:NvidiaDailyRequestLimit"] = "5",
+                ["AI:NvidiaRequestsPerMinute"] = "5",
+                ["AI:FaultTypes:0"] = "plumbing",
+                ["AI:Priorities:0"] = "low",
+                ["AI:Risks:0"] = "low"
+            }));
+            builder.ConfigureServices(services => {
+                services.RemoveAll<IHttpClientFactory>();
+                services.AddSingleton<IHttpClientFactory>(boundary);
+            });
+        });
+        using var admin = host.CreateClient();
+        await CampusFixture.Csrf(admin);
+        var login = await admin.PostAsJsonAsync("/api/v1/auth/login", new { email = campus.Email(campus.Admin), password = campus.Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        await CampusFixture.Csrf(admin);
+
+        var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { });
+        var result = await CampusFixture.Response(response);
+        Assert.Equal("validated", result.GetProperty("status").GetString());
+        Assert.Equal("nvidia", result.GetProperty("provider").GetString());
+        Assert.Equal("openai/gpt-oss-20b", result.GetProperty("model").GetString());
+        Assert.Equal(3, result.EnumerateObject().Count());
+        Assert.Equal(1, boundary.Calls);
+    }
+
+    [DatabaseFact]
+    public async Task Non_admin_cannot_trigger_smoke_inference()
+    {
+        using var staff = await campus.Login(campus.Staff);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
+    }
+
     [DatabaseFact]
     public async Task Operational_diagnostics_reject_guests_users_and_scoped_staff()
     {

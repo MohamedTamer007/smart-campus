@@ -75,9 +75,16 @@ export interface OperationsSnapshot {
     openRouterKeyPresent: boolean;
     nvidiaBudgetConfigured: boolean;
     openRouterBudgetConfigured: boolean;
+    syntheticSmokeTestsEnabled: boolean;
   };
 }
 export const operations = () => api<OperationsSnapshot>("/admin/operations");
+export interface AiSmokeResult {
+  status: "validated";
+  provider: string;
+  model: string;
+}
+export const smokeAi = () => api<AiSmokeResult>("/admin/operations/ai-smoke", json("POST", {}));
 export function calculateStats(
   reports: MaintenanceReport[],
   items: FoundItem[],

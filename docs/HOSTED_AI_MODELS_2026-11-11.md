@@ -18,6 +18,7 @@ All calls are made from ASP.NET Core. **No local Python image-inference worker i
 AI__Provider=auto
 AI__AllowNonSensitiveInference=false
 AI__AllowNonSensitiveImages=false
+AI__SyntheticSmokeTestsEnabled=false
 # Provide both secrets only in the host's private environment settings:
 # AI__OpenRouterKey=<secret>
 # AI__NvidiaKey=<secret>
@@ -79,21 +80,29 @@ student reports or the existing production database on MonsterASP.NET Free.
    For this synthetic-only test, retain an explicit *positive* daily and
    per-minute budget for both OpenRouter and NVIDIA. A NVIDIA daily limit of
    `0` makes `AI:Provider=auto` unavailable even when the key is present.
-3. Have an authorized synthetic student submit a **text-only fictional**
+3. In the isolated evaluation host only, the operator may enable
+   `AI__SyntheticSmokeTestsEnabled=true`. A signed-in authorized admin can
+   visit /admin and explicitly request the synthetic text smoke test. It
+   sends **only a hard-coded fictional fault description** through the normal
+   `AiProviders.Assess` route, reserves an app-budgeted provider attempt,
+   and returns only `status`, `provider` and `model` — never response text,
+   private data or secrets. The endpoint is POST + CSRF + admin-only and stays
+   disabled by default. Return the flag to `false` after the evaluation.
+4. Have an authorized synthetic student submit a **text-only fictional**
    maintenance report and an authorized scoped staff member review it, confirm
    it is non-sensitive, and select text-only AI review. The asynchronous job
    should route to NVIDIA `openai/gpt-oss-20b`, and a completed suggestion
    must remain distinct from staff's actual operational decision.
-4. Observe the job/assessment state through the authorized API and worker
+5. Observe the job/assessment state through the authorized API and worker
    operations. A quota, provider failure or malformed response is a failed
    acceptance test; do not call a pending/unavailable result a success.
-5. **Keep image inference disabled** until a separate review authorizes the
+6. **Keep image inference disabled** until a separate review authorizes the
    exact synthetic image and provider transfer. In the source code,
    `AI:Provider=auto` routes staff-approved images to OpenRouter, and the
    `AI:AllowNonSensitiveImages` gate prevents images being forwarded otherwise.
    Approved JPEG/PNG/WebP bytes are validated and converted to a JPEG data
    URL by the API; the original uploaded metadata is not sent to the model.
-6. Hosted lost/found embeddings require their *own* provider compatibility
+7. Hosted lost/found embeddings require their *own* provider compatibility
    tests, externally approved data processing and a separately measured
    `Search:MinimumScore`/calibration approval. Text analysis success does not
    enable or validate retrieval.

@@ -9,7 +9,7 @@ using SmartCampus.Infrastructure;
 namespace SmartCampus.Api;
 
 [ApiController, Authorize, Route("api/v1/admin/operations")]
-public sealed class OperationsController(CampusDb db, Access access, IConfiguration config, IHttpClientFactory clients, TimeProvider clock) : ControllerBase
+public sealed class OperationsController(CampusDb db, Access access, IConfiguration config, IHttpClientFactory clients, TimeProvider clock, AiProviders aiProviders) : ControllerBase
 {
     private sealed record WorkerHealth(bool Ready, string Model, string Revision);
 
@@ -27,7 +27,26 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         config.GetValue("AI:NvidiaDailyRequestLimit", 0) > 0 &&
             config.GetValue("AI:NvidiaRequestsPerMinute", 5) > 0,
         config.GetValue("AI:OpenRouterDailyRequestLimit", 50) > 0 &&
-            config.GetValue("AI:OpenRouterRequestsPerMinute", 20) > 0);
+            config.GetValue("AI:OpenRouterRequestsPerMinute", 20) > 0,
+        config.GetValue<bool>("AI:SyntheticSmokeTestsEnabled"));
+
+    // Only an administrator explicitly requesting this endpoint can spend one
+    // app-budgeted provider attempt. No request body, photos, user records,
+    // staff reports, keys or model output are accepted or returned.
+    // Off by default; enable only in an isolated, synthetic-data test deployment.
+    [HttpPost("ai-smoke")]
+    public async Task<ActionResult<AiSmokeResponse>> AiSmoke(CancellationToken cancellation)
+    {
+        Access.Require((await access.Current()).Admin);
+        if (!config.GetValue<bool>("AI:SyntheticSmokeTestsEnabled"))
+            throw new SmartCampus.Domain.RuleException("ai_smoke_disabled", 503);
+        if (!AiProviders.Configured(config))
+            throw new SmartCampus.Domain.RuleException("ai_not_configured", 503);
+        const string fictionalReport = "TEST ONLY. Fictional maintenance scenario: a dripping pipe in an imaginary test room. No real student, staff member, building or incident.";
+        await aiProviders.Assess(fictionalReport, cancellation);
+        return new AiSmokeResponse("validated", AiProviders.SelectedProvider(config, hasApprovedImage: false),
+            AiProviders.SelectedModel(config, hasApprovedImage: false));
+    }
 
     [HttpGet]
     public async Task<ActionResult<OperationsResponse>> Status(CancellationToken cancellation)
