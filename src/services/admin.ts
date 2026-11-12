@@ -93,6 +93,18 @@ export interface AiDemoResult extends AiSmokeResult {
   explanation: string;
 }
 export const demoAi = () => api<AiDemoResult>("/admin/operations/ai-demo", json("POST", {}));
+export interface OpenRouterSmokeResult {
+  status: "validated";
+  provider: string;
+  visionModel: string;
+  embeddingModel: string;
+  revision: string;
+  dimension: number;
+  imageAnalysisValidated: boolean;
+  textEmbeddingValidated: boolean;
+  imageEmbeddingValidated: boolean;
+}
+export const smokeOpenRouter = () => api<OpenRouterSmokeResult>("/admin/operations/openrouter-smoke", json("POST", {}));
 export function calculateStats(
   reports: MaintenanceReport[],
   items: FoundItem[],

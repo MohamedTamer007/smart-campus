@@ -40,6 +40,55 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         }
     }
 
+    private sealed class SyntheticOpenRouterHttp : HttpMessageHandler, IHttpClientFactory
+    {
+        public int Calls { get; private set; }
+        public List<string> Bodies { get; } = [];
+        public HttpClient CreateClient(string name)
+        {
+            Assert.Contains(name, new[] { "inference", "retrieval" });
+            return new HttpClient(this, disposeHandler: false);
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
+        {
+            Calls++;
+            Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+            Assert.Equal("synthetic-openrouter-test-key", request.Headers.Authorization?.Parameter);
+            var body = await request.Content!.ReadAsStringAsync(cancellation);
+            Bodies.Add(body);
+            using var payload = JsonDocument.Parse(body);
+            if (request.RequestUri!.AbsolutePath.EndsWith("/chat/completions", StringComparison.Ordinal))
+            {
+                Assert.Equal("https://openrouter.ai/api/v1/chat/completions", request.RequestUri.ToString());
+                Assert.Equal("nvidia/nemotron-3.5-super-vl:free", payload.RootElement.GetProperty("model").GetString());
+                var content = payload.RootElement.GetProperty("messages")[1].GetProperty("content");
+                Assert.Equal(JsonValueKind.Array, content.ValueKind);
+                Assert.Contains("TEST ONLY", content[0].GetProperty("text").GetString());
+                Assert.StartsWith("data:image/jpeg;base64,", content[1].GetProperty("image_url").GetProperty("url").GetString());
+                const string classification = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(classification) };
+            }
+
+            Assert.Equal("https://openrouter.ai/api/v1/embeddings", request.RequestUri.ToString());
+            Assert.Equal(RemoteEmbeddings.OpenRouterModel, payload.RootElement.GetProperty("model").GetString());
+            var inputType = payload.RootElement.GetProperty("input_type").GetString();
+            if (inputType == "query")
+                Assert.Contains("TEST ONLY", payload.RootElement.GetProperty("input").GetString());
+            else
+            {
+                Assert.Equal("passage", inputType);
+                Assert.StartsWith("data:image/jpeg;base64,", payload.RootElement.GetProperty("input")[0]
+                    .GetProperty("content")[0].GetProperty("image_url").GetProperty("url").GetString());
+            }
+            var vector = new float[RemoteEmbeddings.Dimension];
+            vector[0] = 1;
+            var embedding = new { model = RemoteEmbeddings.OpenRouterModel,
+                data = new[] { new { index = 0, embedding = vector } } };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(embedding) };
+        }
+    }
+
     [DatabaseFact]
     public async Task Student_smoke_is_invisible_and_unavailable_without_separate_opt_in()
     {
@@ -116,6 +165,61 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
         await db.InferenceUsage.Where(u => u.Provider == "admin-synthetic-smoke").ExecuteDeleteAsync();
+    }
+
+    private async Task ResetOpenRouterDiagnosticCounter()
+    {
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        await db.InferenceUsage.Where(u => u.Provider == "admin-openrouter-smoke").ExecuteDeleteAsync();
+    }
+
+    [DatabaseFact]
+    public async Task Admin_openrouter_diagnostic_uses_only_fixed_synthetic_image_and_text_and_caps_daily_attempts()
+    {
+        await ResetOpenRouterDiagnosticCounter();
+        using var boundary = new SyntheticOpenRouterHttp();
+        using var host = campus.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Search:Provider"] = "hosted",
+                ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
+                ["AI:OpenRouterKey"] = "synthetic-openrouter-test-key",
+                ["AI:OpenRouterDailyRequestLimit"] = "50",
+                ["AI:OpenRouterRequestsPerMinute"] = "20"
+            }));
+            builder.ConfigureServices(services => {
+                services.RemoveAll<IHttpClientFactory>();
+                services.AddSingleton<IHttpClientFactory>(boundary);
+            });
+        });
+
+        using var admin = host.CreateClient();
+        await CampusFixture.Csrf(admin);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = campus.Email(campus.Admin), password = campus.Password })).StatusCode);
+        await CampusFixture.Csrf(admin);
+
+        var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke",
+            new { attemptedPrivatePayload = "PRIVATE USER CONTENT MUST NEVER BE SENT" });
+        var result = await CampusFixture.Response(response);
+        Assert.Equal("validated", result.GetProperty("status").GetString());
+        Assert.Equal("openrouter", result.GetProperty("provider").GetString());
+        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", result.GetProperty("visionModel").GetString());
+        Assert.Equal("nemotron35-8b-openrouter-1024-v1", result.GetProperty("revision").GetString());
+        Assert.Equal(RemoteEmbeddings.Dimension, result.GetProperty("dimension").GetInt32());
+        Assert.True(result.GetProperty("imageAnalysisValidated").GetBoolean());
+        Assert.True(result.GetProperty("textEmbeddingValidated").GetBoolean());
+        Assert.True(result.GetProperty("imageEmbeddingValidated").GetBoolean());
+        Assert.Equal(3, boundary.Calls);
+        Assert.All(boundary.Bodies, body => Assert.DoesNotContain("PRIVATE USER CONTENT", body));
+        Assert.DoesNotContain("synthetic-openrouter-test-key", result.GetRawText());
+        Assert.DoesNotContain("\"vector\"", result.GetRawText());
+        Assert.DoesNotContain("PRIVATE USER CONTENT", result.GetRawText());
+
+        Assert.Equal(HttpStatusCode.TooManyRequests,
+            (await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { })).StatusCode);
+        Assert.Equal(3, boundary.Calls);
     }
 
     [DatabaseFact]
@@ -230,6 +334,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         using var staff = await campus.Login(campus.Staff);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-demo", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { })).StatusCode);
     }
 
     [DatabaseFact]

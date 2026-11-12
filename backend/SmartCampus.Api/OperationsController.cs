@@ -7,6 +7,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SkiaSharp;
 using SmartCampus.Infrastructure;
 
 namespace SmartCampus.Api;
@@ -155,16 +156,99 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             assessment.Type, assessment.Priority, assessment.Risk, assessment.Explanation);
     }
 
+    // Tests three OpenRouter APIs with immutable fictional inputs only. This
+    // local configuration override does not open general search transfer gates.
+    [HttpPost("openrouter-smoke")]
+    public async Task<ActionResult<OpenRouterSmokeResponse>> OpenRouterSmoke(CancellationToken cancellation)
+    {
+        Access.Require((await access.Current()).Admin);
+        var key = config["AI:OpenRouterKey"];
+        var daily = config.GetValue("AI:OpenRouterDailyRequestLimit", 0);
+        var perMinute = config.GetValue("AI:OpenRouterRequestsPerMinute", 0);
+        ValidateOpenRouterDiagnosticConfig(key, daily, perMinute);
+        await ReserveDiagnosticAttempt("admin-openrouter-smoke", 1, cancellation);
+        var diagnosticConfiguration = OpenRouterDiagnosticConfiguration(key!, daily, perMinute);
+        await RunOpenRouterDiagnostic(diagnosticConfiguration, cancellation);
+        return OpenRouterDiagnosticResponse(diagnosticConfiguration);
+    }
+
+    private void ValidateOpenRouterDiagnosticConfig(string? key, int daily, int perMinute)
+    {
+        if (!config.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"))
+            throw new SmartCampus.Domain.RuleException("ai_smoke_disabled", 503);
+        if (!string.IsNullOrWhiteSpace(key) && daily >= 3 && perMinute >= 3 && config["Search:Provider"] == "hosted")
+            return;
+        throw new SmartCampus.Domain.RuleException("ai_not_configured", 503);
+    }
+
+    private static IConfiguration OpenRouterDiagnosticConfiguration(string key, int daily, int perMinute)
+    {
+        var syntheticConfig = new Dictionary<string, string?>
+        {
+            ["AI:Provider"] = "openrouter",
+            ["AI:AllowNonSensitiveInference"] = "true",
+            ["AI:AllowNonSensitiveImages"] = "true",
+            ["AI:OpenRouterKey"] = key,
+            ["AI:OpenRouterDailyRequestLimit"] = daily.ToString(CultureInfo.InvariantCulture),
+            ["AI:OpenRouterRequestsPerMinute"] = perMinute.ToString(CultureInfo.InvariantCulture),
+            ["AI:FaultTypes:0"] = "plumbing",
+            ["AI:FaultTypes:1"] = "electrical",
+            ["AI:FaultTypes:2"] = "other",
+            ["AI:Priorities:0"] = "low",
+            ["AI:Priorities:1"] = "medium",
+            ["AI:Priorities:2"] = "high",
+            ["AI:Risks:0"] = "low",
+            ["AI:Risks:1"] = "medium",
+            ["AI:Risks:2"] = "high",
+            ["Search:Provider"] = "hosted",
+            ["Search:ExternalProcessingApproved"] = "true",
+            ["Search:ExternalImagesApproved"] = "true"
+        };
+        return new ConfigurationBuilder().AddInMemoryCollection(syntheticConfig).Build();
+    }
+
+    private async Task RunOpenRouterDiagnostic(IConfiguration diagnosticConfiguration, CancellationToken cancellation)
+    {
+        var syntheticPng = CreateSyntheticDiagnosticImage();
+        var classifier = new AiProviders(clients, diagnosticConfiguration, inferenceBudget);
+        _ = await classifier.Assess(
+            "TEST ONLY. In an imaginary campus room, a fictional pipe leaks beside a blue marker. No real place, person, or incident.",
+            cancellation, syntheticPng);
+        var embeddings = new RemoteEmbeddings(clients, diagnosticConfiguration, inferenceBudget);
+        _ = await embeddings.Query("TEST ONLY. Fictional blue marker beside an imaginary leaking pipe.", cancellation);
+        _ = await embeddings.Image(syntheticPng, cancellation);
+    }
+
+    private static OpenRouterSmokeResponse OpenRouterDiagnosticResponse(IConfiguration diagnosticConfiguration) =>
+        new("validated", "openrouter", AiProviders.SelectedModel(diagnosticConfiguration, true),
+            RemoteEmbeddings.Model, RemoteEmbeddings.Revision(diagnosticConfiguration), RemoteEmbeddings.Dimension,
+            true, true, true);
+
+    private static byte[] CreateSyntheticDiagnosticImage()
+    {
+        using var bitmap = new SKBitmap(32, 32);
+        using var canvas = new SKCanvas(bitmap);
+        canvas.Clear(SKColors.White);
+        using var paint = new SKPaint { Color = SKColors.CornflowerBlue, IsAntialias = true };
+        canvas.DrawCircle(16, 16, 10, paint);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+        return encoded.ToArray();
+    }
+
     private async Task ReserveSyntheticAttempt(CancellationToken cancellation)
+        => await ReserveDiagnosticAttempt("admin-synthetic-smoke", 5, cancellation);
+
+    private async Task ReserveDiagnosticAttempt(string counterName, int dailyLimit, CancellationToken cancellation)
     {
         var now = clock.GetUtcNow().ToUniversalTime();
         var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
-        var id = "admin-synthetic-smoke:" + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+        var id = counterName + ":" + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
         var reserved = await db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO smart_campus."InferenceUsage" ("Key", "Provider", "Window", "WindowStart", "Count")
-            VALUES ({id}, {"admin-synthetic-smoke"}, {"day"}, {day}, 1)
+            VALUES ({id}, {counterName}, {"day"}, {day}, 1)
             ON CONFLICT ("Key") DO UPDATE SET "Count" = "InferenceUsage"."Count" + 1
-            WHERE "InferenceUsage"."Count" < 5
+            WHERE "InferenceUsage"."Count" < {dailyLimit}
             """, cancellation);
         if (reserved != 1)
             throw new SmartCampus.Domain.RuleException("ai_smoke_limit", 429, day.AddDays(1));

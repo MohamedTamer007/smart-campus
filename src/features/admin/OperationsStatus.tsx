@@ -1,8 +1,21 @@
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
-import { operations, smokeAi, demoAi, type AiDemoResult } from "../../services/admin";
+import { operations, smokeAi, demoAi, smokeOpenRouter, type AiDemoResult, type OpenRouterSmokeResult } from "../../services/admin";
 import { ServiceError } from "../../services/contracts";
+const openRouterErrorMessages: Record<string, [string, string]> = {
+  ai_smoke_disabled: ["تشخيص OpenRouter غير مفعّل.", "OpenRouter diagnostics are disabled."],
+  ai_smoke_limit: ["تم استخدام اختبار OpenRouter اليوم؛ يتجدد الحد عند منتصف الليل UTC.", "Today's OpenRouter diagnostic was used; the limit resets at midnight UTC."],
+  ai_not_configured: ["مفتاح OpenRouter أو ميزانيته غير جاهزة.", "The OpenRouter key or budget is not configured."],
+  ai_quota_exhausted: ["حصة OpenRouter اليومية أو للدقيقة لا تكفي للفحص.", "OpenRouter's daily or per-minute budget is too low for this diagnostic."],
+  ai_rate_limited: ["OpenRouter وصل حد الطلبات.", "OpenRouter rate-limited the diagnostic."],
+  search_provider_unavailable: ["خدمة OpenRouter أو embeddings غير متاحة.", "OpenRouter or its embeddings endpoint is unavailable."],
+  invalid_embedding: ["وصل متجه غير صالح من OpenRouter.", "OpenRouter returned an invalid embedding."],
+  invalid_ai_response: ["رد تحليل الصورة ناقص أو غير صالح.", "The image-analysis response was incomplete or invalid."],
+  ai_key_rejected: ["OpenRouter رفض المفتاح.", "OpenRouter rejected the key."],
+  ai_access_denied: ["OpenRouter رفض صلاحية الوصول.", "OpenRouter denied access."],
+  ai_request_rejected: ["OpenRouter رفض صيغة طلب تحليل الصورة.", "OpenRouter rejected the image-analysis request."],
+};
 
 export function OperationsStatus() {
   const { t, account } = useApp();
@@ -11,6 +24,9 @@ export function OperationsStatus() {
   const [demoBusy, setDemoBusy] = useState(false);
   const [demoResult, setDemoResult] = useState<AiDemoResult | null>(null);
   const [demoError, setDemoError] = useState<string | null>(null);
+  const [openRouterBusy, setOpenRouterBusy] = useState(false);
+  const [openRouterResult, setOpenRouterResult] = useState<OpenRouterSmokeResult | null>(null);
+  const [openRouterError, setOpenRouterError] = useState<string | null>(null);
   async function testRealSyntheticClassification() {
     setDemoBusy(true);
     setDemoResult(null);
@@ -70,6 +86,19 @@ export function OperationsStatus() {
       setSmokeBusy(false);
     }
   }
+  async function testSyntheticOpenRouter() {
+    setOpenRouterBusy(true);
+    setOpenRouterResult(null);
+    setOpenRouterError(null);
+    try {
+      setOpenRouterResult(await smokeOpenRouter());
+    } catch (error) {
+      const code = error instanceof ServiceError ? (error.detail ?? error.code) : "unknown";
+      setOpenRouterError(openRouterDiagnosticError(code, t));
+    } finally {
+      setOpenRouterBusy(false);
+    }
+  }
   const kinds: Record<string, string> = { maintenance: t("تقييم الصيانة", "Maintenance assessment"), index: t("فهرسة المعثورات", "Found-item indexing"), email: t("البريد", "Email") };
   const states: Record<string, string> = { pending: t("بالانتظار", "Pending"), running: t("قيد التنفيذ", "Running"), completed: t("مكتملة", "Completed"), unavailable: t("متعذرة", "Unavailable") };
   return <section className="panel">
@@ -115,6 +144,16 @@ export function OperationsStatus() {
               </div>}
             </div>
           )}
+          {status.ai.adminSyntheticDiagnosticEnabled && status.ai.openRouterKeyPresent && status.ai.openRouterBudgetConfigured && (
+            <div>
+              <p>{t("فحص OpenRouter ثابت بمدخلات خيالية فقط: تحليل صورة وembedding للنص والصورة. يستهلك 3 طلبات كحد أقصى، مرة واحدة يوميًا، ولا يفتح البحث العام.", "Fixed OpenRouter diagnostic using fictional inputs only: image analysis plus text and image embeddings. Uses up to 3 requests, at most once daily, and does not enable public search.")}</p>
+              <button type="button" className="button secondary" disabled={openRouterBusy} onClick={() => { void testSyntheticOpenRouter(); }}>
+                {openRouterBusy ? t("جارٍ فحص OpenRouter...", "Testing OpenRouter...") : t("اختبار الصور والبحث الوهمي على OpenRouter", "Test fictional image and search on OpenRouter")}
+              </button>
+              {openRouterError && <p role="status">{openRouterError}</p>}
+              {openRouterResult && <p role="status">{t("نجحت الفحوص الثلاثة", "All three checks passed")}: {openRouterResult.visionModel} · {openRouterResult.embeddingModel} · {openRouterResult.dimension}D ({openRouterResult.revision})</p>}
+            </div>
+          )}
         </>}
         <p>{t("ذاكرة الخدمة", "Service memory")}: {Math.round(status.workingSetBytes / 1024 / 1024)} MiB</p>
         <p>{t("محاولات هذا التطبيق وحدّه اليومي للذكاء الاصطناعي بتوقيت UTC", "App AI attempts / daily budget in UTC")}</p>
@@ -124,4 +163,9 @@ export function OperationsStatus() {
       </>}
     </AsyncView>
   </section>;
+}
+
+function openRouterDiagnosticError(code: string, translate: (arabic: string, english: string) => string) {
+  const message = openRouterErrorMessages[code];
+  return message ? translate(message[0], message[1]) : translate(`فشل الفحص، رمز التشخيص: ${code}`, `Diagnostic failed, code: ${code}`);
 }

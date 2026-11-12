@@ -44,6 +44,18 @@ public sealed class RemoteEmbeddingsTests
         }
     }
 
+    private sealed class TransportFailureBoundary : HttpMessageHandler, IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name)
+        {
+            Assert.Equal("retrieval", name);
+            return new HttpClient(this, disposeHandler: false);
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("private test transport detail");
+    }
+
     private static IConfiguration Config(bool allowImages = false, bool allowExternal = true) =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
             ["Search:Provider"] = "hosted",
@@ -151,6 +163,16 @@ public sealed class RemoteEmbeddingsTests
         var failure = await Assert.ThrowsAsync<RuleException>(() =>
             new RemoteEmbeddings(boundary, Config(), new Budget()).Query("Synthetic blue bottle"));
         Assert.Equal(expected, failure.Code);
+    }
+
+    [Fact]
+    public async Task Provider_transport_errors_are_sanitized()
+    {
+        using var boundary = new TransportFailureBoundary();
+        var failure = await Assert.ThrowsAsync<RuleException>(() =>
+            new RemoteEmbeddings(boundary, Config(), new Budget()).Query("Synthetic blue bottle"));
+        Assert.Equal("search_provider_unavailable", failure.Code);
+        Assert.DoesNotContain("private test transport detail", failure.ToString());
     }
 
     [Fact]

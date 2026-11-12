@@ -83,18 +83,18 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
         using var request = new HttpRequestMessage(HttpMethod.Post, OpenRouterEndpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         request.Content = JsonContent.Create(payload);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
-        if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            throw new RuleException("ai_rate_limited", 503);
-        if (!response.IsSuccessStatusCode)
-            throw new RuleException("search_provider_unavailable", 503);
-
-        using var stream = await response.Content.ReadAsStreamAsync(cancellation);
-        var bytes = new byte[131073];
-        var count = await stream.ReadAtLeastAsync(bytes.AsMemory(), bytes.Length, throwOnEndOfStream: false, cancellationToken: cancellation);
-        if (count == bytes.Length) throw new RuleException("invalid_embedding", 503);
         try
         {
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                throw new RuleException("ai_rate_limited", 503);
+            if (!response.IsSuccessStatusCode)
+                throw new RuleException("search_provider_unavailable", 503);
+
+            using var stream = await response.Content.ReadAsStreamAsync(cancellation);
+            var bytes = new byte[131073];
+            var count = await stream.ReadAtLeastAsync(bytes.AsMemory(), bytes.Length, throwOnEndOfStream: false, cancellationToken: cancellation);
+            if (count == bytes.Length) throw new RuleException("invalid_embedding", 503);
             using var json = JsonDocument.Parse(bytes.AsMemory(0, count));
             var root = json.RootElement;
             var actualModel = root.GetProperty("model").GetString();
@@ -112,6 +112,14 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException or IndexOutOfRangeException or FormatException)
         {
             throw new RuleException("invalid_embedding", 503);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException)
+        {
+            throw new RuleException("search_provider_unavailable", 503);
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+        {
+            throw new RuleException("search_provider_unavailable", 503);
         }
     }
 
