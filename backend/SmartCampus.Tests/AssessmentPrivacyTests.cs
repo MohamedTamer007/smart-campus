@@ -23,7 +23,7 @@ public sealed class AssessmentPrivacyTests(CampusFixture campus) : IClassFixture
             Requests++;
             Payload = await request.Content!.ReadAsStringAsync(cancellationToken);
             if (duringRequest is not null) await duringRequest();
-            return new(HttpStatusCode.OK) { Content = new StringContent("""{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic suggestion\"}"}}]}""", Encoding.UTF8, "application/json") };
+            return new(HttpStatusCode.OK) { Content = new StringContent("""{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic suggestion\"}"}}]}""", Encoding.UTF8, "application/json") };
         }
     }
     private WebApplicationFactory<Program> Configured() => campus.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, config) =>

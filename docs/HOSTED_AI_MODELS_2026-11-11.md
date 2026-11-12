@@ -1,4 +1,4 @@
-# Smart Campus selected hosted models — 11 November 2026
+# Smart Campus selected hosted models — updated 13 November 2026
 
 **Draft / not production-approved.** This branch has not been deployed to SnapDeploy or MonsterASP.NET. Do not copy API keys into Git or chats.
 
@@ -6,7 +6,7 @@
 
 | Use | Provider | Exact model ID | API endpoint |
 |---|---|---|---|
-| Maintenance, reviewed text only | NVIDIA | `openai/gpt-oss-20b` | `https://integrate.api.nvidia.com/v1/chat/completions` |
+| Maintenance, staff-reviewed non-sensitive text | OpenRouter | `nvidia/nemotron-3.5-super-vl:free` | `https://openrouter.ai/api/v1/chat/completions` |
 | Maintenance, staff-reviewed non-sensitive images | OpenRouter | `nvidia/nemotron-3.5-super-vl:free` | `https://openrouter.ai/api/v1/chat/completions` |
 | Found/lost image + description retrieval (unapproved) | OpenRouter | `nvidia/nemotron-3.5-embed-8b:free` | `https://openrouter.ai/api/v1/embeddings` |
 
@@ -15,7 +15,7 @@ All calls are made from ASP.NET Core. **No local Python image-inference worker i
 ## Proposed environment values (do not activate without the safety gates)
 
 ```ini
-AI__Provider=auto
+AI__Provider=openrouter
 AI__AllowNonSensitiveInference=false
 AI__AllowNonSensitiveImages=false
 AI__SyntheticSmokeTestsEnabled=false
@@ -34,12 +34,12 @@ Search__CalibrationApproval=
 # Search__MinimumScore must only be set after real-world calibration
 ```
 
-The application defaults now provide maintenance labels `plumbing`, `water`, `electrical`, `hvac`, `lighting`, `furniture`, `doors`, `safety`, `other`, with `low`/`medium`/`high` priority and risk values. These are broad suggestions drawn from the project examples, not an institutional taxonomy; environment values may override them when the university supplies exact labels. Staff still approve every report and the specific image before transfer, and AI output remains separate from the saved staff decision. `AI:Provider=auto` **does not switch vendors on failure**: text always uses NVIDIA GPT-OSS and an approved image always uses OpenRouter Super VL.
+The application defaults now provide maintenance labels `plumbing`, `water`, `electrical`, `hvac`, `lighting`, `furniture`, `doors`, `safety`, `other`, with `low`/`medium`/`high` priority and risk values. These are broad suggestions drawn from the project examples, not an institutional taxonomy; environment values may override them when the university supplies exact labels. Staff still approve every report and the specific image before transfer, and AI output remains separate from the saved staff decision. On the hosted environment `AI__Provider=openrouter` routes both text and approved images to the exact `:free` Super VL model. OpenRouter chat requests pin that model, set `allow_fallbacks=false` and set maximum prompt/completion prices to zero. Embeddings remain pinned to `nvidia/nemotron-3.5-embed-8b:free` with the same zero-price/no-fallback controls. The unused NVIDIA settings are left intact and are not called when provider selection is `openrouter`.
 
 Before enabling hosted retrieval:
 1. Approve **external transfer of even description text**, including the actual university data classification, provider policies, and sender/recipient obligations. Only then set `Search:ExternalProcessingApproved=true`. The code does not redact personally identifying data.
 2. **Do not send student photos to the free embeddings endpoint until data governance confirms this is allowed.** OpenRouter's free Nemotron endpoint explicitly warns against personal/confidential information and may log model inputs. `Search:ExternalImagesApproved` must remain false if that condition is not satisfied.
-3. Confirm the provider accepts exact OpenRouter request bodies for both text and images with *real API calls using synthetic, non-sensitive test inputs*. This integration has only mocked provider tests until that happens.
+3. Confirm the provider accepts exact OpenRouter request bodies for both text and images with *real API calls using synthetic, non-sensitive test inputs*. The admin OpenRouter diagnostic sends four bounded requests (text classification, image classification, text embeddings, image embeddings), validates taxonomy values, and uses only a fixed fictional report and generated image. The application daily/minute budget applies to each provider request; this does not bypass OpenRouter's own free-plan limits.
 4. Run fresh full indexing of available found-items using the new model/revision. All new vectors use revision `nemotron35-8b-openrouter-1024-v1` (1024 truncated normalized dimensions); older SigLIP2 vectors are isolated by revision. Do not reuse an old search score threshold.
 5. Validate mixed Arabic and English examples, text-only queries, image search, no-match false positives, common-object collisions, claimant privacy, and end-to-end latency. Record a reviewer-approved score threshold and only then set `Search:CalibrationApproval`, `Search:MinimumScore`, and `Search:CalibrationRevision=nemotron35-8b-openrouter-1024-v1`. Keep the existing search fail-closed before approval.
 6. Validate daily/minute budgets, private media authorization, database vector storage, job retry behavior, failure codes and real service availability before opening access.
@@ -64,7 +64,7 @@ student reports or the existing production database on MonsterASP.NET Free.
 
    ```ini
    # Synthetic-only example; requires explicit operator permission before activation
-   AI__Provider=auto
+   AI__Provider=openrouter
    AI__AllowNonSensitiveInference=true
    AI__AllowNonSensitiveImages=false
    AI__FaultTypes__0=plumbing
@@ -78,17 +78,18 @@ student reports or the existing production database on MonsterASP.NET Free.
    AI__Risks__2=high
    ```
 
-   For this synthetic-only test, retain an explicit *positive* daily and
-   per-minute budget for both OpenRouter and NVIDIA. A NVIDIA daily limit of
-   `0` makes `AI:Provider=auto` unavailable even when the key is present.
-3. In the isolated evaluation host only, the operator may enable
-   `AI__SyntheticSmokeTestsEnabled=true`. A signed-in authorized admin can
-   visit /admin and explicitly request the synthetic text smoke test. It
-   sends **only a hard-coded fictional fault description** through the normal
-   `AiProviders.Assess` route, reserves an app-budgeted provider attempt,
-   and returns only `status`, `provider` and `model` — never response text,
-   private data or secrets. The endpoint is POST + CSRF + admin-only and stays
-   disabled by default. Return the flag to `false` after the evaluation.
+   The synthetic OpenRouter diagnostic needs a positive OpenRouter daily and
+   per-minute budget of at least four requests. NVIDIA's key and budgets are
+   not used by this provider selection.
+3. The admin-only `openrouter-smoke` route uses fixed fictional text and a
+   generated image to validate text classification, image classification,
+   text embeddings and image embeddings. It requires
+   `AI__AdminSyntheticDiagnosticEnabled=true`, and is protected by admin auth
+   and CSRF. Four requests are charged to the app's regular OpenRouter daily
+   and minute budgets. It returns only validated taxonomy labels and model
+   IDs, never raw model replies, report content or credentials. It does not
+   require enabling external inference for actual reports or enabling public
+   retrieval.
 4. **Optional regular-account acceptance check (no Admin role needed):**
    on a separate *controlled* test deployment only, add the approved university
    test mailbox to `Release:AllowedEmails`, and set both
@@ -107,7 +108,7 @@ student reports or the existing production database on MonsterASP.NET Free.
 5. Have an authorized synthetic student submit a **text-only fictional**
    maintenance report and an authorized scoped staff member review it, confirm
    it is non-sensitive, and select text-only AI review. The asynchronous job
-   should route to NVIDIA `openai/gpt-oss-20b`, and a completed suggestion
+   should route to OpenRouter `nvidia/nemotron-3.5-super-vl:free`, and a completed suggestion
    must remain distinct from staff's actual operational decision.
 6. Observe the job/assessment state through the authorized API and worker
    operations. A quota, provider failure or malformed response is a failed

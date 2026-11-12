@@ -62,11 +62,20 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
             {
                 Assert.Equal("https://openrouter.ai/api/v1/chat/completions", request.RequestUri.ToString());
                 Assert.Equal("nvidia/nemotron-3.5-super-vl:free", payload.RootElement.GetProperty("model").GetString());
+                Assert.False(payload.RootElement.GetProperty("provider").GetProperty("allow_fallbacks").GetBoolean());
+                Assert.Equal(0, payload.RootElement.GetProperty("provider").GetProperty("max_price").GetProperty("prompt").GetInt32());
+                Assert.Equal(0, payload.RootElement.GetProperty("provider").GetProperty("max_price").GetProperty("completion").GetInt32());
+                Assert.Equal("json_object", payload.RootElement.GetProperty("response_format").GetProperty("type").GetString());
                 var content = payload.RootElement.GetProperty("messages")[1].GetProperty("content");
+                const string classification = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
+                if (content.ValueKind == JsonValueKind.String)
+                {
+                    Assert.Contains("TEST ONLY", content.GetString());
+                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(classification) };
+                }
                 Assert.Equal(JsonValueKind.Array, content.ValueKind);
                 Assert.Contains("TEST ONLY", content[0].GetProperty("text").GetString());
                 Assert.StartsWith("data:image/jpeg;base64,", content[1].GetProperty("image_url").GetProperty("url").GetString());
-                const string classification = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(classification) };
             }
 
@@ -176,7 +185,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
-    public async Task Admin_openrouter_diagnostic_uses_only_fixed_synthetic_image_and_text_and_allows_configured_budget()
+    public async Task Admin_openrouter_diagnostic_validates_text_and_image_classification_and_embeddings_with_fixed_synthetic_inputs()
     {
         await ResetOpenRouterDiagnosticCounter();
         using var boundary = new SyntheticOpenRouterHttp();
@@ -206,13 +215,19 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         var result = await CampusFixture.Response(response);
         Assert.Equal("validated", result.GetProperty("status").GetString());
         Assert.Equal("openrouter", result.GetProperty("provider").GetString());
+        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", result.GetProperty("textModel").GetString());
         Assert.Equal("nvidia/nemotron-3.5-super-vl:free", result.GetProperty("visionModel").GetString());
         Assert.Equal("nemotron35-8b-openrouter-1024-v1", result.GetProperty("revision").GetString());
         Assert.Equal(RemoteEmbeddings.Dimension, result.GetProperty("dimension").GetInt32());
+        Assert.Equal("plumbing", result.GetProperty("textType").GetString());
+        Assert.Equal("low", result.GetProperty("textPriority").GetString());
+        Assert.Equal("low", result.GetProperty("textRisk").GetString());
+        Assert.Equal("plumbing", result.GetProperty("imageType").GetString());
+        Assert.True(result.GetProperty("textClassificationValidated").GetBoolean());
         Assert.True(result.GetProperty("imageAnalysisValidated").GetBoolean());
         Assert.True(result.GetProperty("textEmbeddingValidated").GetBoolean());
         Assert.True(result.GetProperty("imageEmbeddingValidated").GetBoolean());
-        Assert.Equal(3, boundary.Calls);
+        Assert.Equal(4, boundary.Calls);
         Assert.All(boundary.Bodies, body => Assert.DoesNotContain("PRIVATE USER CONTENT", body));
         Assert.DoesNotContain("synthetic-openrouter-test-key", result.GetRawText());
         Assert.DoesNotContain("\"vector\"", result.GetRawText());
@@ -220,7 +235,41 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
 
         var second = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { });
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-        Assert.Equal(6, boundary.Calls);
+        Assert.Equal(8, boundary.Calls);
+    }
+
+    [DatabaseFact]
+    public async Task Admin_openrouter_diagnostic_fails_before_provider_calls_when_four_request_budget_is_unavailable()
+    {
+        using var boundary = new SyntheticOpenRouterHttp();
+        foreach (var limits in new[] { (Daily: "3", PerMinute: "20"), (Daily: "50", PerMinute: "3") })
+        {
+            using var host = campus.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                    ["Search:Provider"] = "hosted",
+                    ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
+                    ["AI:OpenRouterKey"] = "synthetic-openrouter-test-key",
+                    ["AI:OpenRouterDailyRequestLimit"] = limits.Daily,
+                    ["AI:OpenRouterRequestsPerMinute"] = limits.PerMinute
+                }));
+                builder.ConfigureServices(services => {
+                    services.RemoveAll<IHttpClientFactory>();
+                    services.AddSingleton<IHttpClientFactory>(boundary);
+                });
+            });
+
+            using var admin = host.CreateClient();
+            await CampusFixture.Csrf(admin);
+            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/v1/auth/login",
+                new { email = campus.Email(campus.Admin), password = campus.Password })).StatusCode);
+            await CampusFixture.Csrf(admin);
+            var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { });
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.Contains("ai_not_configured", await response.Content.ReadAsStringAsync());
+            Assert.Equal(0, boundary.Calls);
+        }
     }
 
     [DatabaseFact]

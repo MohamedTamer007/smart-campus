@@ -101,11 +101,23 @@ public sealed class RemoteEmbeddingsTests
     [Fact]
     public async Task Text_indexing_uses_passage_mode_and_separate_revision()
     {
-        using var boundary = new Boundary(HttpStatusCode.OK, Envelope(RemoteEmbeddings.Model));
+        using var boundary = new Boundary(HttpStatusCode.OK, Envelope());
         var result = await new RemoteEmbeddings(boundary, Config(), new Budget()).Passage("Synthetic red bag");
         Assert.Equal("passage", boundary.Sent!.Value.GetProperty("input_type").GetString());
         Assert.Contains("8b", result.Revision);
         Assert.NotEqual(RetrievalService.Revision, result.Revision);
+    }
+
+    [Fact]
+    public async Task Embeddings_reject_non_free_response_model()
+    {
+        using var boundary = new Boundary(HttpStatusCode.OK, Envelope(RemoteEmbeddings.Model));
+
+        var failure = await Assert.ThrowsAsync<RuleException>(() =>
+            new RemoteEmbeddings(boundary, Config(), new Budget()).Query("Synthetic red bag"));
+
+        Assert.Equal("invalid_embedding", failure.Code);
+        Assert.Equal(1, boundary.Requests);
     }
 
     [Fact]

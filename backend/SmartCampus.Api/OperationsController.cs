@@ -157,7 +157,8 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             assessment.Type, assessment.Priority, assessment.Risk, assessment.Explanation);
     }
 
-    // Tests three OpenRouter APIs with immutable fictional inputs only. This
+    // Tests both classification modes and both OpenRouter embedding modes with
+    // immutable fictional inputs only. This
     // local configuration override does not open general search transfer gates.
     [HttpPost("openrouter-smoke")]
     public async Task<ActionResult<OpenRouterSmokeResponse>> OpenRouterSmoke(CancellationToken cancellation)
@@ -169,15 +170,15 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         ValidateOpenRouterDiagnosticConfig(key, daily, perMinute);
         await ReserveDiagnosticAttempt("admin-openrouter-smoke", daily, cancellation);
         var diagnosticConfiguration = OpenRouterDiagnosticConfiguration(key!, daily, perMinute);
-        await RunOpenRouterDiagnostic(diagnosticConfiguration, cancellation);
-        return OpenRouterDiagnosticResponse(diagnosticConfiguration);
+        var assessments = await RunOpenRouterDiagnostic(diagnosticConfiguration, cancellation);
+        return OpenRouterDiagnosticResponse(diagnosticConfiguration, assessments.Text, assessments.Image);
     }
 
     private void ValidateOpenRouterDiagnosticConfig(string? key, int daily, int perMinute)
     {
         if (!config.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"))
             throw new SmartCampus.Domain.RuleException("ai_smoke_disabled", 503);
-        if (!string.IsNullOrWhiteSpace(key) && daily >= 3 && perMinute >= 3 && config["Search:Provider"] == "hosted")
+        if (!string.IsNullOrWhiteSpace(key) && daily >= 4 && perMinute >= 4 && config["Search:Provider"] == "hosted")
             return;
         throw new SmartCampus.Domain.RuleException("ai_not_configured", 503);
     }
@@ -209,22 +210,27 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         return new ConfigurationBuilder().AddInMemoryCollection(syntheticConfig).Build();
     }
 
-    private async Task RunOpenRouterDiagnostic(IConfiguration diagnosticConfiguration, CancellationToken cancellation)
+    private async Task<(SmartCampus.Infrastructure.AiSuggestion Text, SmartCampus.Infrastructure.AiSuggestion Image)> RunOpenRouterDiagnostic(IConfiguration diagnosticConfiguration, CancellationToken cancellation)
     {
         var syntheticPng = CreateSyntheticDiagnosticImage();
         var classifier = new AiProviders(clients, diagnosticConfiguration, inferenceBudget);
-        _ = await classifier.Assess(
-            "TEST ONLY. In an imaginary campus room, a fictional pipe leaks beside a blue marker. No real place, person, or incident.",
-            cancellation, syntheticPng);
+        const string fictionalReport = "TEST ONLY. In an imaginary campus room, a fictional pipe leaks beside a blue marker. No real place, person, or incident.";
+        var textAssessment = await classifier.Assess(fictionalReport, cancellation);
+        var imageAssessment = await classifier.Assess(fictionalReport, cancellation, syntheticPng);
         var embeddings = new RemoteEmbeddings(clients, diagnosticConfiguration, inferenceBudget);
         _ = await embeddings.Query("TEST ONLY. Fictional blue marker beside an imaginary leaking pipe.", cancellation);
         _ = await embeddings.Image(syntheticPng, cancellation);
+        return (textAssessment, imageAssessment);
     }
 
-    private static OpenRouterSmokeResponse OpenRouterDiagnosticResponse(IConfiguration diagnosticConfiguration) =>
-        new("validated", "openrouter", AiProviders.SelectedModel(diagnosticConfiguration, true),
+    private static OpenRouterSmokeResponse OpenRouterDiagnosticResponse(IConfiguration diagnosticConfiguration,
+        SmartCampus.Infrastructure.AiSuggestion textAssessment, SmartCampus.Infrastructure.AiSuggestion imageAssessment) =>
+        new("validated", "openrouter", AiProviders.SelectedModel(diagnosticConfiguration, false),
+            AiProviders.SelectedModel(diagnosticConfiguration, true),
             RemoteEmbeddings.Model, RemoteEmbeddings.Revision(diagnosticConfiguration), RemoteEmbeddings.Dimension,
-            true, true, true);
+            textAssessment.Type, textAssessment.Priority, textAssessment.Risk,
+            imageAssessment.Type, imageAssessment.Priority, imageAssessment.Risk,
+            true, true, true, true);
 
     private static byte[] CreateSyntheticDiagnosticImage()
     {

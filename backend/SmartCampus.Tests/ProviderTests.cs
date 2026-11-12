@@ -96,12 +96,46 @@ public sealed class ProviderTests
     [Fact]
     public async Task Valid_provider_envelope_returns_only_validated_suggestions()
     {
-        const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Water near wiring\"}"}}]}""";
+        const string body = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Water near wiring\"}"}}]}""";
         using var provider = new ProviderBoundary(HttpStatusCode.OK, body);
         var suggestion = await new AiProviders(provider, Config(), new AvailableTestBudget()).Assess("Synthetic leak", CancellationToken.None);
         Assert.Equal("plumbing", suggestion.Type);
         Assert.Equal("urgent", suggestion.Priority);
         Assert.Equal("high", suggestion.Risk);
+    }
+
+    [Fact]
+    public async Task OpenRouter_text_classification_uses_pinned_free_model_without_paid_fallback()
+    {
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, ValidEnvelope);
+        var suggestion = await new AiProviders(provider, Config(), new AvailableTestBudget())
+            .Assess("TEST ONLY. Fictional pipe leak in an empty room.", CancellationToken.None);
+
+        Assert.Equal("plumbing", suggestion.Type);
+        Assert.Equal("urgent", suggestion.Priority);
+        Assert.Equal("high", suggestion.Risk);
+        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", provider.Model);
+        Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
+        var payload = provider.Sent!.Value;
+        Assert.Equal(JsonValueKind.String, payload.GetProperty("messages")[1].GetProperty("content").ValueKind);
+        Assert.Equal("json_object", payload.GetProperty("response_format").GetProperty("type").GetString());
+        var route = payload.GetProperty("provider");
+        Assert.False(route.GetProperty("allow_fallbacks").GetBoolean());
+        Assert.Equal(0, route.GetProperty("max_price").GetProperty("prompt").GetInt32());
+        Assert.Equal(0, route.GetProperty("max_price").GetProperty("completion").GetInt32());
+    }
+
+    [Fact]
+    public async Task OpenRouter_text_classification_rejects_a_non_free_response_model()
+    {
+        const string paidModelResponse = """{"model":"nvidia/nemotron-3.5-super-vl","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, paidModelResponse);
+
+        var failure = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, Config(), new AvailableTestBudget())
+            .Assess("TEST ONLY. Fictional pipe leak in an empty room.", CancellationToken.None));
+
+        Assert.Equal("invalid_ai_response", failure.Code);
+        Assert.Equal(1, provider.Requests);
     }
 
     [Fact]
@@ -197,7 +231,7 @@ public sealed class ProviderTests
         Assert.Equal(0, provider.Requests);
     }
 
-    private const string ValidEnvelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
+    private const string ValidEnvelope = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
 
     private static IConfiguration AutoConfig()
     {

@@ -102,7 +102,7 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
             using var json = JsonDocument.Parse(bytes.AsMemory(0, count));
             var root = json.RootElement;
             var actualModel = root.GetProperty("model").GetString();
-            if (actualModel != OpenRouterModel && actualModel != Model)
+            if (actualModel != OpenRouterModel)
                 throw new RuleException("invalid_embedding", 503);
             var data = root.GetProperty("data");
             if (data.ValueKind != JsonValueKind.Array || data.GetArrayLength() != 1 ||

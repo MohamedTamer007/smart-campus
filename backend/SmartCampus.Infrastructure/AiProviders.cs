@@ -105,6 +105,7 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
             if (!response.IsSuccessStatusCode) throw new RuleException("ai_unavailable", 503);
             var json = await response.Content.ReadAsStringAsync(cancellation);
             if (json.Length > 100000) throw new RuleException("invalid_ai_response", 503);
+            if (!nvidia) ValidateOpenRouterModel(json, model);
             return Parse(json, taxonomy, priorities, risks);
         }
         catch (HttpRequestException)
@@ -138,6 +139,20 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
         using var encoded = converted.Encode(SKEncodedImageFormat.Jpeg, 80);
         if (encoded is null || encoded.Size > 2_000_000) throw new RuleException("invalid_upload");
         return "data:image/jpeg;base64," + Convert.ToBase64String(encoded.ToArray());
+    }
+
+    private static void ValidateOpenRouterModel(string envelope, string requestedModel)
+    {
+        try
+        {
+            using var response = JsonDocument.Parse(envelope);
+            if (!string.Equals(response.RootElement.GetProperty("model").GetString(), requestedModel, StringComparison.Ordinal))
+                throw new RuleException("invalid_ai_response", 503);
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException)
+        {
+            throw new RuleException("invalid_ai_response", 503);
+        }
     }
 
     public static AiSuggestion Parse(string envelope, string[] taxonomy, string[] priorities, string[] risks)

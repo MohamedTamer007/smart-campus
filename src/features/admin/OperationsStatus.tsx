@@ -11,10 +11,10 @@ const openRouterErrorMessages: Record<string, [string, string]> = {
   ai_rate_limited: ["OpenRouter وصل حد الطلبات.", "OpenRouter rate-limited the diagnostic."],
   search_provider_unavailable: ["خدمة OpenRouter أو embeddings غير متاحة.", "OpenRouter or its embeddings endpoint is unavailable."],
   invalid_embedding: ["وصل متجه غير صالح من OpenRouter.", "OpenRouter returned an invalid embedding."],
-  invalid_ai_response: ["رد تحليل الصورة ناقص أو غير صالح.", "The image-analysis response was incomplete or invalid."],
+  invalid_ai_response: ["رد التصنيف أو تحليل الصورة ناقص أو غير صالح.", "The classification or image-analysis response was incomplete or invalid."],
   ai_key_rejected: ["OpenRouter رفض المفتاح.", "OpenRouter rejected the key."],
   ai_access_denied: ["OpenRouter رفض صلاحية الوصول.", "OpenRouter denied access."],
-  ai_request_rejected: ["OpenRouter رفض صيغة طلب تحليل الصورة.", "OpenRouter rejected the image-analysis request."],
+  ai_request_rejected: ["OpenRouter رفض صيغة طلب التصنيف أو تحليل الصورة.", "OpenRouter rejected the classification or image-analysis request."],
 };
 
 export function OperationsStatus() {
@@ -124,7 +124,7 @@ export function OperationsStatus() {
           <p>{t("تصنيفات الصيانة", "Maintenance taxonomy")}: {status.ai.taxonomyConfigured ? t("مُدخلة", "Present") : t("ناقصة", "Missing")}</p>
           <p>{t("تفعيل إرسال النص والصور للمزودين الخارجيين", "External-provider text/image switches")}: {status.ai.textTransferEnabled ? t("النص مفعّل", "Text on") : t("النص معطّل", "Text off")} · {status.ai.imageTransferEnabled ? t("الصور مفعّلة", "Images on") : t("الصور معطّلة", "Images off")}</p>
           <p>{t("دي فحوص إعدادات فقط، مش إثبات إن المودلز اشتغلت. لازم مراجعة الخصوصية قبل تشغيل مشاركة بيانات فعلية.", "These are configuration checks, not successful provider tests. Complete privacy review before sharing real data.")}</p>
-          {status.ai.adminSyntheticDiagnosticEnabled && status.ai.nvidiaKeyPresent && status.ai.nvidiaBudgetConfigured && (
+          {status.ai.provider === "nvidia" && status.ai.adminSyntheticDiagnosticEnabled && status.ai.nvidiaKeyPresent && status.ai.nvidiaBudgetConfigured && (
             <div>
               <p>{t("اختبار آمن لنص وهمي ثابت على NVIDIA فقط. لا يرسل أي بلاغ أو صورة أو بيانات مستخدم، ولا يفعّل تحليل الصيانة الحقيقي. يسمح حتى ميزانية NVIDIA اليومية المضبوطة، وكل محاولة تستهلك طلبًا من حصة المزود.", "Admin-only diagnostic using a fixed fictional text on NVIDIA. Never sends reports, photos or user data, and does not enable actual maintenance AI. Allows up to the configured NVIDIA daily budget; each attempt uses one provider request.")}</p>
               <button type="button" className="button" disabled={smokeBusy} onClick={() => { void testSyntheticAi(); }}>
@@ -146,12 +146,16 @@ export function OperationsStatus() {
           )}
           {status.ai.adminSyntheticDiagnosticEnabled && status.ai.openRouterKeyPresent && status.ai.openRouterBudgetConfigured && (
             <div>
-              <p>{t("فحص OpenRouter ثابت بمدخلات خيالية فقط: تحليل صورة وembedding للنص والصورة. يستهلك 3 طلبات لكل محاولة، ويستمر حتى بلوغ ميزانية المزوّد اليومية أو حد الدقيقة؛ ولا يفتح البحث العام.", "Fixed OpenRouter diagnostic using fictional inputs only: image analysis plus text and image embeddings. Uses three requests per attempt and remains available within the configured provider daily and per-minute budgets; it does not enable public search.")}</p>
+              <p>{t("فحص OpenRouter بمدخلات خيالية فقط: تصنيف بلاغ نصي، تحليل صورة، وembedding للنص والصورة. يستهلك 4 طلبات لكل محاولة، ويظل خاضعًا لحدود اليوم والدقيقة؛ ولا يفتح البحث العام.", "OpenRouter diagnostic with fictional inputs only: text fault classification, image analysis, and text/image embeddings. Uses four provider requests per attempt and remains subject to daily and per-minute budgets; it does not enable public search.")}</p>
               <button type="button" className="button secondary" disabled={openRouterBusy} onClick={() => { void testSyntheticOpenRouter(); }}>
-                {openRouterBusy ? t("جارٍ فحص OpenRouter...", "Testing OpenRouter...") : t("اختبار الصور والبحث الوهمي على OpenRouter", "Test fictional image and search on OpenRouter")}
+                {openRouterBusy ? t("جارٍ فحص OpenRouter...", "Testing OpenRouter...") : t("اختبار الذكاء الاصطناعي الوهمي على OpenRouter", "Test fictional AI on OpenRouter")}
               </button>
               {openRouterError && <p role="status">{openRouterError}</p>}
-              {openRouterResult && <p role="status">{t("نجحت الفحوص الثلاثة", "All three checks passed")}: {openRouterResult.visionModel} · {openRouterResult.embeddingModel} · {openRouterResult.dimension}D ({openRouterResult.revision})</p>}
+              {openRouterResult && <div role="status">
+                <p>{t("نجحت الفحوص الأربعة", "All four checks passed")}: {openRouterResult.textModel} · {openRouterResult.visionModel} · {openRouterResult.embeddingModel} · {openRouterResult.dimension}D ({openRouterResult.revision})</p>
+                <p>{t("تصنيف النص الوهمي", "Fictional text classification")}: {openRouterResult.textType} · {openRouterResult.textPriority} · {openRouterResult.textRisk}</p>
+                <p>{t("تحليل الصورة الوهمية", "Fictional image analysis")}: {openRouterResult.imageType} · {openRouterResult.imagePriority} · {openRouterResult.imageRisk}</p>
+              </div>}
             </div>
           )}
         </>}

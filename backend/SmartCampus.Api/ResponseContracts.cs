@@ -37,9 +37,12 @@ public sealed record AiReadinessResponse(string Provider, bool TextConfigured, b
 public sealed record AiSmokeResponse(string Status, string Provider, string Model);
 public sealed record AiDemoResponse(string Status, string Provider, string Model,
     string Type, string Priority, string Risk, string Explanation);
-public sealed record OpenRouterSmokeResponse(string Status, string Provider, string VisionModel,
+public sealed record OpenRouterSmokeResponse(string Status, string Provider, string TextModel, string VisionModel,
     string EmbeddingModel, string Revision, int Dimension,
-    bool ImageAnalysisValidated, bool TextEmbeddingValidated, bool ImageEmbeddingValidated);
+    string TextType, string TextPriority, string TextRisk,
+    string ImageType, string ImagePriority, string ImageRisk,
+    bool TextClassificationValidated, bool ImageAnalysisValidated,
+    bool TextEmbeddingValidated, bool ImageEmbeddingValidated);
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
     JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,
     AiReadinessResponse Ai);

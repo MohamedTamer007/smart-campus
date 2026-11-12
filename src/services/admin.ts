@@ -116,10 +116,18 @@ export const demoAi = () => api<AiDemoResult>("/admin/operations/ai-demo", json(
 export interface OpenRouterSmokeResult {
   status: "validated";
   provider: string;
+  textModel: string;
   visionModel: string;
   embeddingModel: string;
   revision: string;
   dimension: number;
+  textType: string;
+  textPriority: string;
+  textRisk: string;
+  imageType: string;
+  imagePriority: string;
+  imageRisk: string;
+  textClassificationValidated: boolean;
   imageAnalysisValidated: boolean;
   textEmbeddingValidated: boolean;
   imageEmbeddingValidated: boolean;
