@@ -1,13 +1,29 @@
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
-import { operations, smokeAi } from "../../services/admin";
+import { operations, smokeAi, demoAi, type AiDemoResult } from "../../services/admin";
 import { ServiceError } from "../../services/contracts";
 
 export function OperationsStatus() {
   const { t, account } = useApp();
   const [smokeBusy, setSmokeBusy] = useState(false);
   const [smokeMessage, setSmokeMessage] = useState<string | null>(null);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoResult, setDemoResult] = useState<AiDemoResult | null>(null);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  async function testRealSyntheticClassification() {
+    setDemoBusy(true);
+    setDemoResult(null);
+    setDemoError(null);
+    try {
+      setDemoResult(await demoAi());
+    } catch (error) {
+      const reason = error instanceof ServiceError ? (error.detail ?? error.code) : "unknown";
+      setDemoError(t("فشل التحليل الفعلي للبلاغ الوهمي: ", "Live classification of fictional report failed: ") + reason);
+    } finally {
+      setDemoBusy(false);
+    }
+  }
   async function testSyntheticAi() {
     setSmokeBusy(true);
     setSmokeMessage(null);
@@ -70,6 +86,17 @@ export function OperationsStatus() {
                 {smokeBusy ? t("جارٍ اختبار المودل...", "Testing model...") : t("اختبار المودل بالنص الوهمي", "Test model with fictional text")}
               </button>
               {smokeMessage && <p role="status">{smokeMessage}</p>}
+              <p>{t("اختبار تحليل حقيقي: يرسل عطلًا خياليًا ثابتًا فقط، ويعرض التصنيف الذي يرجعه مودل NVIDIA. يشترك مع اختبار الاتصال في نفس حد 3 محاولات يوميًا.", "Live classification demo: sends only a fixed fictional fault and displays the actual NVIDIA model classification. Shares the same 3-per-day limit.")}</p>
+              <button type="button" className="button secondary" disabled={smokeBusy || demoBusy} onClick={() => { void testRealSyntheticClassification(); }}>
+                {demoBusy ? t("جارٍ التحليل…", "Classifying…") : t("جرّب تحليل عطل وهمي بالـ AI الحقيقي", "Classify a fictional fault with real AI")}
+              </button>
+              {demoError && <p role="status">{demoError}</p>}
+              {demoResult && <div role="status">
+                <p><strong>{t("نتيجة التحليل من NVIDIA:", "NVIDIA classification result:")}</strong></p>
+                <p>{t("النوع", "Type")}: {demoResult.type} · {t("الأولوية", "Priority")}: {demoResult.priority} · {t("الخطورة", "Risk")}: {demoResult.risk}</p>
+                <p>{t("الشرح", "Explanation")}: {demoResult.explanation}</p>
+                <p>{t("بلاغ خيالي فقط — لم يتم تحليل بلاغات المستخدمين.", "Fictional example only — no user report was processed.")}</p>
+              </div>}
             </div>
           )}
         </>}

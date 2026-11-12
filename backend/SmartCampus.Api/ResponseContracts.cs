@@ -35,6 +35,8 @@ public sealed record AiReadinessResponse(string Provider, bool TextConfigured, b
     bool OpenRouterBudgetConfigured, bool SyntheticSmokeTestsEnabled,
     bool AdminSyntheticDiagnosticEnabled);
 public sealed record AiSmokeResponse(string Status, string Provider, string Model);
+public sealed record AiDemoResponse(string Status, string Provider, string Model,
+    string Type, string Priority, string Risk, string Explanation);
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
     JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,
     AiReadinessResponse Ai);

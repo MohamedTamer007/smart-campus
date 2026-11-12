@@ -72,6 +72,9 @@ public sealed class ProviderTests
         await new AiProviders(provider, config, new AvailableTestBudget()).Assess("Synthetic leak", CancellationToken.None);
         Assert.Equal("openai/gpt-oss-20b", provider.Model);
         Assert.Equal("https://integrate.api.nvidia.com/v1/chat/completions", provider.Destination!.ToString());
+        Assert.Equal("low", provider.Sent!.Value.GetProperty("reasoning_effort").GetString());
+        Assert.False(provider.Sent!.Value.TryGetProperty("response_format", out _));
+        Assert.False(provider.Sent!.Value.GetProperty("stream").GetBoolean());
         Assert.True(AiProviders.Configured(config));
     }
 
@@ -165,6 +168,23 @@ public sealed class ProviderTests
         settings["AI:NvidiaRequestsPerMinute"] = "5";
         settings["AI:AllowNonSensitiveImages"] = "true";
         return new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+    }
+
+
+    [Fact]
+    public async Task Nvidia_fenced_JSON_is_parsed_only_if_all_labels_are_allowed()
+    {
+        var envelope = JsonSerializer.Serialize(new {
+            choices = new[] { new {
+                finish_reason = "stop",
+                message = new { content = "\`\`\`json\n{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"TEST ONLY\"}\n\`\`\`" }
+            }}
+        });
+        using var provider = new ProviderBoundary(HttpStatusCode.OK, envelope);
+        var suggestion = await new AiProviders(provider, AutoConfig(), new AvailableTestBudget())
+            .Assess("TEST ONLY imaginary leak", CancellationToken.None);
+        Assert.Equal("plumbing", suggestion.Type);
+        Assert.Equal("urgent", suggestion.Priority);
     }
 
     [Fact]

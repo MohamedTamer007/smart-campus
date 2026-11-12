@@ -86,6 +86,13 @@ export interface AiSmokeResult {
   model: string;
 }
 export const smokeAi = () => api<AiSmokeResult>("/admin/operations/ai-smoke", json("POST", {}));
+export interface AiDemoResult extends AiSmokeResult {
+  type: "plumbing" | "electrical" | "other";
+  priority: "low" | "medium" | "high";
+  risk: "low" | "medium" | "high";
+  explanation: string;
+}
+export const demoAi = () => api<AiDemoResult>("/admin/operations/ai-demo", json("POST", {}));
 export function calculateStats(
   reports: MaintenanceReport[],
   items: FoundItem[],

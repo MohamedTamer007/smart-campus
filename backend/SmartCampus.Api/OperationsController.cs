@@ -50,17 +50,7 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         if (string.IsNullOrWhiteSpace(key) || daily <= 0 || minute <= 0)
             throw new SmartCampus.Domain.RuleException("ai_not_configured", 503);
 
-        var now = DateTimeOffset.UtcNow;
-        var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
-        var id = "admin-synthetic-smoke:" + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-        var reserved = await db.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO smart_campus."InferenceUsage" ("Key", "Provider", "Window", "WindowStart", "Count")
-            VALUES ({id}, {"admin-synthetic-smoke"}, {"day"}, {day}, 1)
-            ON CONFLICT ("Key") DO UPDATE SET "Count" = "InferenceUsage"."Count" + 1
-            WHERE "InferenceUsage"."Count" < 3
-            """, cancellation);
-        if (reserved != 1)
-            throw new SmartCampus.Domain.RuleException("ai_smoke_limit", 429, day.AddDays(1));
+        await ReserveSyntheticAttempt(cancellation);
 
         // Basic NVIDIA chat-completions connectivity probe, not classification.
         // It never turns on real AI or sends a real report or user prompt.
@@ -120,6 +110,64 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             { throw new SmartCampus.Domain.RuleException("ai_invalid_response", 503); }
         }
         return new AiSmokeResponse("validated", "nvidia", "openai/gpt-oss-20b");
+    }
+
+    // Real model inference, but only against fixed fictional text.
+    // Shares the same three-per-UTC-day cap as the connectivity diagnostic.
+    // Never accepts text, media, report identifiers, or actual user data.
+    [HttpPost("ai-demo")]
+    public async Task<ActionResult<AiDemoResponse>> AiDemo(CancellationToken cancellation)
+    {
+        Access.Require((await access.Current()).Admin);
+        if (!config.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"))
+            throw new SmartCampus.Domain.RuleException("ai_smoke_disabled", 503);
+        var key = config["AI:NvidiaKey"];
+        var daily = config.GetValue("AI:NvidiaDailyRequestLimit", 0);
+        var minute = config.GetValue("AI:NvidiaRequestsPerMinute", 5);
+        if (string.IsNullOrWhiteSpace(key) || daily <= 0 || minute <= 0)
+            throw new SmartCampus.Domain.RuleException("ai_not_configured", 503);
+
+        await ReserveSyntheticAttempt(cancellation);
+
+        // Only this request receives these fictional labels; the real
+        // AI:AllowNonSensitiveInference flag remains false globally.
+        var fictionalSettings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["AI:Provider"] = "nvidia",
+            ["AI:AllowNonSensitiveInference"] = "true",
+            ["AI:NvidiaKey"] = key,
+            ["AI:NvidiaDailyRequestLimit"] = daily.ToString(CultureInfo.InvariantCulture),
+            ["AI:NvidiaRequestsPerMinute"] = minute.ToString(CultureInfo.InvariantCulture),
+            ["AI:FaultTypes:0"] = "plumbing",
+            ["AI:FaultTypes:1"] = "electrical",
+            ["AI:FaultTypes:2"] = "other",
+            ["AI:Priorities:0"] = "low",
+            ["AI:Priorities:1"] = "medium",
+            ["AI:Priorities:2"] = "high",
+            ["AI:Risks:0"] = "low",
+            ["AI:Risks:1"] = "medium",
+            ["AI:Risks:2"] = "high"
+        }).Build();
+        const string fictionalReport = "TEST ONLY. In an imaginary empty room, a fictional water pipe leaks near a sink. No real campus, building, person, or incident.";
+        var provider = new AiProviders(clients, fictionalSettings, inferenceBudget);
+        var assessment = await provider.Assess(fictionalReport, cancellation);
+        return new AiDemoResponse("validated", "nvidia", "openai/gpt-oss-20b",
+            assessment.Type, assessment.Priority, assessment.Risk, assessment.Explanation);
+    }
+
+    private async Task ReserveSyntheticAttempt(CancellationToken cancellation)
+    {
+        var now = clock.GetUtcNow().ToUniversalTime();
+        var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var id = "admin-synthetic-smoke:" + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+        var reserved = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO smart_campus."InferenceUsage" ("Key", "Provider", "Window", "WindowStart", "Count")
+            VALUES ({id}, {"admin-synthetic-smoke"}, {"day"}, {day}, 1)
+            ON CONFLICT ("Key") DO UPDATE SET "Count" = "InferenceUsage"."Count" + 1
+            WHERE "InferenceUsage"."Count" < 3
+            """, cancellation);
+        if (reserved != 1)
+            throw new SmartCampus.Domain.RuleException("ai_smoke_limit", 429, day.AddDays(1));
     }
 
     [HttpGet]

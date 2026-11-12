@@ -178,10 +178,47 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
+    public async Task Admin_real_AI_demo_classifies_only_fixed_fictional_data()
+    {
+        using var boundary = new SyntheticAiHttp();
+        using var host = campus.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
+                ["AI:AllowNonSensitiveInference"] = "false",
+                ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
+                ["AI:NvidiaDailyRequestLimit"] = "5",
+                ["AI:NvidiaRequestsPerMinute"] = "5"
+            }));
+            builder.ConfigureServices(services => {
+                services.RemoveAll<IHttpClientFactory>();
+                services.AddSingleton<IHttpClientFactory>(boundary);
+            });
+        });
+        using var admin = host.CreateClient();
+        await CampusFixture.Csrf(admin);
+        var login = await admin.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = campus.Email(campus.Admin), password = campus.Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        await CampusFixture.Csrf(admin);
+        var result = await CampusFixture.Response(await admin.PostAsJsonAsync(
+            "/api/v1/admin/operations/ai-demo",
+            new { attemptedPersonalData = "should never reach NVIDIA" }));
+        Assert.Equal("validated", result.GetProperty("status").GetString());
+        Assert.Equal("nvidia", result.GetProperty("provider").GetString());
+        Assert.Equal("plumbing", result.GetProperty("type").GetString());
+        Assert.Equal("low", result.GetProperty("priority").GetString());
+        Assert.Equal("low", result.GetProperty("risk").GetString());
+        Assert.Equal(1, boundary.Calls);
+        Assert.DoesNotContain("should never reach NVIDIA", result.GetRawText());
+    }
+
+    [DatabaseFact]
     public async Task Non_admin_cannot_trigger_smoke_inference()
     {
         using var staff = await campus.Login(campus.Staff);
         Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-demo", new { })).StatusCode);
     }
 
     [DatabaseFact]

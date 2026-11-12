@@ -1,3 +1,10 @@
+## 12 November 2026 — Real AI classifications on fictional data, no student-data release
+
+- Added admin-only `POST /api/v1/admin/operations/ai-demo` with a fixed fictional maintenance report, no request-body intake, CSRF/admin checks, and server-owned NVIDIA key. It calls the *actual* AiProviders classification pathway, validates the response labels, and displays the returned type/priority/risk/explanation. Both diagnostics share the preexisting three-per-UTC-day provider attempt cap.
+- Updated NVIDIA GPT-OSS classification to use supported `reasoning_effort=low` request parameters instead of assuming unsupported JSON mode, while keeping OpenRouter's structured output mode unchanged. Parsers continue to fail closed on unexpected labels and malformed output.
+- Real student-report inference remains disabled (`AI:AllowNonSensitiveInference=false` and `AI:AllowNonSensitiveImages=false`). The diagnostic has no access to user report content and makes no asynchronous provider requests. The free MonsterASP host cannot be used for production processing of student personal data under the provider's terms.
+- A code deployment is not proof of real model output: an authenticated administrator must run the fictional demo after the UTC attempt cap resets and confirm the result.
+
 ## 12 November 2026 — Synthetic NVIDIA diagnostic: isolate endpoint incompatibilities
 
 - Admin diagnostic now sends a fixed fictional prompt with the basic Chat Completions request shape documented for `openai/gpt-oss-20b`: `reasoning_effort=low`, `max_tokens=1024`, `stream=false`, and no `response_format` constraint. It verifies a completed nonempty provider reply without returning or logging model text.
