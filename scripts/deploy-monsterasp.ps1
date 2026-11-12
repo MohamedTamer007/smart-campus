@@ -61,20 +61,34 @@ if (-not (Test-Path -LiteralPath $msdeploy)) {
   }
 }
 
-# Check the live API before replacing any files.
+# Check the live API before replacing any files. Keep full TLS verification.
+# A bounded retry tolerates short host wake-ups and transient TLS handshakes.
 function Test-CurrentApi {
-  $client = [System.Net.Http.HttpClient]::new()
-  $client.Timeout = [TimeSpan]::FromSeconds(20)
-  try {
-    $response = $client.GetAsync('https://smartcampus.tryasp.net/health/live').GetAwaiter().GetResult()
-    if (-not $response.IsSuccessStatusCode) { throw 'Public HTTPS API liveness probe failed.' }
-    $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-    if ($body -notmatch '"status"\s*:\s*"live"') {
-      throw 'Public endpoint did not return the expected SmartCampus API response.'
+  $lastFailureType = 'Unknown'
+  foreach ($attempt in 1..4) {
+    $client = [System.Net.Http.HttpClient]::new()
+    $client.Timeout = [TimeSpan]::FromSeconds(20)
+    try {
+      $response = $client.GetAsync('https://smartcampus.tryasp.net/health/live').GetAwaiter().GetResult()
+      if (-not $response.IsSuccessStatusCode) { throw 'Public HTTPS API liveness probe failed.' }
+      $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+      if ($body -notmatch '"status"\s*:\s*"live"') {
+        throw 'Public endpoint did not return the expected SmartCampus API response.'
+      }
+      Write-Output "Public HTTPS API liveness verified on attempt $attempt."
+      return
+    } catch {
+      # Only print the exception type; no server response bodies or sensitive URLs.
+      $lastFailureType = $_.Exception.GetBaseException().GetType().Name
+      if ($attempt -lt 4) {
+        Write-Output "Public HTTPS health check temporarily failed ($lastFailureType); retrying."
+        Start-Sleep -Seconds 5
+      }
+    } finally {
+      $client.Dispose()
     }
-  } finally {
-    $client.Dispose()
   }
+  throw "Public HTTPS API health did not pass after four TLS-validated attempts (last exception type: $lastFailureType). Refusing to change hosting files."
 }
 Test-CurrentApi
 
