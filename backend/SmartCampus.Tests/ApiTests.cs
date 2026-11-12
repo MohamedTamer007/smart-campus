@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,75 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
             const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
         }
+    }
+
+    [DatabaseFact]
+    public async Task Student_smoke_is_invisible_and_unavailable_without_separate_opt_in()
+    {
+        using var student = await campus.Login(campus.Student);
+        var status = await student.GetFromJsonAsync<JsonElement>("/api/v1/ai/smoke");
+        Assert.False(status.GetProperty("enabled").GetBoolean());
+        var response = await student.PostAsJsonAsync("/api/v1/ai/smoke", new { attemptedPrivatePayload = "must never be processed" });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [DatabaseFact]
+    public async Task Student_in_controlled_test_release_can_smoke_once_with_only_fixed_fictional_text()
+    {
+        using var boundary = new SyntheticAiHttp();
+        using var host = campus.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["Release:Mode"] = "controlled",
+                ["Release:AllowedEmails:0"] = campus.Email(campus.Student),
+                ["AI:Provider"] = "auto",
+                ["AI:SyntheticSmokeTestsEnabled"] = "true",
+                ["AI:SyntheticUserSmokeTestsEnabled"] = "true",
+                ["AI:AllowNonSensitiveInference"] = "true",
+                ["AI:AllowNonSensitiveImages"] = "false",
+                ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
+                ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
+                ["AI:NvidiaDailyRequestLimit"] = "5",
+                ["AI:NvidiaRequestsPerMinute"] = "5",
+                ["AI:FaultTypes:0"] = "plumbing",
+                ["AI:Priorities:0"] = "low",
+                ["AI:Risks:0"] = "low"
+            }));
+            builder.ConfigureServices(services => {
+                services.RemoveAll<IHttpClientFactory>();
+                services.AddSingleton<IHttpClientFactory>(boundary);
+            });
+        });
+        using var student = host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await CampusFixture.Csrf(student);
+        var login = await student.PostAsJsonAsync("/api/v1/auth/login",
+            new { email = campus.Email(campus.Student), password = campus.Password });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        await CampusFixture.Csrf(student);
+
+        var status = await student.GetFromJsonAsync<JsonElement>("/api/v1/ai/smoke");
+        Assert.True(status.GetProperty("enabled").GetBoolean());
+
+        var first = await CampusFixture.Response(await student.PostAsJsonAsync("/api/v1/ai/smoke", new { attemptedUserPrompt = "must not reach provider" }));
+        Assert.Equal("validated", first.GetProperty("status").GetString());
+        Assert.Equal("nvidia", first.GetProperty("provider").GetString());
+        Assert.Equal("openai/gpt-oss-20b", first.GetProperty("model").GetString());
+        Assert.Equal(3, first.EnumerateObject().Count());
+        Assert.Equal(1, boundary.Calls);
+
+        var repeat = await student.PostAsJsonAsync("/api/v1/ai/smoke", new { });
+        Assert.Equal(HttpStatusCode.TooManyRequests, repeat.StatusCode);
+        Assert.Equal(1, boundary.Calls);
+    }
+
+    [DatabaseFact]
+    public async Task Student_smoke_requires_valid_login_and_csrf()
+    {
+        using var guest = campus.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await guest.GetAsync("/api/v1/ai/smoke")).StatusCode);
+        using var student = await campus.Login(campus.Student);
+        student.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        Assert.Equal(HttpStatusCode.BadRequest, (await student.PostAsJsonAsync("/api/v1/ai/smoke", new { })).StatusCode);
     }
 
     [DatabaseFact]

@@ -19,6 +19,7 @@ AI__Provider=auto
 AI__AllowNonSensitiveInference=false
 AI__AllowNonSensitiveImages=false
 AI__SyntheticSmokeTestsEnabled=false
+AI__SyntheticUserSmokeTestsEnabled=false
 # Provide both secrets only in the host's private environment settings:
 # AI__OpenRouterKey=<secret>
 # AI__NvidiaKey=<secret>
@@ -88,21 +89,36 @@ student reports or the existing production database on MonsterASP.NET Free.
    and returns only `status`, `provider` and `model` — never response text,
    private data or secrets. The endpoint is POST + CSRF + admin-only and stays
    disabled by default. Return the flag to `false` after the evaluation.
-4. Have an authorized synthetic student submit a **text-only fictional**
+4. **Optional regular-account acceptance check (no Admin role needed):**
+   on a separate *controlled* test deployment only, add the approved university
+   test mailbox to `Release:AllowedEmails`, and set both
+   `AI__SyntheticSmokeTestsEnabled=true` and
+   `AI__SyntheticUserSmokeTestsEnabled=true`. A verified allowed test account
+   can open `/maintenance` and click **Test maintenance AI**. The API
+   `GET /api/v1/ai/smoke` advertises the feature without showing secrets.
+   `POST /api/v1/ai/smoke` sends **only a hard-coded fictional text**, no report,
+   photo, account details, or user-provided message. It is authenticated,
+   CSRF-protected, and limited by atomic database counters to one attempt per
+   account per UTC day and three attempts total per UTC day; the existing
+   provider budget is charged as well. A validated response only proves the
+   configured text model worked with that example. Turn both smoke switches
+   off again after the test. This feature is not a substitute for staff review
+   of real reports or loss/found retrieval calibration.
+5. Have an authorized synthetic student submit a **text-only fictional**
    maintenance report and an authorized scoped staff member review it, confirm
    it is non-sensitive, and select text-only AI review. The asynchronous job
    should route to NVIDIA `openai/gpt-oss-20b`, and a completed suggestion
    must remain distinct from staff's actual operational decision.
-5. Observe the job/assessment state through the authorized API and worker
+6. Observe the job/assessment state through the authorized API and worker
    operations. A quota, provider failure or malformed response is a failed
    acceptance test; do not call a pending/unavailable result a success.
-6. **Keep image inference disabled** until a separate review authorizes the
+7. **Keep image inference disabled** until a separate review authorizes the
    exact synthetic image and provider transfer. In the source code,
    `AI:Provider=auto` routes staff-approved images to OpenRouter, and the
    `AI:AllowNonSensitiveImages` gate prevents images being forwarded otherwise.
    Approved JPEG/PNG/WebP bytes are validated and converted to a JPEG data
    URL by the API; the original uploaded metadata is not sent to the model.
-7. Hosted lost/found embeddings require their *own* provider compatibility
+8. Hosted lost/found embeddings require their *own* provider compatibility
    tests, externally approved data processing and a separately measured
    `Search:MinimumScore`/calibration approval. Text analysis success does not
    enable or validate retrieval.

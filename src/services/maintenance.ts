@@ -92,6 +92,8 @@ interface MaintenanceService {
     },
   ): Promise<MaintenanceReport>;
   reviewAi(id: string, version: number, confirmedNonSensitive: boolean, includeImage: boolean): Promise<MaintenanceReport>;
+  syntheticAiStatus(): Promise<{ enabled: boolean }>;
+  syntheticAiTest(): Promise<{ status: "validated"; provider: string; model: string }>;
 }
 export const maintenance: MaintenanceService = {
   locations: () => api<LocationOption[]>("/directory/locations"),
@@ -102,6 +104,8 @@ export const maintenance: MaintenanceService = {
   cancel: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/cancel`, json("POST", { version: request.version }))),
   update: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/updates`, json("POST", request))),
   reviewAi: async (id, version, confirmedNonSensitive, includeImage) => normalize(await api<MaintenanceReport>(`/maintenance/${id}/ai-review`, json("POST", { version, confirmedNonSensitive, includeImage }))),
+  syntheticAiStatus: () => api<{ enabled: boolean }>("/ai/smoke"),
+  syntheticAiTest: () => api<{ status: "validated"; provider: string; model: string }>("/ai/smoke", json("POST", {})),
 };
 async function normalize(report: MaintenanceReport) {
   return withPhoto({ ...report, status: report.cancelledAt ? "cancelled" as const : report.status, assignee: report.assignee ?? "" });

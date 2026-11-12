@@ -273,6 +273,58 @@ export function NewMaintenance() {
     </Page>
   );
 }
+// The connectivity check never uses any report content, account details,
+// uploaded photos or user-entered prompts. Hidden unless the server opts in.
+function SyntheticAiCheck() {
+  const { t } = useApp();
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    maintenance.syntheticAiStatus().then(result => {
+      if (active) setEnabled(result.enabled);
+    }).catch(() => {
+      if (active) setEnabled(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  if (!enabled) return null;
+  async function test() {
+    if (busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await maintenance.syntheticAiTest();
+      setMessage({
+        ok: true,
+        text: t("المودل رد بنجاح على وصف وهمي ثابت", "Model successfully responded to a fixed fictional example") +
+          ` (${result.provider}: ${result.model})`,
+      });
+    } catch (error) {
+      setMessage({
+        ok: false,
+        text: error instanceof ServiceError && error.code === "rate_limited"
+          ? t("وصلت لحد الاختبار اليومي. الاختبار مرة واحدة لكل حساب.", "Daily test limit reached. One test per account.")
+          : t("المودل لم يجتز الاختبار، راجع إعدادات السيرفر أو حصته.", "Model test failed; check server configuration and quota."),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <section className="panel">
+    <h2>{t("اختبار اتصال الذكاء الاصطناعي", "AI connection test")}</h2>
+    <p>{t("اختبار بنص وهمي ثابت، بدون إرسال بلاغك أو صورتك. يستخدم طلبًا واحدًا من رصيد المزود، ومتاح مرة واحدة لكل حساب يوميًا على بيئة الاختبار.", "Uses a fixed fictional text without sending your report or photo. Consumes one provider request, once per account each UTC day in the test environment.")}</p>
+    <button type="button" className="button" disabled={busy} onClick={() => { void test(); }}>
+      {busy ? t("جارٍ الاختبار…", "Testing…") : t("اختبر مودل الصيانة", "Test maintenance AI")}
+    </button>
+    {message && <Feedback kind={message.ok ? "success" : "error"}>{message.text}</Feedback>}
+  </section>;
+}
+
 export function MaintenanceList({ staff = false }: { staff?: boolean }) {
   const { t, account } = useApp();
   const load = useCallback(
@@ -295,6 +347,7 @@ export function MaintenanceList({ staff = false }: { staff?: boolean }) {
           {t("كل طلباتي", "All my requests")}
         </Link>
       </div>
+      {!staff && <SyntheticAiCheck key={account.id} />}
       <div className="spacer" />
       <AsyncView key={`${account.id}-${staff}`} load={load}>
         {(records) =>
