@@ -23,7 +23,8 @@ on:
 permissions:
   contents: read
 
-# Never cancel a deployment midway; queued pushes are serialized.
+# Keep only one active deployment at a time; queued pushes are serialized.
+# Windows 2022 is an officially supported fallback for runner-capacity delays.
 concurrency:
   group: monsterasp-smartcampus-live
   cancel-in-progress: false
@@ -31,7 +32,7 @@ concurrency:
 jobs:
   build-test-and-deploy:
     if: ${{ vars.MONSTERASP_AUTO_DEPLOY_DISABLED != 'true' }}
-    runs-on: windows-2025
+    runs-on: windows-2022
     timeout-minutes: 45
     env:
       WEBSITE_NAME: ${{ secrets.WEBSITE_NAME }}
