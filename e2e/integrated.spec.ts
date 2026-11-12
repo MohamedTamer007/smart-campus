@@ -55,7 +55,7 @@ test("browser maintenance submission, staff assignment and resolution persist", 
 test("browser logout revokes access and uncalibrated search stays unavailable", async ({ page }) => {
   await login(page, "student");
   await page.goto("/search");
-  await expect(page.getByRole("alert")).toContainText("Smart lost-item search is currently deferred");
+  await expect(page.getByRole("status")).toContainText("Smart lost-item search is currently deferred");
   await expect(page.getByRole("link", { name: "Browse available items", exact: true })).toHaveAttribute("href", "/found");
   await page.goto("/settings");
   await logout(page);
