@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
@@ -60,23 +62,63 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
         if (reserved != 1)
             throw new SmartCampus.Domain.RuleException("ai_smoke_limit", 429, day.AddDays(1));
 
-        // This configuration exists in memory for this one request only.
-        // It cannot turn on the application-wide AI:AllowNonSensitiveInference
-        // switch or introduce any real institutional taxonomy.
-        var testConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        // Basic NVIDIA chat-completions connectivity probe, not classification.
+        // It never turns on real AI or sends a real report or user prompt.
+        await inferenceBudget.Reserve("nvidia", cancellation);
+        using var client = clients.CreateClient("inference");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
+        const string fictionalReport = "TEST ONLY. An imaginary dripping pipe in an imaginary room. No actual campus, student, staff member or incident.";
+        HttpResponseMessage response;
+        try
         {
-            ["AI:Provider"] = "nvidia",
-            ["AI:AllowNonSensitiveInference"] = "true",
-            ["AI:NvidiaKey"] = key,
-            ["AI:NvidiaDailyRequestLimit"] = daily.ToString(CultureInfo.InvariantCulture),
-            ["AI:NvidiaRequestsPerMinute"] = minute.ToString(CultureInfo.InvariantCulture),
-            ["AI:FaultTypes:0"] = "plumbing",
-            ["AI:Priorities:0"] = "low",
-            ["AI:Risks:0"] = "low"
-        }).Build();
-        const string fictionalReport = "TEST ONLY. Fictional maintenance scenario: a dripping pipe in an imaginary test room. No real student, staff member, building or incident.";
-        var testProvider = new AiProviders(clients, testConfig, inferenceBudget);
-        await testProvider.Assess(fictionalReport, cancellation);
+            response = await client.PostAsJsonAsync("https://integrate.api.nvidia.com/v1/chat/completions",
+                new
+                {
+                    model = "openai/gpt-oss-20b",
+                    messages = new object[]
+                    {
+                        new { role = "system", content = "This is a connectivity diagnostic with fictional information only. Reply briefly and safely." },
+                        new { role = "user", content = fictionalReport + " Reply with a short acknowledgement." }
+                    },
+                    temperature = 0.6,
+                    max_tokens = 1024,
+                    reasoning_effort = "low",
+                    stream = false
+                }, cancellation);
+        }
+        catch (HttpRequestException) { throw new SmartCampus.Domain.RuleException("ai_connection_failed", 503); }
+        catch (TaskCanceledException) when (!cancellation.IsCancellationRequested)
+        { throw new SmartCampus.Domain.RuleException("ai_timeout", 503); }
+
+        using (response)
+        {
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new SmartCampus.Domain.RuleException("ai_key_rejected", 503);
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new SmartCampus.Domain.RuleException("ai_access_denied", 503);
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                throw new SmartCampus.Domain.RuleException("ai_provider_rate_limited", 503);
+            if (response.StatusCode == HttpStatusCode.UnprocessableEntity || response.StatusCode == HttpStatusCode.BadRequest)
+                throw new SmartCampus.Domain.RuleException("ai_request_rejected", 503);
+            if (response.StatusCode != HttpStatusCode.OK)
+                throw new SmartCampus.Domain.RuleException("ai_provider_unavailable", 503);
+            try
+            {
+                // Never return or log the model output.
+                var responseBody = await response.Content.ReadAsStringAsync(cancellation);
+                if (responseBody.Length > 100_000)
+                    throw new SmartCampus.Domain.RuleException("ai_invalid_response", 503);
+                using var json = JsonDocument.Parse(responseBody);
+                var choice = json.RootElement.GetProperty("choices")[0];
+                var content = choice.GetProperty("message").GetProperty("content");
+                if (choice.GetProperty("finish_reason").GetString() != "stop" ||
+                    content.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(content.GetString()))
+                    throw new SmartCampus.Domain.RuleException("ai_invalid_response", 503);
+            }
+            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
+            { throw new SmartCampus.Domain.RuleException("ai_invalid_response", 503); }
+        }
         return new AiSmokeResponse("validated", "nvidia", "openai/gpt-oss-20b");
     }
 

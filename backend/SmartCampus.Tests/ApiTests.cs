@@ -28,6 +28,13 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
             Assert.Equal("openai/gpt-oss-20b", payload.RootElement.GetProperty("model").GetString());
             var textOnly = payload.RootElement.GetProperty("messages")[1].GetProperty("content").GetString();
             Assert.Contains("TEST ONLY", textOnly);
+            if (payload.RootElement.TryGetProperty("reasoning_effort", out var effort))
+            {
+                Assert.Equal("low", effort.GetString());
+                Assert.False(payload.RootElement.TryGetProperty("response_format", out _));
+                Assert.Equal(1024, payload.RootElement.GetProperty("max_tokens").GetInt32());
+                Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
+            }
             const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
         }

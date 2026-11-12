@@ -1,3 +1,10 @@
+## 12 November 2026 — Synthetic NVIDIA diagnostic: isolate endpoint incompatibilities
+
+- Admin diagnostic now sends a fixed fictional prompt with the basic Chat Completions request shape documented for `openai/gpt-oss-20b`: `reasoning_effort=low`, `max_tokens=1024`, `stream=false`, and no `response_format` constraint. It verifies a completed nonempty provider reply without returning or logging model text.
+- Live maintenance classification stays disabled; no user reports or photos leave the app in this path. NVIDIA HTTP status maps to sanitized fixed error codes (key rejected, access denied, rate limit, incompatible request, provider unavailable, connection failed, timeout, malformed response), displayed in Arabic and English. Keys, request content and provider bodies are not exposed.
+- The synthetic attempt cap remains three per UTC day, enforced in PostgreSQL; actual provider quota remains charged. Two attempts were recorded in the hosted database before this change, so only one remained on the same UTC day. No quota was reset.
+- Prior failures were generic and did not establish whether credentials or request parameters caused the problem. Passing this new button proves live **connectivity**, not the stricter maintenance classification integration.
+
 ## 12 November 2026 — Admin-only synthetic NVIDIA connectivity diagnostic
 
 - Added a **separate admin-only** NVIDIA test route behind `AI:AdminSyntheticDiagnosticEnabled` in versioned, non-secret defaults. It sends only one hard-coded fictional plumbing description and in-memory fictional allowed labels. No actual maintenance report, photo, student identity or private submission reaches NVIDIA.

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
 import { operations, smokeAi } from "../../services/admin";
+import { ServiceError } from "../../services/contracts";
 
 export function OperationsStatus() {
   const { t, account } = useApp();
@@ -12,10 +13,27 @@ export function OperationsStatus() {
     setSmokeMessage(null);
     try {
       const result = await smokeAi();
-      setSmokeMessage(t("تم اختبار الاستجابة الحقيقية والتحقق من صيغة النتيجة", "Real provider response and result format validated") +
+      setSmokeMessage(t("نجح الاتصال الفعلي بـ NVIDIA (تصنيف الصيانة لم يُختبر)", "NVIDIA live connectivity passed (maintenance classification not tested)") +
         ` (${result.provider}: ${result.model})`);
-    } catch {
-      setSmokeMessage(t("اختبار المودل لم ينجح. افحص حالة المفتاح والحصة والمودل من الخادم.", "Model test failed. Check server key, quota, and provider status."));
+    } catch (error) {
+      const code = error instanceof ServiceError ? error.detail : undefined;
+      const reasons: Record<string, [string, string]> = {
+        ai_key_rejected: ["NVIDIA رفض مفتاح الـ API (401).", "NVIDIA rejected the API key (401)."],
+        ai_access_denied: ["NVIDIA رفض الصلاحية أو الحساب (403).", "NVIDIA denied access (403)."],
+        ai_provider_rate_limited: ["NVIDIA رفض الطلب بسبب حد الاستخدام (429).", "NVIDIA provider rate limit reached (429)."],
+        ai_request_rejected: ["NVIDIA رفض صيغة طلب الاختبار (400/422).", "NVIDIA rejected the request parameters (400/422)."],
+        ai_provider_unavailable: ["خدمة NVIDIA غير متاحة حاليًا.", "NVIDIA service is currently unavailable."],
+        ai_connection_failed: ["السيرفر مش قادر يتصل بـ NVIDIA عبر HTTPS.", "The server could not establish HTTPS to NVIDIA."],
+        ai_timeout: ["انتهت مهلة اتصال السيرفر بـ NVIDIA.", "NVIDIA connection timed out."],
+        ai_invalid_response: ["NVIDIA رجّع استجابة ناقصة أو غير متوقعة.", "NVIDIA returned an incomplete or unexpected response."],
+        ai_smoke_limit: ["وصلت لـ 3 محاولات تشخيص اليوم (UTC).", "Three diagnostic attempts used today (UTC)."],
+        ai_quota_exhausted: ["حصة NVIDIA في التطبيق خلصت.", "The application NVIDIA quota is exhausted."],
+        ai_not_configured: ["مفتاح NVIDIA أو ميزانية الطلبات ناقصة.", "NVIDIA key or quota configuration is incomplete."]
+      };
+      const reason = code ? reasons[code] : undefined;
+      setSmokeMessage(reason
+        ? t(reason[0], reason[1])
+        : t("اختبار الاتصال فشل. رمز التشخيص: " + (code ?? "unknown"), "Connectivity test failed. Diagnostic code: " + (code ?? "unknown")));
     } finally {
       setSmokeBusy(false);
     }
