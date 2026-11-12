@@ -143,37 +143,25 @@ it("requires a photo and nonfuture date and keeps a found-item draft on failure"
   expect(register).toHaveBeenCalledOnce();
 });
 
-it("rejects an empty search before requesting matches", async () => {
+it("keeps lost-item matching unavailable while AI search is deferred", async () => {
   const actor: Account = { id: "search-form-test", name: "Member", email: "", role: "user" };
   const search = vi.spyOn(lostFound, "search");
   renderForActor(actor, <SearchItems />);
-  const description = await screen.findByLabelText(/^Lost item description/);
-  await userEvent.type(description, "   ");
-  await userEvent.click(screen.getByRole("button", { name: "Search for matches" }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/check required fields/i);
+  expect(await screen.findByText(/Smart lost-item search is currently deferred/i)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Search for matches" })).toBeNull();
   expect(search).not.toHaveBeenCalled();
-  await userEvent.clear(description);
-  await userEvent.type(description, "watch");
-  const photo = new File(["image"], "photo.png", { type: "image/png" });
-  await userEvent.upload(screen.getByLabelText(/^Previous photo/), photo);
-  await userEvent.click(screen.getByRole("button", { name: "Search for matches" }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
-  expect(search).toHaveBeenCalledWith(actor, "watch", photo);
 });
 
-it("requires content review and separate image consent before external analysis", async () => {
+it("keeps maintenance AI suggestions and external review submission deferred", async () => {
   const actor: Account = { id: "ai-staff-test", name: "Staff", email: "", role: "maintenance" };
   const report: MaintenanceReport = { id: "reviewed-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 4, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canReviewAiInput: true, canReviewAiImage: true, assessment: { state: "unavailable", type: "", priority: "", risk: "" } };
   vi.spyOn(maintenance, "detail").mockResolvedValue(report);
-  const review = vi.spyOn(maintenance, "reviewAi").mockResolvedValue({ ...report, canReviewAiInput: false });
+  const review = vi.spyOn(maintenance, "reviewAi");
   renderForActor(actor, <MaintenanceDetail />);
-  const submit = await screen.findByRole("button", { name: "Send reviewed content for analysis" });
-  await userEvent.click(submit);
+  expect(await screen.findByText(/AI maintenance analysis is deferred/i)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Send reviewed content for analysis" })).toBeNull();
+  expect(screen.queryByText("Suggested fault type")).toBeNull();
   expect(review).not.toHaveBeenCalled();
-  await userEvent.click(screen.getByRole("checkbox", { name: /I reviewed the description/ }));
-  expect((screen.getByRole("checkbox", { name: /I also reviewed the image/ }) as HTMLInputElement).checked).toBe(false);
-  await userEvent.click(submit);
-  expect(review).toHaveBeenCalledWith("reviewed-report", 4, true, false);
 });
 
 it("requires a nonblank rejection reason before requesting a report update", async () => {

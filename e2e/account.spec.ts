@@ -4,12 +4,13 @@ test("sign-in cannot create a session without a backend and keeps the entered em
   await page.goto("/login");
   await expect(page.getByText(/للتجربة|حساباً تجريبياً|كلمة المرور demo/)).toHaveCount(0);
   await page.getByRole("button", { name: "English", exact: true }).click();
-  const email = page.getByRole("textbox", { name: /^University email/ });
+  const loginPanel = page.locator(".auth-login");
+  const email = loginPanel.getByRole("textbox", { name: /^University email/ });
   await email.fill("student@o6u.edu.eg");
-  await page.locator('input[name="password"]').fill("example-password");
+  await loginPanel.locator('input[name="password"]').fill("example-password");
   const writes: string[] = [];
   page.on("request", (request) => { if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method())) writes.push(request.url()); });
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await loginPanel.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("temporarily unavailable");
   await expect(email).toHaveValue("student@o6u.edu.eg");
   await expect(page).toHaveURL(/\/login$/);

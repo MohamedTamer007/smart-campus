@@ -325,8 +325,19 @@ namespace SmartCampus.Infrastructure.Migrations
                     b.Property<Guid?>("MaintenanceDepartmentId")
                         .HasColumnType("uuid");
 
+                      b.Property<double?>("MapX")
+                          .HasColumnType("double precision");
+
+                      b.Property<double?>("MapY")
+                          .HasColumnType("double precision");
+
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid");
+
+                      b.Property<int>("PositionVersion")
+                          .ValueGeneratedOnAdd()
+                          .HasColumnType("integer")
+                          .HasDefaultValue(1);
 
                     b.HasKey("Id");
 

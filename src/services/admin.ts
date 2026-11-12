@@ -53,7 +53,17 @@ export interface Stats {
   pendingClaims: number;
   locations: Record<string, number>;
   faultTypes: Record<string, number>;
+  buildings?: { id: string; ar: string; en: string; count: number; x: number | null; y: number | null; version: number }[];
+  unplacedBuildings?: { id: string; ar: string; en: string; count: number; x: number | null; y: number | null; version: number }[];
+  recurrence?: { type: string; buildingAr: string; buildingEn: string; floorAr: string; floorEn: string; count: number }[];
+  openReports?: number;
+  resolutionRate?: number;
+  averageResolutionHours?: number | null;
+  oldestOpenDays?: number | null;
+  weeklyTrend?: { weekOf: string; count: number }[];
 }
+export const saveBuildingPosition = (id: string, x: number | null, y: number | null, version: number) =>
+  api<{ version: number }>(`/admin/locations/${id}/position`, json("PUT", { x, y, version }));
 export type DashboardScope = "all" | "maintenance" | "security" | "secretariat";
 export interface OperationsSnapshot {
   sampledAt: string;

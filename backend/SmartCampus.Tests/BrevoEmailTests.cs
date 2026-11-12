@@ -66,4 +66,11 @@ public sealed class BrevoEmailTests
         Assert.Contains("&lt;script&gt;", mail.Html);
         Assert.Contains("&quot;", mail.Html);
     }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("mailto:student@o6u.edu.eg")]
+    [InlineData("https://user:password@campus.example.test/verify")]
+    public void Email_action_rejects_non_web_or_credential_bearing_urls(string link) =>
+        Assert.Throws<ArgumentException>(() => CampusEmailContent.Create("Verify your Smart Campus email", link));
 }

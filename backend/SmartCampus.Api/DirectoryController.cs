@@ -83,6 +83,7 @@ public sealed class NotificationsController(CampusDb db, Access access) : Contro
 public sealed record GrantInput(string[] Roles, Guid[] DepartmentIds, string Version);
 public sealed record DepartmentInput(string Code, string Ar, string En, bool CanReceive, bool Maintenance);
 public sealed record LocationInput(Guid? ParentId, string Kind, string Ar, string En, Guid? MaintenanceDepartmentId);
+public sealed record LocationPositionInput(double? X, double? Y, int Version);
 
 [ApiController, Authorize, Route("api/v1/admin")]
 public sealed class AdministrationController(CampusDb db, Access access, UserManager<CampusUser> users, RoleManager<IdentityRole<Guid>> roles, Events events) : ControllerBase
@@ -156,6 +157,21 @@ public sealed class AdministrationController(CampusDb db, Access access, UserMan
             throw new RuleException("invalid_department");
         var location = new CampusLocation { ParentId = input.ParentId, Kind = input.Kind, Ar = Rules.Required(input.Ar, 150), En = Rules.Required(input.En, 150), MaintenanceDepartmentId = input.MaintenanceDepartmentId };
         db.Locations.Add(location); events.Audit(actor, "LocationCreated", location.Id); await db.SaveChangesAsync(); return new { location.Id };
+    }
+
+    [HttpPut("locations/{id:guid}/position")]
+    public async Task<IActionResult> LocationPosition(Guid id, LocationPositionInput input)
+    {
+        var actor = await access.Current(); Access.Require(actor.Admin);
+        if ((input.X is null) != (input.Y is null) || input.X is < 0 or > 100 || input.Y is < 0 or > 100)
+            throw new RuleException("invalid_location_position");
+        var location = await db.Locations.SingleOrDefaultAsync(x => x.Id == id && x.Kind == "building")
+            ?? throw new RuleException("not_found", 404);
+        if (location.PositionVersion != input.Version) throw new RuleException("conflict", 409);
+        location.MapX = input.X; location.MapY = input.Y; location.PositionVersion++;
+        db.Audit.Add(new() { ActorId = actor.Id, Action = "LocationPositionUpdated", EntityId = id });
+        await db.SaveChangesAsync();
+        return Ok(new { version = location.PositionVersion });
     }
 
     private static void Ensure(IdentityResult outcome)

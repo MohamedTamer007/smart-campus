@@ -49,6 +49,7 @@ function Shell() {
     account,
     sessionExpired,
   } = useApp();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   return (
     <>
       <a className="skip-link" href="#main">
@@ -59,16 +60,19 @@ function Shell() {
           <BrandMark />
           <bdi>Smart Campus</bdi>
         </Link>
-        <nav aria-label={t("التنقل الرئيسي", "Main navigation")}>
-          <NavLink to="/" end>
+        <button className="mobile-menu" type="button" aria-label={t("فتح القائمة", "Open menu")} aria-expanded={mobileMenuOpen} aria-controls="primary-navigation" onClick={() => setMobileMenuOpen(value => !value)}>
+          <Icon name={mobileMenuOpen ? "close" : "menu"} />
+        </button>
+        <nav id="primary-navigation" className={mobileMenuOpen ? "mobile-open" : undefined} aria-label={t("التنقل الرئيسي", "Main navigation")}>
+          <NavLink to="/" end onClick={() => setMobileMenuOpen(false)}>
             {t("الرئيسية", "Home")}
           </NavLink>
-          <NavLink to="/requests">{t("طلباتي", "My requests")}</NavLink>
+          <NavLink to="/requests" onClick={() => setMobileMenuOpen(false)}>{t("طلباتي", "My requests")}</NavLink>
           {["maintenance", "department", "secretariat", "admin"].includes(
             account.role,
-          ) && <NavLink to="/staff">{t("لوحة العمل", "Work queue")}</NavLink>}
+          ) && <NavLink to="/staff" onClick={() => setMobileMenuOpen(false)}>{t("لوحة العمل", "Work queue")}</NavLink>}
           {account.role === "admin" && (
-            <NavLink to="/admin">{t("الإدارة", "Admin")}</NavLink>
+            <NavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>{t("الإدارة", "Admin")}</NavLink>
           )}
         </nav>
         <div className="header-actions">
@@ -257,6 +261,12 @@ function Shell() {
           />
         </Routes>
       </main>
+      <nav className="mobile-bottom-nav" aria-label={t("تنقل الهاتف", "Mobile navigation")}>
+        <NavLink to="/" end><Icon name="home" /><span>{t("الرئيسية", "Home")}</span></NavLink>
+        <NavLink to="/requests"><Icon name="document" /><span>{t("طلباتي", "Requests")}</span></NavLink>
+        <NavLink to="/notifications"><Icon name="bell" /><span>{t("الإشعارات", "Alerts")}</span></NavLink>
+        <NavLink to={account.role === "guest" ? "/login" : "/settings"}><Icon name="user" /><span>{t("حسابي", "Account")}</span></NavLink>
+      </nav>
       <footer>
         <Link className="brand" to="/">
           <BrandMark />

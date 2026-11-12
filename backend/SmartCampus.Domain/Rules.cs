@@ -79,6 +79,9 @@ public sealed class CampusLocation : Record
     public string Ar { get; set; } = "";
     public string En { get; set; } = "";
     public Guid? MaintenanceDepartmentId { get; set; }
+    public double? MapX { get; set; }
+    public double? MapY { get; set; }
+    public int PositionVersion { get; set; } = 1;
 }
 
 public sealed class MaintenanceReport : VersionedRecord

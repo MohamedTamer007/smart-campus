@@ -12,6 +12,8 @@ public static class CampusEmailContent
 
     public static Message Create(string subject, string link)
     {
+        if (!Uri.TryCreate(link, UriKind.Absolute, out var target) || target.Scheme is not ("https" or "http") || !string.IsNullOrEmpty(target.UserInfo))
+            throw new ArgumentException("The email action link must be an absolute HTTP(S) URL without user info.", nameof(link));
         var reset = subject == "Smart Campus password reset";
         var title = reset ? "إعادة تعيين كلمة المرور" : "تأكيد البريد الإلكتروني";
         var englishTitle = reset ? "Reset your password" : "Verify your email";
@@ -24,37 +26,38 @@ public static class CampusEmailContent
         var button = reset ? "تغيير كلمة المرور" : "تأكيد البريد الإلكتروني";
         var buttonEnglish = reset ? "Reset password" : "Verify email";
         var safeLink = WebUtility.HtmlEncode(link);
+        var safeLogoUrl = WebUtility.HtmlEncode(target.GetLeftPart(UriPartial.Authority) + "/o6u-mark.png");
         const string template = """
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{EN_TITLE}}</title></head>
-<body style="margin:0;padding:0;background:#f2f5fa;color:#14223a;font-family:Tahoma,Arial,sans-serif;">
-  <div style="display:none;font-size:1px;color:#f2f5fa;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{AR_TITLE}} - Smart Campus</div>
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f2f5fa;">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>{{EN_TITLE}}</title></head>
+<body style="margin:0;padding:0;background:#f5f8fc;color:#142b54;font-family:'Noto Sans Arabic',Tahoma,Arial,sans-serif;">
+  <div style="display:none;font-size:1px;color:#f5f8fc;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">{{AR_TITLE}} - Smart Campus</div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f5f8fc;">
     <tr><td align="center" style="padding:36px 16px;">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #e5ebf2;border-radius:18px;overflow:hidden;">
-        <tr><td style="background:#10233e;padding:30px 34px;text-align:right;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #dce5ef;border-radius:14px;overflow:hidden;">
+        <tr><td style="background:#142b54;padding:26px 30px;text-align:right;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td style="background:#20c8a8;color:#10233e;padding:10px 12px;border-radius:10px;font-size:18px;font-weight:800;letter-spacing:1px;">SC</td>
-            <td style="padding-right:13px;color:#ffffff;text-align:right;"><span style="font-size:22px;font-weight:800;letter-spacing:.2px;">Smart Campus</span><div style="color:#bdcbdc;font-size:12px;padding-top:4px;">Your campus, connected</div></td>
+            <td style="padding:4px 8px 4px 0;"><img src="{{LOGO_URL}}" alt="Smart Campus" width="34" height="34" style="display:block;width:34px;height:34px;object-fit:contain;"></td>
+            <td style="padding-right:13px;color:#ffffff;text-align:right;"><span style="font-size:22px;font-weight:800;letter-spacing:.2px;">Smart Campus</span><div style="color:#d9e4f3;font-size:12px;padding-top:4px;">Your campus, connected</div></td>
           </tr></table>
         </td></tr>
-        <tr><td style="height:5px;background:#20c8a8;font-size:1px;line-height:5px;">&nbsp;</td></tr>
+        <tr><td style="height:5px;background:#c44300;font-size:1px;line-height:5px;">&nbsp;</td></tr>
         <tr><td style="padding:38px 34px 20px;text-align:right;">
-          <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#159a80;">SMART CAMPUS &nbsp; / &nbsp; ACCOUNT SECURITY</div>
-          <h1 style="margin:18px 0 10px;color:#10233e;font-size:26px;line-height:1.5;">{{AR_TITLE}}</h1>
+          <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#144caa;">SMART CAMPUS &nbsp; / &nbsp; ACCOUNT SECURITY</div>
+          <h1 style="margin:18px 0 10px;color:#142b54;font-size:26px;line-height:1.5;">{{AR_TITLE}}</h1>
           <p dir="ltr" style="margin:0 0 24px;color:#65778f;font-size:14px;line-height:1.8;text-align:right;">{{EN_TITLE}}</p>
           <p style="margin:0 0 12px;color:#34465e;font-size:16px;line-height:2;">{{MESSAGE}}</p>
           <p dir="ltr" style="margin:0 0 30px;color:#728199;font-size:13px;line-height:1.7;text-align:right;">{{ENGLISH}}</p>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td bgcolor="#129d85" style="border-radius:10px;text-align:center;">
-            <a href="{{LINK}}" style="display:inline-block;background:#129d85;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:22px;padding:16px 30px;border-radius:10px;">{{BUTTON}}</a>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td bgcolor="#144caa" style="border-radius:8px;text-align:center;">
+            <a href="{{LINK}}" style="display:inline-block;background:#144caa;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:22px;padding:15px 28px;border-radius:8px;">{{BUTTON}}</a>
           </td></tr></table>
           <p dir="ltr" style="text-align:center;color:#63738a;margin:14px 0 0;font-size:12px;">{{BUTTON_EN}}</p>
         </td></tr>
         <tr><td style="padding:8px 34px 34px;text-align:right;">
           <p style="font-size:13px;line-height:1.9;color:#66758a;margin:18px 0 6px;">لو الزر مش شغال، انسخ الرابط ده وافتحه في المتصفح:</p>
           <p dir="ltr" style="font-size:11px;line-height:1.7;word-break:break-all;overflow-wrap:anywhere;text-align:left;margin:0;">
-            <a href="{{LINK}}" style="color:#137d71;text-decoration:underline;">{{LINK}}</a>
+            <a href="{{LINK}}" style="color:#144caa;text-decoration:underline;">{{LINK}}</a>
           </p>
           <div style="border-top:1px solid #e5ebf2;margin-top:28px;padding-top:20px;color:#718096;font-size:12px;line-height:1.9;">
             لو ماطلبتش الرسالة دي، تقدر تتجاهلها. متشاركش الرابط مع أي حد.<br>
@@ -70,6 +73,7 @@ public static class CampusEmailContent
 """;
         var html = template
             .Replace("{{LINK}}", safeLink)
+            .Replace("{{LOGO_URL}}", safeLogoUrl)
             .Replace("{{AR_TITLE}}", title)
             .Replace("{{EN_TITLE}}", englishTitle)
             .Replace("{{MESSAGE}}", message)

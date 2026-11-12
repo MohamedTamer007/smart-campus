@@ -268,72 +268,28 @@ export function RegisterFound() {
   );
 }
 export function SearchItems() {
-  const { t, account } = useApp();
-  const [items, setItems] = useState<FoundItem[] | null>(null);
-  const [photo, setPhoto] = useState<File>();
+  const { t } = useApp();
   return (
     <Page
       title={t("البحث عن مفقوداتك", "Search for a lost item")}
       subtitle={t(
-        "اكتب وصفاً يميز غرضك. نتائج البحث خاصة بك.",
-        "Describe your item. Search results are private.",
+        "البحث الذكي مؤجل حاليًا.",
+        "Smart search is currently deferred.",
       )}
     >
       <div className="panel narrow">
-        <ActionForm
-          label={t("البحث عن تطابق", "Search for matches")}
-          onSubmit={async (data) => {
-            setItems(null);
-            if (!String(data.get("description") ?? "").trim())
-              throw new ServiceError("invalid");
-            const result = await lostFound.search(
-              account,
-              String(data.get("description")),
-              photo,
-            );
-            setItems(result);
-          }}
-        >
-          <Field
-            label={t("وصف الغرض المفقود", "Lost item description")}
-            required
-          >
-            <textarea required name="description" />
-          </Field>
-          <ImageField
-            photo={photo}
-            onChange={setPhoto}
-            label={t("صورة سابقة — اختيارية", "Previous photo — optional")}
-          />
-          <Feedback>
-            {t(
-              "النتائج المحتملة لا تثبت الملكية.",
-              "A potential match does not prove ownership.",
-            )}
-          </Feedback>
-        </ActionForm>
+        <Feedback>
+          {t(
+            "البحث الذكي عن المفقودات مؤجل حاليًا. لن نعرض نتائج مطابقة إلا بعد اعتماد جودة البحث. يمكنك مراجعة الأغراض المسجلة من صفحة الأغراض المتاحة.",
+            "Smart lost-item search is currently deferred. Match results will appear after search quality is approved. You can browse registered items from the available items page.",
+          )}
+        </Feedback>
+        <Link className="button" to="/found">{t("عرض الأغراض المتاحة", "Browse available items")}</Link>
       </div>
-      {items !== null &&
-        (items.length ? (
-          <section>
-            <h2>{t("تطابقات محتملة", "Potential matches")}</h2>
-            <div className="list">
-              {items.map((item) => (
-                <FoundCard key={item.id} item={item} />
-              ))}
-            </div>
-          </section>
-        ) : (
-          <Feedback>
-            {t(
-              "لم نجد تطابقاً مناسباً. عدّل الوصف وحاول مجدداً.",
-              "No suitable matches. Revise the description and try again.",
-            )}
-          </Feedback>
-        ))}
     </Page>
   );
 }
+
 export function FoundList({
   department = false,
   all = false,

@@ -273,56 +273,12 @@ export function NewMaintenance() {
     </Page>
   );
 }
-// The connectivity check never uses any report content, account details,
-// uploaded photos or user-entered prompts. Hidden unless the server opts in.
 function SyntheticAiCheck() {
   const { t } = useApp();
-  const [enabled, setEnabled] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    maintenance.syntheticAiStatus().then(result => {
-      if (active) setEnabled(result.enabled);
-    }).catch(() => {
-      if (active) setEnabled(false);
-    });
-    return () => { active = false; };
-  }, []);
-
-  if (!enabled) return null;
-  async function test() {
-    if (busy) return;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const result = await maintenance.syntheticAiTest();
-      setMessage({
-        ok: true,
-        text: t("المودل رد بنجاح على وصف وهمي ثابت", "Model successfully responded to a fixed fictional example") +
-          ` (${result.provider}: ${result.model})`,
-      });
-    } catch (error) {
-      setMessage({
-        ok: false,
-        text: error instanceof ServiceError && error.code === "rate_limited"
-          ? t("وصلت لحد الاختبار اليومي. الاختبار مرة واحدة لكل حساب.", "Daily test limit reached. One test per account.")
-          : t("المودل لم يجتز الاختبار، راجع إعدادات السيرفر أو حصته.", "Model test failed; check server configuration and quota."),
-      });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return <section className="panel">
-    <h2>{t("اختبار اتصال الذكاء الاصطناعي", "AI connection test")}</h2>
-    <p>{t("اختبار بنص وهمي ثابت، بدون إرسال بلاغك أو صورتك. يستخدم طلبًا واحدًا من رصيد المزود، ومتاح مرة واحدة لكل حساب يوميًا على بيئة الاختبار.", "Uses a fixed fictional text without sending your report or photo. Consumes one provider request, once per account each UTC day in the test environment.")}</p>
-    <button type="button" className="button" disabled={busy} onClick={() => { void test(); }}>
-      {busy ? t("جارٍ الاختبار…", "Testing…") : t("اختبر مودل الصيانة", "Test maintenance AI")}
-    </button>
-    {message && <Feedback kind={message.ok ? "success" : "error"}>{message.text}</Feedback>}
-  </section>;
+  return <Feedback>{t(
+    "تحليل الصيانة بالذكاء الاصطناعي مؤجل حاليًا. تُراجع البلاغات يدويًا، ولا تُعرض توصيات آلية.",
+    "AI maintenance analysis is currently deferred. Staff review reports manually; automated suggestions are not shown.",
+  )}</Feedback>;
 }
 
 export function MaintenanceList({ staff = false }: { staff?: boolean }) {
@@ -495,8 +451,6 @@ function Detail({
 }) {
   const { t, account, language } = useApp();
   const [editing, setEditing] = useState(false);
-  const [reviewedNonSensitive, setReviewedNonSensitive] = useState(false);
-  const [includeAiImage, setIncludeAiImage] = useState(false);
   const [params] = useSearchParams();
   const loadLocations = useCallback(() => maintenance.locations(account), [account]);
   const owner = report.ownerId === account.id;
@@ -596,31 +550,14 @@ function Detail({
           <div className="panel">
             <h2>
               {t(
-                "اقتراحات التحليل — للموظفين فقط",
-                "Analysis suggestions — staff only",
+                "تحليل الصيانة بالذكاء الاصطناعي مؤجل",
+                "AI maintenance analysis is deferred",
               )}
             </h2>
-            {report.assessment?.state === "completed" ? <dl className="details-grid">
-              <div><dt>{t("نوع العطل المقترح", "Suggested fault type")}</dt><dd>{report.assessment.type}</dd></div>
-              <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{report.assessment.priority}</dd></div>
-              <div><dt>{t("المخاطر المقترحة", "Suggested risk")}</dt><dd>{report.assessment.risk}</dd></div>
-            </dl> : <Feedback>
-              {t(
-                report.assessment?.state === "pending" ? "التحليل قيد الانتظار." : "التحليل غير متاح حالياً.",
-                report.assessment?.state === "pending" ? "Analysis is pending." : "Analysis is currently unavailable.",
-              )}
-            </Feedback>}
-            {report.canReviewAiInput && <ActionForm
-              label={t("إرسال المحتوى المُراجع للتحليل", "Send reviewed content for analysis")}
-              onSubmit={async () => {
-                await maintenance.reviewAi(report.id, report.version, reviewedNonSensitive, includeAiImage);
-                onChanged();
-              }}
-            >
-              <p>{t("سيُرسل الوصف إلى مزود التحليل الخارجي. راجع المحتوى أولاً وتأكد من خلوه من البيانات الشخصية أو الحساسة.", "The description will be sent to the external analysis provider. Review it first and ensure it contains no personal or sensitive information.")}</p>
-              <label><input type="checkbox" required checked={reviewedNonSensitive} onChange={event => setReviewedNonSensitive(event.target.checked)} /> {t("راجعت الوصف وأؤكد أنه غير حساس ومسموح بمشاركته.", "I reviewed the description and confirm it is non-sensitive and permitted to share.")}</label>
-              {report.canReviewAiImage && <label><input type="checkbox" checked={includeAiImage} onChange={event => setIncludeAiImage(event.target.checked)} /> {t("راجعت الصورة أيضاً وأوافق على إرسالها لأنها غير حساسة.", "I also reviewed the image and approve sending it as non-sensitive content.")}</label>}
-            </ActionForm>}
+            <Feedback>{t(
+              "اقتراحات التحليل مؤجلة. يعتمد القرار والإجراء على مراجعة الموظف للبلاغ فقط.",
+              "Automated analysis is deferred. Decisions and actions rely on staff review of the report.",
+            )}</Feedback>
           </div>
           {report.canUpdate && <StaffActions
             key={`${report.id}-${report.version}`}

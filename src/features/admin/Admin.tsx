@@ -9,6 +9,7 @@ import {
   statistics,
   type AssignableRole,
   type DashboardScope,
+  saveBuildingPosition,
 } from "../../services/admin";
 import {
   maintenance,
@@ -137,6 +138,10 @@ export function AdminOverview() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [scope, setScope] = useState<DashboardScope>("all");
+  const [revision, setRevision] = useState(0);
+  const [buildingId, setBuildingId] = useState("");
+  const [mapDraft, setMapDraft] = useState<{ x: number; y: number } | null>(null);
+  const [mapSaveFailed, setMapSaveFailed] = useState(false);
   const load = useCallback(() => statistics({ from, to, scope }), [from, to, scope]);
   return (
     <Page
@@ -188,6 +193,7 @@ export function AdminOverview() {
         )}
       </div>
       <div className="actions">
+        <button className="button secondary no-print" onClick={() => window.print()}>{t("طباعة التقرير", "Print report")}</button>
         <Link className="button secondary" to="/admin/accounts">
           {t("المستخدمون والصلاحيات", "Accounts and permissions")}
         </Link>
@@ -202,7 +208,7 @@ export function AdminOverview() {
         </Link>
       </div>
       <div className="spacer" />
-      <AsyncView key={`${account.id}-${from}-${to}-${scope}`} load={load}>
+      <AsyncView key={`${account.id}-${from}-${to}-${scope}-${revision}`} load={load}>
         {(stats) => {
           return (
             <>
@@ -212,6 +218,22 @@ export function AdminOverview() {
                     {t("إجمالي بلاغات الصيانة", "Total maintenance reports")}
                   </span>
                   <strong>{stats.totalReports}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("بلاغات مفتوحة", "Open reports")}</span>
+                  <strong>{stats.openReports ?? stats.byStatus.submitted + stats.byStatus.review + stats.byStatus.repair}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("نسبة الحل", "Resolution rate")}</span>
+                  <strong>{stats.resolutionRate === undefined ? "—" : `${Math.round(stats.resolutionRate * 100)}%`}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("متوسط زمن الحل", "Average resolution time")}</span>
+                  <strong>{stats.averageResolutionHours == null ? "—" : `${stats.averageResolutionHours.toFixed(1)} ${t("ساعة", "h")}`}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("عمر أقدم بلاغ مفتوح", "Oldest open report")}</span>
+                  <strong>{stats.oldestOpenDays == null ? "—" : `${stats.oldestOpenDays.toFixed(1)} ${t("يوم", "days")}`}</strong>
                 </div>
                 <div className="stat">
                   <span>
@@ -253,12 +275,12 @@ export function AdminOverview() {
                 </div>
                 <div className="panel">
                   <h2>
-                    {t("توزيع البلاغات حسب المرفق", "Reports by facility")}
+                    {t("توزيع البلاغات حسب المبنى", "Reports by building")}
                   </h2>
-                  {Object.entries(stats.locations).length ? (
-                    Object.entries(stats.locations).map(([location, count]) => (
-                      <p key={location}>
-                        {location}: {count}
+                  {(stats.buildings ?? []).length ? (
+                    stats.buildings!.map((building) => (
+                      <p key={building.id}>
+                        {t(building.ar, building.en)}: {building.count}
                       </p>
                     ))
                   ) : (
@@ -284,7 +306,69 @@ export function AdminOverview() {
                       )}
                     </p>
                   )}
+                  <h2>{t("الأعطال المتكررة التي سجلها الموظفون", "Recurring staff-recorded faults")}</h2>
+                  {(stats.recurrence ?? []).length ? stats.recurrence!.map((fault) => <p key={`${fault.type}-${fault.buildingAr}-${fault.floorAr}`}>
+                    {fault.type} · {t(fault.buildingAr, fault.buildingEn)} · {t(fault.floorAr, fault.floorEn)}: {fault.count}
+                  </p>) : <p>{t("لا توجد أعطال متكررة معتمدة في هذه الفترة.", "No staff-confirmed recurring faults in this period.")}</p>}
                 </div>
+              </div>
+              <div className="split">
+                <section className="panel campus-map-panel">
+                  <h2>{t("مخطط الحرم التجريبي", "Demo campus map")}</h2>
+                  <p>{t("مخطط توضيحي غير جغرافي؛ الأسماء والأعداد من بيانات النظام، وتُحفظ مواضع المباني يدويًا.", "Schematic, not geographic. Names and counts come from records; building positions are set manually.")}</p>
+                  <svg className="campus-map" viewBox="0 0 100 56" role="img" aria-label={t("مخطط مباني الحرم وعدد البلاغات", "Campus building schematic and report counts")}>
+                    <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
+                    {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <g key={b.id} transform={`translate(${b.x} ${b.y})`}>
+                      <circle r="2.5" fill="#144caa" stroke="white" strokeWidth=".8" />
+                      <text y="-3.5" textAnchor="middle" fontSize="2.5" fill="#142b54">{t(b.ar, b.en)}</text>
+                      <text y="5.5" textAnchor="middle" fontSize="2.7" fontWeight="700" fill="#c44300">{b.count}</text>
+                    </g>)}
+                  </svg>
+                  {account.role === "admin" && <div className="map-editor no-print">
+                    {mapSaveFailed && <Feedback kind="error">{t("تعذر حفظ الموضع؛ أعد تحميل اللوحة ثم حاول مجددًا.", "The position could not be saved. Reload the dashboard and try again.")}</Feedback>}
+                    <Field label={t("مبنى لتحديد موضعه", "Building to position")}>
+                      <select value={buildingId} onChange={event => { setBuildingId(event.target.value); setMapDraft(null); }}>
+                        <option value="">{t("اختر مبنى", "Choose a building")}</option>
+                        {[...(stats.unplacedBuildings ?? []), ...(stats.buildings ?? [])].map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
+                      </select>
+                    </Field>
+                    <p>{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر المخطط لتحديد موضعه.", "Choose a building, then click the schematic to set its position.")}</p>
+                    <svg className="campus-map map-editor-canvas" viewBox="0 0 100 56" preserveAspectRatio="none" onClick={event => {
+                      if (!buildingId) return;
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setMapDraft({ x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)), y: Math.max(0, Math.min(56, (event.clientY - rect.top) / rect.height * 56)) });
+                    }} aria-label={t("انقر لاختيار موضع المبنى", "Click to choose a building position")}>
+                      <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
+                      {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y!} r="2" fill="#144caa" />)}
+                      {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y} r="2.8" fill="#c44300" />}
+                    </svg>
+                    <div className="actions">
+                      <button className="button" disabled={!buildingId || !mapDraft} onClick={async () => {
+                        const target = (stats.unplacedBuildings ?? []).concat(stats.buildings ?? []).find(b => b.id === buildingId);
+                        if (!target || !mapDraft) return;
+                        setMapSaveFailed(false);
+                        try {
+                          const result = await saveBuildingPosition(buildingId, mapDraft.x, mapDraft.y, target.version);
+                          if (result.version) { setBuildingId(""); setMapDraft(null); setRevision(value => value + 1); }
+                        } catch { setMapSaveFailed(true); }
+                      }}>{t("حفظ الموضع", "Save position")}</button>
+                      {buildingId && (stats.buildings ?? []).some(b => b.id === buildingId) && <button className="button secondary" onClick={async () => {
+                        const target = stats.buildings!.find(b => b.id === buildingId)!;
+                        setMapSaveFailed(false);
+                        try {
+                          const result = await saveBuildingPosition(buildingId, null, null, target.version);
+                          if (result.version) { setBuildingId(""); setMapDraft(null); setRevision(value => value + 1); }
+                        } catch { setMapSaveFailed(true); }
+                      }}>{t("إزالة من المخطط", "Remove from map")}</button>}
+                    </div>
+                  </div>}
+                  <h3>{t("مواقع غير موضوعة على المخطط", "Locations not placed on the map")}</h3>
+                  {(stats.unplacedBuildings ?? []).length ? (stats.unplacedBuildings ?? []).map(b => <p key={b.id}>{t(b.ar, b.en)} · {b.count}</p>) : <p>{t("جميع المباني ذات الصلة موضوعة.", "All relevant buildings are placed.")}</p>}
+                </section>
+                <section className="panel">
+                  <h2>{t("الاتجاه الأسبوعي للبلاغات", "Weekly report trend")}</h2>
+                  {(stats.weeklyTrend ?? []).map(w => <p key={w.weekOf}><bdi>{w.weekOf}</bdi> · {w.count}</p>)}
+                </section>
               </div>
             </>
           );

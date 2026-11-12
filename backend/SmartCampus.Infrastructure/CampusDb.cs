@@ -59,6 +59,7 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
         model.Entity<DepartmentScope>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.GrantedBy).OnDelete(DeleteBehavior.Restrict);
         model.Entity<CampusLocation>().HasOne<CampusLocation>().WithMany().HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<CampusLocation>().HasOne<Department>().WithMany().HasForeignKey(x => x.MaintenanceDepartmentId);
+        model.Entity<CampusLocation>().Property(x => x.PositionVersion).HasDefaultValue(1).IsConcurrencyToken();
         model.Entity<MaintenanceReport>().HasIndex(x => x.Reference).IsUnique();
         model.Entity<MaintenanceReport>().HasIndex(x => new { x.ReporterId, x.CreatedAt });
         model.Entity<MaintenanceReport>().HasIndex(x => new { x.DepartmentId, x.Status });

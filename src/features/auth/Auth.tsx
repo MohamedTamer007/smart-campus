@@ -12,10 +12,12 @@ import { ServiceError } from "../../services/contracts";
 import { auth } from "../../services/auth";
 import { universityEmail } from "../../services/validation";
 
-export function Auth({ register = false }: { register?: boolean }) {
-  const { t, updateAccount } = useApp();
-  const navigate = useNavigate();
-  const [params] = useSearchParams();
+function AuthPanel({ registration, onSubmit, showDeleted = false }: {
+  registration: boolean;
+  onSubmit: (data: FormData, registration: boolean) => Promise<void>;
+  showDeleted?: boolean;
+}) {
+  const { t } = useApp();
   const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const [confirmationError, setConfirmationError] = useState(false);
@@ -24,7 +26,7 @@ export function Auth({ register = false }: { register?: boolean }) {
     setEmailError(false);
     setConfirmationError(false);
     setNameError(false);
-    if (register && !String(data.get("name") ?? "").trim()) {
+    if (registration && !String(data.get("name") ?? "").trim()) {
       setNameError(true);
       return;
     }
@@ -32,44 +34,25 @@ export function Auth({ register = false }: { register?: boolean }) {
       setEmailError(true);
       return;
     }
-    if (register && data.get("password") !== data.get("confirmation")) {
+    if (registration && data.get("password") !== data.get("confirmation")) {
       setConfirmationError(true);
       return;
     }
-    if (register) {
-      await auth.register(String(data.get("name")), String(data.get("email")), String(data.get("password")), String(data.get("confirmation")));
-      navigate("/verify");
-    } else {
-      updateAccount(await auth.login(String(data.get("email")), String(data.get("password"))));
-      navigate("/requests");
-    }
+    await onSubmit(data, registration);
   }
 
-  return (
-    <Page
-      title={
-        register
-          ? t("إنشاء حساب", "Create account")
-          : t("تسجيل الدخول", "Sign in")
-      }
-      subtitle={t(
-        "بريدك الجامعي، وكلمة مرور خاصة بالموقع.",
-        "Your university email and a password for this site.",
-      )}
-    >
-      <div className="panel narrow">
-        {!register && params.get("deleted") === "1" && <Feedback kind="success">
+  return <section className={`panel auth-card ${registration ? "auth-register" : "auth-login"}`}>
+        <div className={`service-icon ${registration ? "orange" : "blue"}`} aria-hidden="true">{registration ? "＋" : "↪"}</div>
+        <h2>{registration ? t("ابدأ حسابك", "Create your account") : t("مرحباً بعودتك", "Welcome back")}</h2>
+        <p>{registration ? t("أنشئ حسابك للوصول إلى خدمات الطالب في Smart Campus.", "Create an account to access Smart Campus student services.") : t("ادخل إلى حسابك لمتابعة خدمات الحرم.", "Sign in to continue to your campus services.")}</p>
+        {showDeleted && <Feedback kind="success">
           {t("تم حذف بيانات حسابك وتعطيله. تقدر تعمل حساب جديد بنفس الإيميل.", "Your account details were removed and the account disabled. You can register again with the same email.")}
         </Feedback>}
         <ActionForm
           onSubmit={submit}
-          label={
-            register
-              ? t("إنشاء الحساب", "Create account")
-              : t("تسجيل الدخول", "Sign in")
-          }
+          label={registration ? t("إنشاء الحساب", "Create account") : t("تسجيل الدخول", "Sign in")}
         >
-          {register && (
+          {registration && (
             <Field label={t("الاسم", "Name")} required>
               <input
                 name="name"
@@ -108,7 +91,7 @@ export function Auth({ register = false }: { register?: boolean }) {
             </Feedback>
           )}
           <Password label={t("كلمة المرور", "Password")} />
-          {register && (
+          {registration && (
             <Password
               label={t("تأكيد كلمة المرور", "Confirm password")}
               name="confirmation"
@@ -120,18 +103,35 @@ export function Auth({ register = false }: { register?: boolean }) {
             </Feedback>
           )}
         </ActionForm>
-        <div className="auth-links">
-          <Link to={register ? "/login" : "/register"}>
-            {register
-              ? t("لديك حساب؟ سجّل الدخول", "Have an account? Sign in")
-              : t("إنشاء حساب جديد", "Create a new account")}
-          </Link>
+        {!registration && <div className="auth-links">
           <Link to="/recover">{t("نسيت كلمة المرور؟", "Forgot password?")}</Link>
           <Link to="/verify">{t("تأكيد البريد أو إعادة الإرسال", "Verify email or resend link")}</Link>
-        </div>
-      </div>
-    </Page>
-  );
+        </div>}
+  </section>;
+}
+
+export function Auth({ register = false }: { register?: boolean }) {
+  const { t, updateAccount } = useApp();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  async function submit(data: FormData, registration: boolean) {
+    if (registration) {
+      await auth.register(String(data.get("name")), String(data.get("email")), String(data.get("password")), String(data.get("confirmation")));
+      navigate("/verify");
+      return;
+    }
+    updateAccount(await auth.login(String(data.get("email")), String(data.get("password"))));
+    navigate("/requests");
+  }
+  return <Page title={register ? t("إنشاء حساب", "Create account") : t("تسجيل الدخول", "Sign in")}
+    subtitle={t("بريدك الجامعي، وكلمة مرور خاصة بالموقع.", "Your university email and a password for this site.")}>
+    {register ? <div className="auth-single narrow"><AuthPanel registration onSubmit={submit} />
+      <div className="auth-links"><Link to="/login">{t("لديك حساب؟ سجّل الدخول", "Have an account? Sign in")}</Link></div>
+    </div> : <div className="auth-split">
+      <AuthPanel registration onSubmit={submit} />
+      <AuthPanel registration={false} onSubmit={submit} showDeleted={params.get("deleted") === "1"} />
+    </div>}
+  </Page>;
 }
 
 export function Verification() {
