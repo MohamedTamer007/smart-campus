@@ -6,9 +6,6 @@
     "Local": false,
     "Url": "https://mninpcrhqsaafoshjqpn.supabase.co"
   },
-  "Release": {
-    "Mode": "controlled"
-  },
   "AI": {
     "AllowNonSensitiveInference": false,
     "AllowNonSensitiveImages": false,
