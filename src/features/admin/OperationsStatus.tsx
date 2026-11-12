@@ -45,9 +45,9 @@ export function OperationsStatus() {
           <p>{t("تصنيفات الصيانة", "Maintenance taxonomy")}: {status.ai.taxonomyConfigured ? t("مُدخلة", "Present") : t("ناقصة", "Missing")}</p>
           <p>{t("تفعيل إرسال النص والصور للمزودين الخارجيين", "External-provider text/image switches")}: {status.ai.textTransferEnabled ? t("النص مفعّل", "Text on") : t("النص معطّل", "Text off")} · {status.ai.imageTransferEnabled ? t("الصور مفعّلة", "Images on") : t("الصور معطّلة", "Images off")}</p>
           <p>{t("دي فحوص إعدادات فقط، مش إثبات إن المودلز اشتغلت. لازم مراجعة الخصوصية قبل تشغيل مشاركة بيانات فعلية.", "These are configuration checks, not successful provider tests. Complete privacy review before sharing real data.")}</p>
-          {status.ai.syntheticSmokeTestsEnabled && status.ai.textConfigured && (
+          {status.ai.adminSyntheticDiagnosticEnabled && status.ai.nvidiaKeyPresent && status.ai.nvidiaBudgetConfigured && (
             <div>
-              <p>{t("اختبار اختياري لبلاغ وهمي ثابت. بيستهلك طلب واحد من رصيد المزود، وممنوع تشغيله إلا في بيئة اختبار معزولة.", "Optional test with a fixed fictional report. Uses one provider request; run only in an isolated test environment.")}</p>
+              <p>{t("اختبار آمن لنص وهمي ثابت على NVIDIA فقط. لا يرسل أي بلاغ أو صورة أو بيانات مستخدم، ولا يفعّل تحليل الصيانة الحقيقي. الحد 3 محاولات يوميًا، وكل محاولة تستهلك طلبًا من حصة المزود.", "Admin-only diagnostic using a fixed fictional text on NVIDIA. Never sends reports, photos or user data, and does not enable actual maintenance AI. Up to 3 attempts per UTC day; each attempt uses one provider request.")}</p>
               <button type="button" className="button" disabled={smokeBusy} onClick={() => { void testSyntheticAi(); }}>
                 {smokeBusy ? t("جارٍ اختبار المودل...", "Testing model...") : t("اختبار المودل بالنص الوهمي", "Test model with fictional text")}
               </button>

@@ -1,3 +1,10 @@
+## 12 November 2026 — Admin-only synthetic NVIDIA connectivity diagnostic
+
+- Added a **separate admin-only** NVIDIA test route behind `AI:AdminSyntheticDiagnosticEnabled` in versioned, non-secret defaults. It sends only one hard-coded fictional plumbing description and in-memory fictional allowed labels. No actual maintenance report, photo, student identity or private submission reaches NVIDIA.
+- The diagnostic is independent of `AI:AllowNonSensitiveInference` and live institutional taxonomy, which remain unchanged. It uses the existing server-secret NVIDIA API key (never committed), existing provider quota, existing antiforgery/auth/admin checks, and a server-side cap of three attempts per UTC day. It reports only validated status, provider, model and no model text.
+- The admin UI displays a distinct test button when the diagnostic flag, NVIDIA key and positive quota are present. Existing real maintenance AI stays disabled unless separately approved. No AI request was triggered by the deployment itself. An authorized admin must click the diagnostic and check its result to establish real provider connectivity.
+- GitHub CI and Windows IIS deployment results must be checked on the new commit; a passing build alone is not a live NVIDIA response.
+
 ## 12 November 2026 — Non-secret configuration included in automatic WebDeploy
 
 - Added `backend/SmartCampus.Api/smartcampus.defaults.json`, read after core appsettings but before local development config and host environment overrides. Non-secret defaults for safe feature gates, storage host URL and rate limits now travel with routine GitHub deployments.

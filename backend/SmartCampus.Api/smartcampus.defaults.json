@@ -10,7 +10,8 @@
     "AllowNonSensitiveInference": false,
     "AllowNonSensitiveImages": false,
     "SyntheticSmokeTestsEnabled": false,
-    "SyntheticUserSmokeTestsEnabled": false
+    "SyntheticUserSmokeTestsEnabled": false,
+    "AdminSyntheticDiagnosticEnabled": true
   },
   "Search": {
     "ExternalProcessingApproved": false,

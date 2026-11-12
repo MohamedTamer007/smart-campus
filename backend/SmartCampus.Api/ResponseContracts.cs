@@ -32,7 +32,8 @@ public sealed record ProviderQuotaResponse(string Provider, int Used, int DailyL
 public sealed record AiReadinessResponse(string Provider, bool TextConfigured, bool ImagesConfigured,
     bool TaxonomyConfigured, bool TextTransferEnabled, bool ImageTransferEnabled,
     bool NvidiaKeyPresent, bool OpenRouterKeyPresent, bool NvidiaBudgetConfigured,
-    bool OpenRouterBudgetConfigured, bool SyntheticSmokeTestsEnabled);
+    bool OpenRouterBudgetConfigured, bool SyntheticSmokeTestsEnabled,
+    bool AdminSyntheticDiagnosticEnabled);
 public sealed record AiSmokeResponse(string Status, string Provider, string Model);
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
     JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,

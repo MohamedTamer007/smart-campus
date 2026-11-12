@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ using SmartCampus.Infrastructure;
 namespace SmartCampus.Api;
 
 [ApiController, Authorize, Route("api/v1/admin/operations")]
-public sealed class OperationsController(CampusDb db, Access access, IConfiguration config, IHttpClientFactory clients, TimeProvider clock, AiProviders aiProviders) : ControllerBase
+public sealed class OperationsController(CampusDb db, Access access, IConfiguration config, IHttpClientFactory clients, TimeProvider clock, IInferenceBudget inferenceBudget) : ControllerBase
 {
     private sealed record WorkerHealth(bool Ready, string Model, string Revision);
 
@@ -28,24 +29,55 @@ public sealed class OperationsController(CampusDb db, Access access, IConfigurat
             config.GetValue("AI:NvidiaRequestsPerMinute", 5) > 0,
         config.GetValue("AI:OpenRouterDailyRequestLimit", 50) > 0 &&
             config.GetValue("AI:OpenRouterRequestsPerMinute", 20) > 0,
-        config.GetValue<bool>("AI:SyntheticSmokeTestsEnabled"));
+        config.GetValue<bool>("AI:SyntheticSmokeTestsEnabled"),
+        config.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"));
 
-    // Only an administrator explicitly requesting this endpoint can spend one
-    // app-budgeted provider attempt. No request body, photos, user records,
-    // staff reports, keys or model output are accepted or returned.
-    // Off by default; enable only in an isolated, synthetic-data test deployment.
+    // Strict admin-only, fixed-fictional-input diagnostic. It NEVER enables real
+    // maintenance AI, forwards user content, or changes production AI gates.
+    // At most three attempts per UTC day on the whole deployment. Existing
+    // provider quota is charged; no provider text/keys are returned.
     [HttpPost("ai-smoke")]
     public async Task<ActionResult<AiSmokeResponse>> AiSmoke(CancellationToken cancellation)
     {
         Access.Require((await access.Current()).Admin);
-        if (!config.GetValue<bool>("AI:SyntheticSmokeTestsEnabled"))
+        if (!config.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"))
             throw new SmartCampus.Domain.RuleException("ai_smoke_disabled", 503);
-        if (!AiProviders.Configured(config))
+        var key = config["AI:NvidiaKey"];
+        var daily = config.GetValue("AI:NvidiaDailyRequestLimit", 0);
+        var minute = config.GetValue("AI:NvidiaRequestsPerMinute", 5);
+        if (string.IsNullOrWhiteSpace(key) || daily <= 0 || minute <= 0)
             throw new SmartCampus.Domain.RuleException("ai_not_configured", 503);
+
+        var now = DateTimeOffset.UtcNow;
+        var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
+        var id = "admin-synthetic-smoke:" + day.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+        var reserved = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO smart_campus."InferenceUsage" ("Key", "Provider", "Window", "WindowStart", "Count")
+            VALUES ({id}, {"admin-synthetic-smoke"}, {"day"}, {day}, 1)
+            ON CONFLICT ("Key") DO UPDATE SET "Count" = "InferenceUsage"."Count" + 1
+            WHERE "InferenceUsage"."Count" < 3
+            """, cancellation);
+        if (reserved != 1)
+            throw new SmartCampus.Domain.RuleException("ai_smoke_limit", 429, day.AddDays(1));
+
+        // This configuration exists in memory for this one request only.
+        // It cannot turn on the application-wide AI:AllowNonSensitiveInference
+        // switch or introduce any real institutional taxonomy.
+        var testConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["AI:Provider"] = "nvidia",
+            ["AI:AllowNonSensitiveInference"] = "true",
+            ["AI:NvidiaKey"] = key,
+            ["AI:NvidiaDailyRequestLimit"] = daily.ToString(CultureInfo.InvariantCulture),
+            ["AI:NvidiaRequestsPerMinute"] = minute.ToString(CultureInfo.InvariantCulture),
+            ["AI:FaultTypes:0"] = "plumbing",
+            ["AI:Priorities:0"] = "low",
+            ["AI:Risks:0"] = "low"
+        }).Build();
         const string fictionalReport = "TEST ONLY. Fictional maintenance scenario: a dripping pipe in an imaginary test room. No real student, staff member, building or incident.";
-        await aiProviders.Assess(fictionalReport, cancellation);
-        return new AiSmokeResponse("validated", AiProviders.SelectedProvider(config, hasApprovedImage: false),
-            AiProviders.SelectedModel(config, hasApprovedImage: false));
+        var testProvider = new AiProviders(clients, testConfig, inferenceBudget);
+        await testProvider.Assess(fictionalReport, cancellation);
+        return new AiSmokeResponse("validated", "nvidia", "openai/gpt-oss-20b");
     }
 
     [HttpGet]

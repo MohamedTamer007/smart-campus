@@ -103,9 +103,19 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
-    public async Task Synthetic_smoke_test_is_disabled_by_default_even_for_admin()
+    public async Task Synthetic_smoke_test_requires_explicit_admin_diagnostic_enablement()
     {
-        using var admin = await campus.Login(campus.Admin);
+        using var host = campus.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(
+            (_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["AI:AdminSyntheticDiagnosticEnabled"] = "false"
+            })));
+        using var admin = host.CreateClient();
+        await CampusFixture.Csrf(admin);
+        var login = await admin.PostAsJsonAsync("/api/v1/auth/login", new {
+            email = campus.Email(campus.Admin), password = campus.Password
+        });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        await CampusFixture.Csrf(admin);
         var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { });
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Contains("ai_smoke_disabled", await response.Content.ReadAsStringAsync());
@@ -119,16 +129,14 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         {
             builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["AI:Provider"] = "auto",
-                ["AI:SyntheticSmokeTestsEnabled"] = "true",
-                ["AI:AllowNonSensitiveInference"] = "true",
+                ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
+                ["AI:AllowNonSensitiveInference"] = "false",
                 ["AI:AllowNonSensitiveImages"] = "false",
                 ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
                 ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
                 ["AI:NvidiaDailyRequestLimit"] = "5",
                 ["AI:NvidiaRequestsPerMinute"] = "5",
-                ["AI:FaultTypes:0"] = "plumbing",
-                ["AI:Priorities:0"] = "low",
-                ["AI:Risks:0"] = "low"
+                // Deliberately omit actual maintenance taxonomy: synthetic diagnostic must still work.
             }));
             builder.ConfigureServices(services => {
                 services.RemoveAll<IHttpClientFactory>();
@@ -148,6 +156,15 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal("openai/gpt-oss-20b", result.GetProperty("model").GetString());
         Assert.Equal(3, result.EnumerateObject().Count());
         Assert.Equal(1, boundary.Calls);
+        var readiness = await admin.GetFromJsonAsync<JsonElement>("/api/v1/admin/operations");
+        Assert.True(readiness.GetProperty("ai").GetProperty("adminSyntheticDiagnosticEnabled").GetBoolean());
+        Assert.False(readiness.GetProperty("ai").GetProperty("textConfigured").GetBoolean());
+        for (var i = 0; i < 2; i++)
+            Assert.Equal(HttpStatusCode.OK,
+                (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests,
+            (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
+        Assert.Equal(3, boundary.Calls);
     }
 
     [DatabaseFact]

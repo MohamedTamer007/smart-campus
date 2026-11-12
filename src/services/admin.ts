@@ -76,6 +76,7 @@ export interface OperationsSnapshot {
     nvidiaBudgetConfigured: boolean;
     openRouterBudgetConfigured: boolean;
     syntheticSmokeTestsEnabled: boolean;
+    adminSyntheticDiagnosticEnabled?: boolean;
   };
 }
 export const operations = () => api<OperationsSnapshot>("/admin/operations");
