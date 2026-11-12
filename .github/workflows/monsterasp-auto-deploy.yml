@@ -1,0 +1,75 @@
+name: MonsterASP.NET automatic SmartCampus deployment
+
+on:
+  push:
+    branches:
+      - codex/release-readiness-20261111
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancel a deployment midway; queued pushes are serialized.
+concurrency:
+  group: monsterasp-smartcampus-live
+  cancel-in-progress: false
+
+jobs:
+  build-test-and-deploy:
+    if: ${{ vars.MONSTERASP_AUTO_DEPLOY_DISABLED != 'true' }}
+    runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      WEBSITE_NAME: ${{ secrets.WEBSITE_NAME }}
+      SERVER_COMPUTER_NAME: ${{ secrets.SERVER_COMPUTER_NAME }}
+      SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+      SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+    steps:
+      - name: Checkout full-stack release branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Test frontend
+        shell: pwsh
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+          npm test
+          if ($LASTEXITCODE -ne 0) { throw 'frontend tests failed' }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { throw 'TypeScript typecheck failed' }
+          npm run lint
+          if ($LASTEXITCODE -ne 0) { throw 'ESLint failed' }
+
+      - name: Test backend
+        shell: pwsh
+        run: |
+          dotnet test backend/SmartCampus.slnx --configuration Release
+          if ($LASTEXITCODE -ne 0) { throw 'Backend tests failed' }
+
+      - name: Build Windows ASP.NET Core 10 and bundled React app
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Destination "$env:RUNNER_TEMP/monsterasp-publish"
+
+      - name: Reduce upload size
+        shell: pwsh
+        run: |
+          Get-ChildItem "$env:RUNNER_TEMP/monsterasp-publish" -Recurse -File -Filter '*.pdb' | Remove-Item -Force
+
+      - name: Dry-run then deploy to MonsterASP preserving hosted configuration
+        shell: pwsh
+        run: |
+          ./scripts/deploy-monsterasp.ps1 -PublishDirectory "$env:RUNNER_TEMP/monsterasp-publish"
