@@ -4,6 +4,20 @@ on:
   push:
     branches:
       - codex/release-readiness-20261111
+    paths:
+      - '.github/workflows/monsterasp-auto-deploy.yml'
+      - 'scripts/deploy-monsterasp.ps1'
+      - 'scripts/publish.ps1'
+      - 'backend/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.ts'
+      - 'global.json'
+      - 'NuGet.Config'
   workflow_dispatch:
 
 permissions:
