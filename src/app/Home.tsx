@@ -2,12 +2,15 @@ import { Link } from "react-router-dom";
 import { useApp } from "./context";
 import { Icon } from "../components/Icon";
 import { verified } from "../services/contracts";
+import campusPhoto from "../assets/campus-photo.webp";
 export function Home() {
   const { t, account } = useApp();
   const ready = verified(account);
+  const guest = account.role === "guest";
   return (
-    <div className="home">
+    <div className={guest ? "home guest-home" : "home"}>
       <section className="hero">
+        {guest && <span className="guest-eyebrow">{t("وضع الزائر", "Guest view")}</span>}
         <h1>
           {ready
             ? `${t("مرحباً،", "Welcome,")} ${account.name}`
@@ -19,12 +22,12 @@ export function Home() {
             "Report a fault or find something you lost",
           )}
         </p>
-        {account.role === "guest" && (
-          <Link className="text-link" to="/register">
-            {t("إنشاء حساب", "Create account")}
-          </Link>
-        )}
+        {guest && <div className="guest-actions">
+          <Link className="button primary" to="/login">{t("سجّل الدخول لبدء الاستخدام", "Sign in to use services")}</Link>
+          <Link className="text-link" to="/register">{t("إنشاء حساب جامعي", "Create a university account")}</Link>
+        </div>}
       </section>
+      {guest && <img className="guest-campus-photo" src={campusPhoto} alt={t("مبنى الحرم الجامعي", "University campus building")} />}
       <section className="services" aria-label={t("الخدمات", "Services")}>
         <article className="service-card">
           <span className="service-icon orange">

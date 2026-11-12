@@ -8,7 +8,7 @@ public sealed class ReleasePolicy(IConfiguration config)
 {
     public bool Allows(string email)
     {
-        var mode = config["Release:Mode"] ?? "controlled";
+        var mode = config["Release:Mode"] ?? "university";
         if (mode == "open") return true;
         if (mode == "university")
         {

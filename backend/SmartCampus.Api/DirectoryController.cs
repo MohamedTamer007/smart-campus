@@ -86,8 +86,27 @@ public sealed record LocationInput(Guid? ParentId, string Kind, string Ar, strin
 public sealed record LocationPositionInput(double? X, double? Y, int Version);
 
 [ApiController, Authorize, Route("api/v1/admin")]
-public sealed class AdministrationController(CampusDb db, Access access, UserManager<CampusUser> users, RoleManager<IdentityRole<Guid>> roles, Events events) : ControllerBase
+public sealed class AdministrationController(CampusDb db, Access access, UserManager<CampusUser> users,
+    RoleManager<IdentityRole<Guid>> roles, Events events, IConfiguration config, DemoPreparationService demoPreparation) : ControllerBase
 {
+    [HttpGet("demo/status")]
+    public async Task<DemoPreparationStatus> DemoStatus(CancellationToken cancellationToken)
+    {
+        var actor = await access.Current();
+        Access.Require(actor.Admin);
+        return new(config.GetValue<bool>("Demo:PreparationEnabled"),
+            await demoPreparation.IsPrepared(cancellationToken));
+    }
+
+    [HttpPost("demo/prepare")]
+    public async Task<object> PrepareDemo(CancellationToken cancellationToken)
+    {
+        var actor = await access.Current();
+        Access.Require(actor.Admin);
+        if (!config.GetValue<bool>("Demo:PreparationEnabled")) throw new RuleException("not_found", 404);
+        return await demoPreparation.Prepare(actor, cancellationToken);
+    }
+
     [HttpGet("accounts")]
     public async Task<object> Accounts(int page = 1, int pageSize = 50)
     {
@@ -100,7 +119,9 @@ public sealed class AdministrationController(CampusDb db, Access access, UserMan
             var scopes = await db.Scopes.Where(s => s.UserId == user.Id).Join(db.Departments, s => s.DepartmentId, d => d.Id, (s, d) => new { d.Id, d.Code }).ToArrayAsync();
             entries.Add(new { key = user.Id, version = user.ConcurrencyStamp, account = new { id = user.Id, name = user.DisplayName, user.Email,
                 role = !user.EmailConfirmed ? "unverified" : grants.Contains("admin") ? "admin" : grants.Contains("maintenance") ? "maintenance" : grants.Contains("department") ? "department" : "user",
-                roles = grants, departments = scopes, department = scopes.FirstOrDefault()?.Code } });
+                roles = grants, departments = scopes, department = scopes.FirstOrDefault()?.Code,
+                isDemo = await db.UserClaims.AnyAsync(c => c.UserId == user.Id &&
+                    c.ClaimType == DemoPreparationService.DemoMarkerClaimType && c.ClaimValue == "true") } });
         }
         return new { items = entries };
     }

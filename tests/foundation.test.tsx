@@ -32,14 +32,14 @@ describe("bilingual guest shell", () => {
     expect((loginPanel.getByLabelText(/البريد الجامعي/) as HTMLInputElement).value).toBe("student@o6u.edu.eg");
     expect(screen.getByRole("heading", { name: "تسجيل الدخول" })).toBeTruthy();
   });
-  it("offers guests an account creation path", () => {
+  it("offers guests a university account creation path", () => {
     render(
       <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
     expect(
-      screen.getByRole("link", { name: "إنشاء حساب" }).getAttribute("href"),
+      screen.getByRole("link", { name: "إنشاء حساب جامعي" }).getAttribute("href"),
     ).toBe("/register");
   });
   it("keeps English when navigating and places maintenance before lost and found", async () => {

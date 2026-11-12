@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("smartcampus.defaults.json", optional: true, reloadOnChange: false);
 if (builder.Environment.IsDevelopment()) builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true);
 builder.Configuration.AddEnvironmentVariables();
-builder.Configuration["Release:Mode"] ??= builder.Environment.IsDevelopment() ? "open" : "controlled";
+builder.Configuration["Release:Mode"] ??= builder.Environment.IsDevelopment() ? "open" : "university";
 var administrativeCommand = args.Contains("--migrate") || args.Contains("--bootstrap-admin");
 if (!builder.Environment.IsDevelopment() && !administrativeCommand)
     HostingSecurity.Validate(builder.Configuration);
@@ -67,6 +67,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IInferenceBudget, InferenceBudget>();
 builder.Services.AddScoped<RemoteEmbeddings>();
 builder.Services.AddScoped<RetrievalService>();
+builder.Services.AddScoped<DemoPreparationService>();
 builder.Services.AddHttpClient("storage", c => c.Timeout = TimeSpan.FromSeconds(30));
 // Hosted NVIDIA inference may need a longer cold-start window; retain a finite timeout.
 builder.Services.AddHttpClient("inference", c => c.Timeout = TimeSpan.FromSeconds(90));

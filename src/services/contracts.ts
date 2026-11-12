@@ -16,6 +16,7 @@ export interface Account {
   roles?: string[];
   departments?: { id: string; code: string }[];
   language?: "ar" | "en";
+  isDemo?: boolean;
 }
 export class ServiceError extends Error {
   constructor(

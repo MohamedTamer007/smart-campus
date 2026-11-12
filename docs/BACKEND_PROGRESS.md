@@ -225,6 +225,15 @@ CI update: run 42685171210 passed full-history scan, PostgreSQL 17 backend tests
 
 The restore comparison failure was reproduced locally and traced to PostgreSQL deparser cast normalization, not lost rows. A narrowly bounded canonicalizer plus four regression cases now passes the real local restored-copy comparison (26 tables, 42 rows, constraints/indexes/history). CI must rerun the revised verifier. No source/live records were overwritten.
 
+## Non-AI release and demo setup — 12 November
+
+- Changed the release-policy fallback to accept all syntactically valid email addresses on the exact `o6u.edu.eg` domain in production; explicit `Release:Mode=controlled` remains supported. Verification is still required before sign-in. The Resend test recipient now restricts only the shared `@resend.dev` sender.
+- Added admin-only `/api/v1/admin/demo/status` and `/api/v1/admin/demo/prepare`. Preparation is disabled unless `Demo:PreparationEnabled=true`. It creates five distinct fictional accounts, two demo departments, a fictional faculty/building/floor, one maintenance report, two synthetic private found-item photos, and two item-specific 30-day recovery grants. New credentials are returned only on the first successful call; repeat calls do not return them again. AI and general search remain disabled.
+- Added integration tests for disabled/unauthorized access, account roles, synthetic records, grant expiry, idempotence, requester visibility and outsider/media denial. They pass against isolated PostgreSQL 16 + pgvector.
+- `dotnet build backend/SmartCampus.slnx --configuration Release`: passed, 0 warnings/errors. `dotnet test backend/SmartCampus.slnx --configuration Release`: 178 passed, 0 failed/skipped.
+- Frontend: `npm test -- --run` — 65 passed; `npm run typecheck`, `npm run lint` and `npm run build` passed. Playwright Chromium/WebKit: 28 passed. Firefox: 14 could not launch on this Windows host (`spawn UNKNOWN`), before test bodies executed.
+- `git diff --check`: passed. No hosted demo data/settings, DNS records, email provider state, push, or deployment were changed here. Full encrypted database backup is still unavailable on the current free hosted database plan; do not enable demo preparation on the hosted site until a complete backup and restore path exists. Real sender/domain authentication and delivery remain unverified.
+
 ## Recovery-list query follow-up — 10 November
 
 Replaced per-row found-item/requester lookups in LostFoundService.Claims with one paginated joined read and reused the existing privacy/action projection. Actor authorization, department scope, descending creation order and response fields are preserved; no new data is made available. Other maintenance/found-item list paths still need independent query work. No deployment capacity or latency claim follows from this change.

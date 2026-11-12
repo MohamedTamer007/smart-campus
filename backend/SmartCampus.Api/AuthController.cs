@@ -197,7 +197,9 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
             (s, d) => new { id = d.Id, code = d.Code }).ToArrayAsync();
         return new { id = user.Id, name = user.DisplayName, email = user.Email, roles, departments,
             role = roles.Contains("admin") ? "admin" : roles.Contains("maintenance") ? "maintenance" : roles.Contains("department") ? "department" : "user",
-            department = departments.FirstOrDefault()?.code, language = user.Language };
+            department = departments.FirstOrDefault()?.code, language = user.Language,
+            isDemo = await db.UserClaims.AnyAsync(c => c.UserId == user.Id &&
+                c.ClaimType == DemoPreparationService.DemoMarkerClaimType && c.ClaimValue == "true") };
     }
 
     private async Task SendVerification(CampusUser user)

@@ -77,6 +77,17 @@ public sealed class EmailTransportTests
         Assert.Single(provider.Requests);
     }
 
+    [Fact]
+    public async Task Verified_sender_keeps_accepting_all_university_recipients_when_test_recipient_is_configured()
+    {
+        var config = Config(sender: "Smart Campus <verification@example.test>");
+        config["Email:TestRecipient"] = "23012888@o6u.edu.eg";
+        using var provider = new EmailBoundary(HttpStatusCode.OK, "{\"id\":\"test-message-id\"}");
+        Assert.Equal("test-message-id", await new ResendEmailTransport(provider, config)
+            .Send("another.student@o6u.edu.eg", "Verify", "https://example.test/verify", "test-id"));
+        Assert.Single(provider.Requests);
+    }
+
     [Theory]
     [InlineData(null, "verification@example.test")]
     [InlineData("", "verification@example.test")]

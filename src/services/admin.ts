@@ -64,6 +64,16 @@ export interface Stats {
 }
 export const saveBuildingPosition = (id: string, x: number | null, y: number | null, version: number) =>
   api<{ version: number }>(`/admin/locations/${id}/position`, json("PUT", { x, y, version }));
+export interface DemoCredential { role: string; email: string; password: string | null; created: boolean }
+export interface DemoPreparationResult {
+  prepared: boolean;
+  alreadyPrepared?: boolean;
+  recoveryGrantExpiresAt: string | null;
+  credentials: DemoCredential[];
+  records: { maintenanceReport: string; recoveryItem: string; departmentCustodyItem: string };
+}
+export const demoPreparationStatus = () => api<{ enabled: boolean; alreadyPrepared: boolean }>("/admin/demo/status");
+export const prepareDemoEnvironment = () => api<DemoPreparationResult>("/admin/demo/prepare", json("POST", {}));
 export type DashboardScope = "all" | "maintenance" | "security" | "secretariat";
 export interface OperationsSnapshot {
   sampledAt: string;

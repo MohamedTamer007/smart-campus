@@ -31,6 +31,15 @@ public sealed class ReleaseTests(CampusFixture campus) : IClassFixture<CampusFix
         Assert.Equal(expected, new ReleasePolicy(config).Allows(email));
     }
 
+    [Theory]
+    [InlineData("student@o6u.edu.eg", true)]
+    [InlineData("student@o6u.edu.eg.attacker.example", false)]
+    public void Default_release_policy_accepts_all_and_only_exact_university_addresses(string email, bool expected)
+    {
+        var config = new ConfigurationBuilder().Build();
+        Assert.Equal(expected, new ReleasePolicy(config).Allows(email));
+    }
+
     [DatabaseFact]
     public async Task University_mode_registers_any_campus_email_and_requires_confirmation_before_login()
     {
@@ -43,10 +52,15 @@ public sealed class ReleaseTests(CampusFixture campus) : IClassFixture<CampusFix
         using var client = host.CreateClient();
         await CampusFixture.Csrf(client);
         var email = "any-campus-" + Guid.NewGuid().ToString("N") + "@o6u.edu.eg";
+        var beforeMail = Directory.Exists(campus.MailDirectory) ? Directory.GetFiles(campus.MailDirectory, "*.eml") : [];
         var response = await CampusFixture.Response(await client.PostAsJsonAsync("/api/v1/auth/register", new {
             name = "Synthetic new campus student", email, password = campus.Password, confirmation = campus.Password
         }));
         Assert.True(response.GetProperty("verificationRequired").GetBoolean());
+        var sentMail = Directory.GetFiles(campus.MailDirectory, "*.eml").Except(beforeMail).ToArray();
+        Assert.Single(sentMail);
+        var message = await MimeKit.MimeMessage.LoadAsync(sentMail[0]);
+        Assert.Equal(email, message.To.Mailboxes.Single().Address);
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new { email, password = campus.Password });
         Assert.Equal(HttpStatusCode.Forbidden, login.StatusCode);
         Assert.Contains("unverified", await login.Content.ReadAsStringAsync());

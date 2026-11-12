@@ -39,6 +39,7 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
     {
         var actor = await access.Current();
         var ids = await db.Items.Where(f => actor.Admin || f.UploaderId == actor.Id || f.CustodianId == actor.Id ||
+            (f.State == "available" && db.SearchGrants.Any(g => g.ItemId == f.Id && g.UserId == actor.Id && g.ExpiresAt > DateTimeOffset.UtcNow)) ||
             (actor.Roles.Contains("department") && (actor.Scopes.Contains(f.CustodianDepartmentId ?? Guid.Empty) ||
              db.Handovers.Any(h => h.ItemId == f.Id && actor.Scopes.Contains(h.DepartmentId) && (h.Status == "pending" || h.Status == "not-received")))))
             .OrderByDescending(f => f.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).Select(f => f.Id).ToArrayAsync();

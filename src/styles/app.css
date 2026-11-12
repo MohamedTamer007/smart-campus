@@ -162,6 +162,18 @@ main {
   margin: 0 auto;
   min-height: 68vh;
 }
+.demo-account-banner {
+  margin: 12px auto 0;
+  max-width: 1200px;
+  border: 1px solid #f0c477;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: #fff8e8;
+  color: #704600;
+  font-size: .9rem;
+  font-weight: 700;
+  text-align: center;
+}
 .home {
   padding: 28px 0;
 }
@@ -199,6 +211,45 @@ main {
   align-self: center;
   color: inherit;
 }
+.guest-home .hero {
+  min-height: 0;
+  background: #fff;
+  border: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 28px 24px 20px;
+  color: var(--navy);
+}
+.guest-home .hero h1,
+.guest-home .hero p {
+  color: var(--navy);
+  text-shadow: none;
+}
+.guest-home .hero p { margin-bottom: 0; }
+.guest-eyebrow {
+  align-self: center;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: #edf2f8;
+  color: #53657e;
+  font-size: .76rem;
+  font-weight: 700;
+}
+.guest-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.guest-actions .text-link { color: var(--blue); }
+.guest-campus-photo {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  object-position: center 48%;
+}
+.guest-home .services { margin-top: 24px; }
 .eyebrow {
   font-size: 0.69rem;
   letter-spacing: 0.08em;
@@ -717,6 +768,11 @@ dialog::backdrop {
     overflow: visible;
     justify-content: flex-start;
   }
+  .guest-home .hero {
+    padding: 20px 12px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .guest-home .hero::after { display: none; }
   .hero::after {
     content: "";
     position: absolute;

@@ -97,6 +97,9 @@ function Shell() {
         </div>
       </header>
       <main id="main">
+        {account.isDemo && <div className="demo-account-banner" role="status">
+          {t("حساب عرض ببيانات خيالية — لا تُدخل معلومات حقيقية.", "Demo account with fictional data — do not enter real information.")}
+        </div>}
         {sessionExpired && (
           <Feedback kind="error">
             {t(

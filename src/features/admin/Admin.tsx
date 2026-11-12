@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../../app/context";
 import { DirectoryOptions } from "../../components/DirectoryOptions";
@@ -10,6 +10,9 @@ import {
   type AssignableRole,
   type DashboardScope,
   saveBuildingPosition,
+  demoPreparationStatus,
+  prepareDemoEnvironment,
+  type DemoPreparationResult,
 } from "../../services/admin";
 import {
   maintenance,
@@ -18,6 +21,52 @@ import {
 import { lostFound, currentCustodian } from "../../services/lostFound";
 import { ServiceError, type Role } from "../../services/contracts";
 import { OperationsStatus } from "./OperationsStatus";
+function DemoEnvironmentSetup() {
+  const { t } = useApp();
+  const [enabled, setEnabled] = useState(false);
+  const [prepared, setPrepared] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<DemoPreparationResult | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    void demoPreparationStatus().then(status => {
+      setEnabled(status.enabled);
+      setPrepared(status.alreadyPrepared);
+    }).catch(() => setEnabled(false));
+  }, []);
+  if (!enabled) return null;
+  async function prepare() {
+    setBusy(true);
+    setFailed(false);
+    try {
+      const preparedResult = await prepareDemoEnvironment();
+      setResult(preparedResult);
+      setPrepared(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <section className="panel demo-setup" aria-labelledby="demo-setup-title">
+    <h2 id="demo-setup-title">{t("تجهيز حسابات العرض", "Prepare demo accounts")}</h2>
+    <p>{t("ينشئ خمس هويات وبيانات خيالية فقط. كلمة المرور تظهر مرة واحدة بعد الإنشاء؛ احفظها في مكان آمن. بعد التجهيز عطّل Demo:PreparationEnabled من إعدادات الاستضافة.", "Creates five fictional identities and records only. Passwords appear once after creation; save them securely. After setup, disable Demo:PreparationEnabled in hosting settings.")}</p>
+    {failed && <Feedback kind="error">{t("تعذر تجهيز العرض. تحقق من إعداد التخزين وسجل التشغيل.", "Demo preparation failed. Check storage configuration and the application log.")}</Feedback>}
+    {prepared && !result && <Feedback>{t("البيانات مجهزة بالفعل. لن تُعرض كلمات المرور مرة أخرى.", "Demo data is already prepared. Passwords are not shown again.")}</Feedback>}
+    {!prepared && <button className="button" type="button" disabled={busy} onClick={() => { void prepare(); }}>
+      {busy ? t("جارٍ التجهيز…", "Preparing…") : t("جهّز حسابات وبيانات العرض", "Prepare demo accounts and data")}
+    </button>}
+    {result && <div role="status">
+      <Feedback>{t("اكتمل تجهيز البيانات. احفظ كلمات المرور الآن ثم عطّل الإعداد المؤقت.", "Demo data is ready. Save the passwords now, then disable the temporary setting.")}</Feedback>
+      {result.credentials.length > 0 ? <div className="table-wrap"><table className="data-table demo-credentials">
+        <thead><tr><th>{t("الدور", "Role")}</th><th>Email</th><th>{t("كلمة المرور التي تظهر مرة واحدة", "One-time password")}</th></tr></thead>
+        <tbody>{result.credentials.map(credential => <tr key={credential.role}>
+          <td>{credential.role}</td><td><bdi>{credential.email}</bdi></td><td><code>{credential.password ?? "—"}</code></td>
+        </tr>)}</tbody>
+      </table></div> : <p>{t("التهيئة موجودة من قبل، ولا يمكن استعادة كلمات المرور من النظام.", "The setup already existed; passwords cannot be recovered from the system.")}</p>}
+    </div>}
+  </section>;
+}
 const labels: Record<MaintenanceStatus, [string, string]> = {
   submitted: ["تم الإرسال", "Submitted"],
   review: ["قيد المراجعة", "Under review"],
@@ -151,6 +200,7 @@ export function AdminOverview() {
         "Statistics for recorded reports and items.",
       )}
     >
+      <DemoEnvironmentSetup />
       <div className="panel">
         <div className="field-grid">
           <Field label={t("من تاريخ", "From date")}>

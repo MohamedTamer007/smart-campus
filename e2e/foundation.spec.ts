@@ -16,6 +16,24 @@ test("mobile menu and fixed navigation follow the small-screen layout", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test("guest home follows the reference order with its sign-in and university registration paths", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(page.getByText("وضع الزائر", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "أهلاً بك في Smart Campus" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "سجّل الدخول لبدء الاستخدام" })).toHaveAttribute("href", "/login");
+  await expect(page.getByRole("link", { name: "إنشاء حساب جامعي" })).toHaveAttribute("href", "/register");
+  const hero = await page.locator(".guest-home .hero").boundingBox();
+  const campus = await page.getByRole("img", { name: "مبنى الحرم الجامعي" }).boundingBox();
+  const services = await page.locator(".guest-home .services").boundingBox();
+  expect(hero).not.toBeNull();
+  expect(campus).not.toBeNull();
+  expect(services).not.toBeNull();
+  expect(hero!.y + hero!.height).toBeLessThanOrEqual(campus!.y + 1);
+  expect(campus!.y + campus!.height).toBeLessThanOrEqual(services!.y + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("the full sign-in link fits on phones, tablets and desktops", async ({ page }) => {
   for (const width of [320, 360, 375, 390, 414, 430, 760, 761, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });

@@ -19,9 +19,10 @@ public sealed class ResendEmailTransport(IHttpClientFactory clients, IConfigurat
             throw new RuleException("email_not_configured", 503);
         if (!MailboxAddress.TryParse(sender, out var address)) throw new RuleException("email_not_configured", 503);
         var testRecipient = config["Email:TestRecipient"];
-        if (address.Address.EndsWith("@resend.dev", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(testRecipient))
+        var sharedTestSender = address.Address.EndsWith("@resend.dev", StringComparison.OrdinalIgnoreCase);
+        if (sharedTestSender && string.IsNullOrWhiteSpace(testRecipient))
             throw new RuleException("email_test_recipient_required", 503);
-        if (!string.IsNullOrWhiteSpace(testRecipient))
+        if (sharedTestSender && !string.IsNullOrWhiteSpace(testRecipient))
         {
             var allowed = Rules.UniversityEmail(testRecipient);
             if (!allowed.Equals(recipient, StringComparison.OrdinalIgnoreCase)) throw new RuleException("email_recipient_not_allowed", 503);
