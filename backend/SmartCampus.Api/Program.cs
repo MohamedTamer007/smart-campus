@@ -9,6 +9,9 @@ using SmartCampus.Domain;
 using SmartCampus.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+// Version-controlled, non-secret defaults travel with every application deployment.
+// Local development settings and hosting environment variables override these defaults.
+builder.Configuration.AddJsonFile("smartcampus.defaults.json", optional: true, reloadOnChange: false);
 if (builder.Environment.IsDevelopment()) builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true);
 builder.Configuration.AddEnvironmentVariables();
 builder.Configuration["Release:Mode"] ??= builder.Environment.IsDevelopment() ? "open" : "controlled";

@@ -1,0 +1,27 @@
+{
+  "Email": {
+    "LocalSink": false
+  },
+  "Storage": {
+    "Local": false,
+    "Url": "https://mninpcrhqsaafoshjqpn.supabase.co"
+  },
+  "Release": {
+    "Mode": "controlled"
+  },
+  "AI": {
+    "AllowNonSensitiveInference": false,
+    "AllowNonSensitiveImages": false,
+    "SyntheticSmokeTestsEnabled": false,
+    "SyntheticUserSmokeTestsEnabled": false
+  },
+  "Search": {
+    "ExternalProcessingApproved": false,
+    "ExternalImagesApproved": false,
+    "CalibrationApproval": ""
+  },
+  "RateLimits": {
+    "PerMinute": 120,
+    "AuthPerMinute": 15
+  }
+}

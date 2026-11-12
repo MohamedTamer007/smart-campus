@@ -1,3 +1,10 @@
+## 12 November 2026 — Non-secret configuration included in automatic WebDeploy
+
+- Added `backend/SmartCampus.Api/smartcampus.defaults.json`, read after core appsettings but before local development config and host environment overrides. Non-secret defaults for safe feature gates, storage host URL and rate limits now travel with routine GitHub deployments.
+- The API project marks that JSON file for publication; the existing WebDeploy script explicitly verifies its presence and refuses known secret-key names. This avoids overwriting `appsettings.json`, `appsettings.Production.json`, `web.config`, uploaded objects, hosted secret variables or key-ring files.
+- Existing secrets and environment-dependent values remain host-owned and must be provisioned securely. GitHub WebDeploy secrets are deployment credentials, not runtime API credentials. No automated mutation of the MonsterASP environment-variable dashboard was attempted.
+- CI must verify the compiled publish package and live pipeline before any claim of successful update.
+
 ## 12 November 2026 — Automatic MonsterASP.NET release pipeline (controlled branch)
 
 - Owner requested automatic site publishing after changes, and supplied the four WebDeploy repository secrets. Added `scripts/deploy-monsterasp.ps1` and `.github/workflows/monsterasp-auto-deploy.yml` on `codex/release-readiness-20261111`; default `main` and the existing Cloudflare Pages integration were not changed.

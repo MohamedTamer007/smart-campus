@@ -18,7 +18,7 @@ if ($site -notmatch '^site[A-Za-z0-9-]+$') {
 if (-not (Test-Path -LiteralPath $PublishDirectory -PathType Container)) {
   throw 'Compiled publish directory does not exist.'
 }
-foreach ($required in @('SmartCampus.Api.dll','web.config','wwwroot/index.html')) {
+foreach ($required in @('SmartCampus.Api.dll','web.config','wwwroot/index.html','smartcampus.defaults.json')) {
   if (-not (Test-Path -LiteralPath (Join-Path $PublishDirectory $required) -PathType Leaf)) {
     throw "Publish package incomplete: $required"
   }
@@ -26,6 +26,18 @@ foreach ($required in @('SmartCampus.Api.dll','web.config','wwwroot/index.html')
 if ((Get-Content -LiteralPath (Join-Path $PublishDirectory 'web.config') -Raw) -notmatch 'AspNetCoreModuleV2') {
   throw 'ASP.NET Core IIS entrypoint is invalid.'
 }
+# This deployed configuration is committed to Git. Refuse secret-bearing key names.
+$defaults = Get-Content -LiteralPath (Join-Path $PublishDirectory 'smartcampus.defaults.json') -Raw | ConvertFrom-Json -AsHashtable
+function Assert-NonSecretDefaults($node, [string]$prefix = '') {
+  foreach ($entry in $node.GetEnumerator()) {
+    $path = if ($prefix) { "$($prefix):$($entry.Key)" } else { [string]$entry.Key }
+    if ($path -match '(?i)(password|secret|token|credential|certificate|connectionstrings|bootstrap|universityapproval|allowedemails|api.?key|workerkey|storage:key|resendkey|brevokey|nvidiakey|openrouterkey)') {
+      throw "Sensitive configuration key is forbidden in committed defaults: $path"
+    }
+    if ($entry.Value -is [System.Collections.IDictionary]) { Assert-NonSecretDefaults $entry.Value $path }
+  }
+}
+Assert-NonSecretDefaults $defaults
 $unsafe = @(Get-ChildItem -LiteralPath $PublishDirectory -File -Recurse |
   Where-Object { $_.Name -in @('appsettings.Local.json','appsettings.Production.json','.env','.publishSettings') -or
                  $_.Extension -in @('.pfx','.key','.pem') })
