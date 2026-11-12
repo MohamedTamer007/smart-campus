@@ -151,8 +151,8 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
                 ["AI:AllowNonSensitiveImages"] = "false",
                 ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
                 ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
-                ["AI:NvidiaDailyRequestLimit"] = "5",
-                ["AI:NvidiaRequestsPerMinute"] = "5",
+                ["AI:NvidiaDailyRequestLimit"] = "1000",
+                ["AI:NvidiaRequestsPerMinute"] = "1000",
                 // Deliberately omit actual maintenance taxonomy: synthetic diagnostic must still work.
             }));
             builder.ConfigureServices(services => {
@@ -198,8 +198,8 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
                 ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
                 ["AI:AllowNonSensitiveInference"] = "false",
                 ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
-                ["AI:NvidiaDailyRequestLimit"] = "5",
-                ["AI:NvidiaRequestsPerMinute"] = "5"
+                ["AI:NvidiaDailyRequestLimit"] = "1000",
+                ["AI:NvidiaRequestsPerMinute"] = "1000"
             }));
             builder.ConfigureServices(services => {
                 services.RemoveAll<IHttpClientFactory>();
