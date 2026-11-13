@@ -1,6 +1,6 @@
 # Database and private media
 
-EF Core migrations in `backend/SmartCampus.Infrastructure/Migrations` are authoritative. `database.sql` is an idempotent review export including the sixth `InferenceBudgets` migration. Hosted rollout is pending; the application never automatically migrates at startup.
+EF Core migrations in `backend/SmartCampus.Infrastructure/Migrations` are authoritative. `database.sql` is the idempotent review export for the current migration history, including `AiEvaluationResults`. Hosted rollout is an explicit operator action; the application never automatically migrates at startup.
 
 ## Boundaries
 
@@ -28,3 +28,5 @@ Database dumps do not contain storage object bytes. Database and encrypted incre
 The hosted legacy `campus_images_read` policy currently grants authenticated users SELECT across both application buckets. That would expose new application-prefix objects outside backend authorization. The reviewed operator script `scripts/sql/restrict-storage-prefix.sql` excludes `smart-campus/` while preserving legacy-prefix reads. It stops on unexpected policies or non-private buckets. It has not been applied to the hosted project and requires explicit permission review/approval. A synthetic isolated CI fixture is prepared to verify the intended rule; execution evidence is pending.
 
 The seventh migration, `ReviewedAssessmentInputs`, adds the reviewer, review time and exact optional image identity to versioned assessments. Existing assessments remain unreviewed and cannot be forwarded automatically. The reviewer foreign key restricts deletion. The image identity is historical evidence rather than a foreign key to replaceable media.
+
+The eleventh migration, `AiEvaluationResults`, adds three private-schema tables for synthetic evaluation runs, per-case results and revision-keyed embedding vectors. It does not alter existing application tables; its down migration removes only these evaluation tables. Apply it explicitly after reviewing `database.sql` and completing the operator's authorized backup procedure. The application does not migrate on startup.

@@ -236,3 +236,43 @@ public sealed class InferenceUsage
     public DateTimeOffset WindowStart { get; set; }
     public int Count { get; set; }
 }
+
+public sealed class AiEvaluationRun
+{
+    public Guid Id { get; set; }
+    public string Suite { get; set; } = "";
+    public string SuiteVersion { get; set; } = "";
+    public string State { get; set; } = "pending";
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? ActiveUntil { get; set; }
+    public List<AiEvaluationCase> Cases { get; set; } = [];
+}
+
+public sealed class AiEvaluationCase
+{
+    public Guid Id { get; set; }
+    public Guid RunId { get; set; }
+    public string CaseKey { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string InputJson { get; set; } = "{}";
+    public string ExpectedJson { get; set; } = "{}";
+    public string State { get; set; } = "pending";
+    public string? ActualJson { get; set; }
+    public string? ErrorCode { get; set; }
+    public string? Model { get; set; }
+    public long? ElapsedMilliseconds { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+    public string? EmbeddingCacheKey { get; set; }
+}
+
+public sealed class AiEvaluationVector
+{
+    public string CacheKey { get; set; } = "";
+    public string Revision { get; set; } = "";
+    public int Dimension { get; set; }
+    public string VectorJson { get; set; } = "[]";
+    public DateTimeOffset CreatedAt { get; set; }
+}

@@ -164,6 +164,145 @@ namespace SmartCampus.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", "smart_campus");
                 });
 
+            modelBuilder.Entity("SmartCampus.Domain.AiEvaluationCase", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActualJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.Property<string>("CaseKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<long?>("ElapsedMilliseconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("EmbeddingCacheKey")
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExpectedJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("InputJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunId", "CaseKey")
+                        .IsUnique();
+
+                    b.HasIndex("RunId", "State");
+
+                    b.ToTable("AiEvaluationCases", "smart_campus");
+                });
+
+            modelBuilder.Entity("SmartCampus.Domain.AiEvaluationRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ActiveUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Suite")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("SuiteVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\"");
+
+                    b.HasIndex("State", "CreatedAt");
+
+                    b.ToTable("AiEvaluationRuns", "smart_campus");
+                });
+
+            modelBuilder.Entity("SmartCampus.Domain.AiEvaluationVector", b =>
+                {
+                    b.Property<string>("CacheKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Revision")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Dimension")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("VectorJson")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.HasKey("CacheKey", "Revision");
+
+                    b.ToTable("AiEvaluationVectors", "smart_campus");
+                });
+
             modelBuilder.Entity("SmartCampus.Domain.Assessment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -325,19 +464,20 @@ namespace SmartCampus.Infrastructure.Migrations
                     b.Property<Guid?>("MaintenanceDepartmentId")
                         .HasColumnType("uuid");
 
-                      b.Property<double?>("MapX")
-                          .HasColumnType("double precision");
+                    b.Property<double?>("MapX")
+                        .HasColumnType("double precision");
 
-                      b.Property<double?>("MapY")
-                          .HasColumnType("double precision");
+                    b.Property<double?>("MapY")
+                        .HasColumnType("double precision");
 
                     b.Property<Guid?>("ParentId")
                         .HasColumnType("uuid");
 
-                      b.Property<int>("PositionVersion")
-                          .ValueGeneratedOnAdd()
-                          .HasColumnType("integer")
-                          .HasDefaultValue(1);
+                    b.Property<int>("PositionVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.HasKey("Id");
 
@@ -1108,6 +1248,15 @@ namespace SmartCampus.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SmartCampus.Domain.AiEvaluationCase", b =>
+                {
+                    b.HasOne("SmartCampus.Domain.AiEvaluationRun", null)
+                        .WithMany("Cases")
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SmartCampus.Domain.Assessment", b =>
                 {
                     b.HasOne("SmartCampus.Domain.MaintenanceReport", null)
@@ -1331,6 +1480,11 @@ namespace SmartCampus.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartCampus.Domain.AiEvaluationRun", b =>
+                {
+                    b.Navigation("Cases");
                 });
 #pragma warning restore 612, 618
         }

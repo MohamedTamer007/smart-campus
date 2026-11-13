@@ -40,6 +40,9 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
     public DbSet<SessionTicket> Sessions => Set<SessionTicket>();
     public DbSet<OutboundEmail> OutboundEmails => Set<OutboundEmail>();
     public DbSet<InferenceUsage> InferenceUsage => Set<InferenceUsage>();
+    public DbSet<AiEvaluationRun> AiEvaluationRuns => Set<AiEvaluationRun>();
+    public DbSet<AiEvaluationCase> AiEvaluationCases => Set<AiEvaluationCase>();
+    public DbSet<AiEvaluationVector> AiEvaluationVectors => Set<AiEvaluationVector>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -115,5 +118,26 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
         model.Entity<InferenceUsage>().Property(x => x.Key).HasMaxLength(100);
         model.Entity<InferenceUsage>().HasIndex(x => new { x.Provider, x.WindowStart });
         model.Entity<InferenceUsage>().ToTable(t => t.HasCheckConstraint("inference_count_positive", "\"Count\" > 0"));
+        model.Entity<AiEvaluationRun>().Property(x => x.Suite).HasMaxLength(40);
+        model.Entity<AiEvaluationRun>().Property(x => x.SuiteVersion).HasMaxLength(40);
+        model.Entity<AiEvaluationRun>().Property(x => x.State).HasMaxLength(24);
+        model.Entity<AiEvaluationRun>().HasIndex(x => new { x.State, x.CreatedAt });
+        model.Entity<AiEvaluationRun>().HasIndex(x => x.IsActive).IsUnique().HasFilter("\"IsActive\"");
+        model.Entity<AiEvaluationCase>().Property(x => x.CaseKey).HasMaxLength(80);
+        model.Entity<AiEvaluationCase>().Property(x => x.Kind).HasMaxLength(40);
+        model.Entity<AiEvaluationCase>().Property(x => x.State).HasMaxLength(24);
+        model.Entity<AiEvaluationCase>().Property(x => x.Model).HasMaxLength(120);
+        model.Entity<AiEvaluationCase>().Property(x => x.ErrorCode).HasMaxLength(100);
+        model.Entity<AiEvaluationCase>().Property(x => x.InputJson).HasColumnType("text");
+        model.Entity<AiEvaluationCase>().Property(x => x.ExpectedJson).HasColumnType("text");
+        model.Entity<AiEvaluationCase>().Property(x => x.ActualJson).HasColumnType("text");
+        model.Entity<AiEvaluationCase>().Property(x => x.EmbeddingCacheKey).HasColumnType("text");
+        model.Entity<AiEvaluationCase>().HasIndex(x => new { x.RunId, x.CaseKey }).IsUnique();
+        model.Entity<AiEvaluationCase>().HasOne<AiEvaluationRun>().WithMany(x => x.Cases).HasForeignKey(x => x.RunId).OnDelete(DeleteBehavior.Cascade);
+        model.Entity<AiEvaluationCase>().HasIndex(x => new { x.RunId, x.State });
+        model.Entity<AiEvaluationVector>().HasKey(x => new { x.CacheKey, x.Revision });
+        model.Entity<AiEvaluationVector>().Property(x => x.CacheKey).HasMaxLength(120);
+        model.Entity<AiEvaluationVector>().Property(x => x.Revision).HasMaxLength(120);
+        model.Entity<AiEvaluationVector>().Property(x => x.VectorJson).HasColumnType("text");
     }
 }

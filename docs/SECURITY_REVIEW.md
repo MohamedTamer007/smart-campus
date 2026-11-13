@@ -86,3 +86,22 @@ Remaining operational gates: the live `Release:Mode` value, Brevo sender/domain 
 Security-sensitive: YES. Reviewed the changed API response projection, existing review endpoint and worker path, and React submission/rendering against the ten OWASP categories. The API loads assessments only for reports whose current actor has administrator or matching maintenance scope; the added explanation stays inside that staff-only projection. The POST remains authenticated, CSRF-protected, version-checked, and requires `ConfirmedNonSensitive`; image forwarding is separately opt-in and server-gated. React renders provider text as escaped text and adds no HTML sink or external key. No dependencies or database schema changed. Frontend acceptance tests pass; PostgreSQL privacy integration `Reviewed_analysis_stays_private_and_never_sets_staff_decision` was not executed locally because no isolated PostgreSQL test database was configured. No critical/high issue found in the changed code. Live provider, calibration, CI and deployment gates remain open.
 
 The broad default suggestion vocabulary was added to version-controlled configuration; deployment environment values retain precedence. It supplies only strict output labels and never toggles provider access, quotas, image forwarding, or search privacy/calibration gates.
+
+## 13 November 2026 — AI Evaluation API and persisted results
+
+**Security-sensitive:** Yes · **Reviewed by:** Codex · **OWASP categories reviewed:** 10/10 · **Status:** Pass
+
+| OWASP area | Review result |
+|---|---|
+| A01 Broken access control | Controller requires authenticated admin on every endpoint; isolated test verifies maintenance staff receives 403. Run IDs are only resolved in admin-only handlers. |
+| A02 Sensitive data | Every prompt/image is a server-authored fictional fixture. Provider key is read server-side and is never serialized. Production user-data approval flags are not changed. |
+| A03 Injection | Suite is a fixed whitelist; EF Core queries parameterize GUIDs and keys. CSV cells are quoted and formula-prefixed values are escaped. React renders returned values as text. |
+| A04 Insecure design | Cost ceiling is zero, fallback is disabled, fixed free model IDs are validated by existing adapters, requests are sequential and budgeted, and completed cases are persisted before any next request. |
+| A05 Misconfiguration | No startup migration was added. Only the reviewed explicit additive migration was applied. New tables are in the private `smart_campus` schema. |
+| A06 Vulnerable components | No dependencies were added; `npm audit --audit-level=moderate` found zero vulnerabilities. |
+| A07 Identification/authentication | Existing ASP.NET authentication and authorization are reused; no credential/session code changed. Mutation routes use the application's global antiforgery policy. |
+| A08 Integrity failures | Caller cannot supply prompts, images, endpoints or model IDs; JSON is parsed by typed System.Text.Json; invalid provider values fail through existing validators. |
+| A09 Logging/monitoring | New handlers do not log prompts, images, provider keys or raw provider bodies. Per-case sanitized error code and elapsed time are persisted for admin review. |
+| A10 SSRF/unsafe requests | Provider destination and model routing come from existing server adapters; no client-controlled URL or redirect target is accepted. |
+
+The expired-run path marks an in-flight case result unknown and never retries it automatically. Explicit resume selects only pending cases. Full live provider tests and public-browser checks are deployment acceptance tests, not security-test evidence.

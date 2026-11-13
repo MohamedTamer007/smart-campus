@@ -1000,3 +1000,151 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261110225500_RenderPersistentKeys') THEN
+    CREATE TABLE smart_campus."DataProtectionKeys" (
+        "FriendlyName" text NOT NULL,
+        "Xml" text NOT NULL,
+        CONSTRAINT "PK_DataProtectionKeys" PRIMARY KEY ("FriendlyName")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261110225500_RenderPersistentKeys') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261110225500_RenderPersistentKeys', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261112110000_LocationMapPositions') THEN
+    ALTER TABLE smart_campus."Locations" ADD "MapX" double precision;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261112110000_LocationMapPositions') THEN
+    ALTER TABLE smart_campus."Locations" ADD "MapY" double precision;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261112110000_LocationMapPositions') THEN
+    ALTER TABLE smart_campus."Locations" ADD "PositionVersion" integer NOT NULL DEFAULT 1;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261112110000_LocationMapPositions') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261112110000_LocationMapPositions', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE TABLE smart_campus."AiEvaluationRuns" (
+        "Id" uuid NOT NULL,
+        "Suite" character varying(40) NOT NULL,
+        "SuiteVersion" character varying(40) NOT NULL,
+        "State" character varying(24) NOT NULL,
+        "IsActive" boolean NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        "UpdatedAt" timestamp with time zone NOT NULL,
+        "ActiveUntil" timestamp with time zone,
+        CONSTRAINT "PK_AiEvaluationRuns" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE TABLE smart_campus."AiEvaluationVectors" (
+        "CacheKey" character varying(120) NOT NULL,
+        "Revision" character varying(120) NOT NULL,
+        "Dimension" integer NOT NULL,
+        "VectorJson" text NOT NULL,
+        "CreatedAt" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_AiEvaluationVectors" PRIMARY KEY ("CacheKey", "Revision")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE TABLE smart_campus."AiEvaluationCases" (
+        "Id" uuid NOT NULL,
+        "RunId" uuid NOT NULL,
+        "CaseKey" character varying(80) NOT NULL,
+        "Kind" character varying(40) NOT NULL,
+        "InputJson" text NOT NULL,
+        "ExpectedJson" text NOT NULL,
+        "State" character varying(24) NOT NULL,
+        "ActualJson" text,
+        "ErrorCode" character varying(100),
+        "Model" character varying(120),
+        "ElapsedMilliseconds" bigint,
+        "StartedAt" timestamp with time zone,
+        "FinishedAt" timestamp with time zone,
+        "EmbeddingCacheKey" text,
+        CONSTRAINT "PK_AiEvaluationCases" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_AiEvaluationCases_AiEvaluationRuns_RunId" FOREIGN KEY ("RunId") REFERENCES smart_campus."AiEvaluationRuns" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE UNIQUE INDEX "IX_AiEvaluationCases_RunId_CaseKey" ON smart_campus."AiEvaluationCases" ("RunId", "CaseKey");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE INDEX "IX_AiEvaluationCases_RunId_State" ON smart_campus."AiEvaluationCases" ("RunId", "State");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE UNIQUE INDEX "IX_AiEvaluationRuns_IsActive" ON smart_campus."AiEvaluationRuns" ("IsActive") WHERE "IsActive";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    CREATE INDEX "IX_AiEvaluationRuns_State_CreatedAt" ON smart_campus."AiEvaluationRuns" ("State", "CreatedAt");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113013915_AiEvaluationResults') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261113013915_AiEvaluationResults', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+

@@ -243,6 +243,9 @@ export function AdminOverview() {
         )}
       </div>
       <div className="actions">
+        <Link className="button" to="/admin/ai-evaluation">
+          {t("نتائج تقييم الذكاء الاصطناعي", "AI Evaluation")}
+        </Link>
         <button className="button secondary no-print" onClick={() => window.print()}>{t("طباعة التقرير", "Print report")}</button>
         <Link className="button secondary" to="/admin/accounts">
           {t("المستخدمون والصلاحيات", "Accounts and permissions")}
