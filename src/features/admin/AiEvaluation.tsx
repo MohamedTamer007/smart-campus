@@ -47,17 +47,13 @@ function EvaluationChart({ title, labels, values, color = "#397dc2", t }: {
   const max = Math.max(1, ...values);
   return <figure className="evaluation-chart">
     <figcaption>{title}</figcaption>
-    <svg role="img" aria-label={title} viewBox={"0 0 560 " + Math.max(150, labels.length * 42 + 36)} preserveAspectRatio="xMidYMin meet">
-      {labels.map((label, index) => {
-        const y = 22 + index * 42;
-        const width = Math.max(0, values[index] / max * 330);
-        return <g key={label}><text x="4" y={y + 15} className="chart-label">{label}</text>
-          <rect x="205" y={y} width="330" height="20" rx="5" className="chart-track" />
-          <rect x="205" y={y} width={width} height="20" rx="5" fill={color} />
-          <text x={Math.min(542, 211 + width)} y={y + 15} className="chart-value">{values[index]}</text>
-        </g>;
-      })}
-    </svg>
+    <div className="evaluation-chart-rows" role="img" aria-label={title}>
+      {labels.map((label, index) => <div className="evaluation-chart-row" key={label}>
+        <span className="evaluation-chart-label">{label}</span>
+        <span className="evaluation-chart-track"><span className="evaluation-chart-bar" style={{ width: `${Math.max(0, values[index] / max * 100)}%`, backgroundColor: color }} /></span>
+        <bdi className="evaluation-chart-value">{values[index]}</bdi>
+      </div>)}
+    </div>
     <p className="muted">{t("المخطط يعرض القياسات المحفوظة لهذه المجموعة فقط.", "Chart uses only saved measurements in this run.")}</p>
   </figure>;
 }
@@ -68,8 +64,11 @@ function CaseDetails({ row, t }: { row: EvaluationCase; t: (ar: string, en: stri
   const evaluated = ["type", "priority", "risk"].filter(field => readText(row.expected, field) && readText(row.actual, field)).length;
   const agreements = ["type", "priority", "risk"].filter(field => readText(row.expected, field) && readText(row.actual, field) && matchesReference(row, field)).length;
   const candidates = row.actual?.candidates;
-  return <details className="evaluation-case" open>
-    <summary><bdi>{row.caseKey}</bdi><span className={"evaluation-status status-" + row.state}>{row.state}</span></summary>
+  return <details className="evaluation-case">
+    <summary><bdi>{row.caseKey}</bdi><span className="evaluation-case-summary-meta">
+      <span className="evaluation-case-model"><bdi>{row.model ?? row.kind}</bdi></span>
+      <span className={"evaluation-status status-" + row.state}>{row.state}</span>
+    </span></summary>
     <div className="evaluation-case-grid">
       <div><h4>{t("المدخل", "Input")}</h4>{inputText && <p dir="auto">{inputText}</p>}
         {image && <img className="evaluation-fixture" src={image} alt={t("صورة اختبار اصطناعية", "Synthetic test image")} />}

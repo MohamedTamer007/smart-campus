@@ -105,3 +105,9 @@ The broad default suggestion vocabulary was added to version-controlled configur
 | A10 SSRF/unsafe requests | Provider destination and model routing come from existing server adapters; no client-controlled URL or redirect target is accepted. |
 
 The expired-run path marks an in-flight case result unknown and never retries it automatically. Explicit resume selects only pending cases. Full live provider tests and public-browser checks are deployment acceptance tests, not security-test evidence.
+
+## 13 November 2026 — AI Evaluation runtime grants
+
+**Security-sensitive:** Yes · **Reviewed by:** Codex · **OWASP categories reviewed:** 10/10 · **Status:** Pass
+
+The live error log showed SQLSTATE `42501` on `smart_campus.AiEvaluationRuns`. The production app role is `smart_campus_runtime`; it already had DML rights on existing application tables. The new private-schema evaluation tables were owner-only after the additive schema migration. Follow-up migration `20261113023724_AiEvaluationRuntimePermissions` grants only `SELECT`, `INSERT`, and `UPDATE` on the three evaluation tables to that exact runtime role, conditionally when it exists. It grants no DELETE, no `PUBLIC`/Data API roles, creates no RLS bypass, and changes no existing table ACL. Down migration revokes only the same three privileges. Production `has_table_privilege` checks confirmed the grant set and the new tables remain empty. Supabase security/performance/health advisors were checked; no new finding applied to this private-schema permission change.

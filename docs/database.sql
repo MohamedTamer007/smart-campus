@@ -1148,3 +1148,31 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113023724_AiEvaluationRuntimePermissions') THEN
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'smart_campus_runtime') THEN
+            EXECUTE 'GRANT SELECT, INSERT, UPDATE ON TABLE
+                smart_campus."AiEvaluationRuns",
+                smart_campus."AiEvaluationCases",
+                smart_campus."AiEvaluationVectors"
+                TO smart_campus_runtime';
+        END IF;
+    END
+    $$;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM smart_campus."__EFMigrationsHistory" WHERE "MigrationId" = '20261113023724_AiEvaluationRuntimePermissions') THEN
+    INSERT INTO smart_campus."__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20261113023724_AiEvaluationRuntimePermissions', '10.0.14');
+    END IF;
+END $EF$;
+COMMIT;
+
