@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using MimeKit;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -87,11 +86,9 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
             if (!environment.IsDevelopment()) throw new RuleException("email_not_configured", 503);
             sender = "Smart Campus development <no-reply@example.test>";
         }
-        var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(sender));
-        message.To.Add(MailboxAddress.Parse(recipient));
-        message.Subject = subject;
-        message.Body = new TextPart("plain") { Text = link };
+        // Keep SMTP (including Gmail) consistent with the branded Brevo/Resend mail.
+        // Use multipart/alternative so text-only clients still get the complete action link.
+        var message = CampusSmtpMessage.Create(sender, recipient, subject, link);
         if (environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink"))
         {
             var directory = Path.GetFullPath(config["Email:SinkDirectory"] ?? "local-data/mail");
