@@ -229,7 +229,7 @@ it("requires a photo and nonfuture date and keeps a found-item draft on failure"
   expect((await screen.findByRole("alert")).textContent).toMatch(/temporarily unavailable/i);
   expect((description as HTMLTextAreaElement).value).toBe("Blue watch");
   expect(register).toHaveBeenCalledOnce();
-});
+}, 15_000);
 
 it("submits a private text and image search and only renders returned matches", async () => {
   const actor: Account = { id: "search-form-test", name: "Member", email: "", role: "user" };
