@@ -69,7 +69,13 @@ test("browser found-item upload and department receipt preserve custody across s
   await login(page, "student");
   await page.goto("/found/new");
   // Committed synthetic UI screenshot; no personal image or external inference input.
-  await page.getByLabel(/^Item photo/).setInputFiles("docs/screenshots/admin-operations.png");
+  // This committed synthetic screenshot is JPEG bytes with a historical .png filename.
+  // Give the browser the real MIME type so client-side signature validation accepts it.
+  await page.getByLabel(/^Item photo/).setInputFiles({
+    name: "admin-operations.jpg",
+    mimeType: "image/jpeg",
+    buffer: readFileSync("docs/screenshots/admin-operations.png"),
+  });
   await page.getByLabel(/^Item description/).fill("DEMO ONLY browser custody fixture");
   await page.getByLabel(/^Place found/).fill("DEMO ONLY courtyard");
   await page.getByLabel(/^Date found/).fill("2026-01-01");
