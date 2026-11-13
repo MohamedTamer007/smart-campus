@@ -800,8 +800,17 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         foreach (var file in Directory.EnumerateFiles(campus.MailDirectory, "*.eml").OrderByDescending(File.GetLastWriteTimeUtc))
         {
             var message = await MimeMessage.LoadAsync(file);
-            var text = message.TextBody ?? "";
-            if (message.To.Mailboxes.Any(address => address.Address == email) && text.Contains(path)) return text.Trim();
+            if (!message.To.Mailboxes.Any(address => address.Address == email)) continue;
+            // The text/plain fallback now contains branded prose as well as the link.
+            // Read the action URL from its own line rather than treating the entire
+            // message body as a URI.
+            foreach (var line in (message.TextBody ?? "").Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (Uri.TryCreate(line, UriKind.Absolute, out var link) &&
+                    link.Scheme is "https" or "http" &&
+                    link.PathAndQuery.Contains(path, StringComparison.Ordinal))
+                    return link.AbsoluteUri;
+            }
         }
         throw new InvalidOperationException("Expected local email was not delivered");
     }
