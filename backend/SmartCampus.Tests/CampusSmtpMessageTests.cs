@@ -34,7 +34,7 @@ public sealed class CampusSmtpMessageTests
         Assert.DoesNotContain("<script>", html);
         // HTML email has exactly one visible action: the branded button.
         // Its URL stays inside href, never printed as a long link below it.
-        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(html!, "<a href=").Count);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(html!, "<a href="));
         Assert.DoesNotContain(">{{LINK}}</a>", html);
         Assert.DoesNotContain(">https://", html);
         Assert.DoesNotContain("انسخ الرابط", html);
