@@ -49,17 +49,17 @@ public static class CampusEmailContent
           <p dir="ltr" style="margin:0 0 24px;color:#65778f;font-size:14px;line-height:1.8;text-align:right;">{{EN_TITLE}}</p>
           <p style="margin:0 0 12px;color:#34465e;font-size:16px;line-height:2;">{{MESSAGE}}</p>
           <p dir="ltr" style="margin:0 0 30px;color:#728199;font-size:13px;line-height:1.7;text-align:right;">{{ENGLISH}}</p>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td bgcolor="#144caa" style="border-radius:8px;text-align:center;">
-            <a href="{{LINK}}" style="display:inline-block;background:#144caa;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;line-height:22px;padding:15px 28px;border-radius:8px;">{{BUTTON}}</a>
-          </td></tr></table>
-          <p dir="ltr" style="text-align:center;color:#63738a;margin:14px 0 0;font-size:12px;">{{BUTTON_EN}}</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr>
+            <td bgcolor="#144caa" align="center" style="background:#144caa;border-radius:10px;border:1px solid #144caa;">
+              <a href="{{LINK}}" target="_blank" style="display:inline-block;background:#144caa;color:#ffffff;font-family:Tahoma,Arial,sans-serif;font-size:16px;font-weight:700;line-height:24px;text-align:center;text-decoration:none;padding:16px 34px;border-radius:10px;">{{BUTTON}}</a>
+            </td>
+          </tr></table>
+          <p dir="ltr" style="text-align:center;color:#63738a;margin:12px 0 0;font-size:12px;line-height:1.6;">{{BUTTON_EN}}</p>
         </td></tr>
-        <tr><td style="padding:8px 34px 34px;text-align:right;">
-          <p style="font-size:13px;line-height:1.9;color:#66758a;margin:18px 0 6px;">لو الزر مش شغال، انسخ الرابط ده وافتحه في المتصفح:</p>
-          <p dir="ltr" style="font-size:11px;line-height:1.7;word-break:break-all;overflow-wrap:anywhere;text-align:left;margin:0;">
-            <a href="{{LINK}}" style="color:#144caa;text-decoration:underline;">{{LINK}}</a>
-          </p>
-          <div style="border-top:1px solid #e5ebf2;margin-top:28px;padding-top:20px;color:#718096;font-size:12px;line-height:1.9;">
+        <tr><td style="padding:6px 34px 34px;text-align:right;">
+          <div style="border-top:1px solid #e5ebf2;margin-top:24px;padding-top:20px;color:#718096;font-size:12px;line-height:1.9;">
+            لأمان حسابك، استخدم الزر الموجود بالأعلى فقط. الرابط مخصص لحسابك ولا ينبغي مشاركته.<br>
+            For your security, use the button above. This action is intended for your account only.<br><br>
             لو ماطلبتش الرسالة دي، تقدر تتجاهلها. متشاركش الرابط مع أي حد.<br>
             If you didn't request this, you can safely ignore this email.
           </div>
