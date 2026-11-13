@@ -37,5 +37,8 @@ export class ServiceError extends Error {
   }
 }
 export const guestAccount: Account = { id: "", name: "", email: "", role: "guest" };
+export function hasRole(account: Account, role: Role) {
+  return account.role === role || account.roles?.includes(role) === true;
+}
 export const verified = (account: Account) =>
   !["guest", "unverified"].includes(account.role);

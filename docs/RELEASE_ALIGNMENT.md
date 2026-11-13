@@ -4,12 +4,12 @@ This matrix maps the approved non-AI release request to code and recorded accept
 
 | Requirement | Implementation | Acceptance evidence / current state |
 |---|---|---|
-| Arabic/English visual direction, original campus image, university mark | `src/app/App.tsx`, `src/app/Home.tsx`, `src/styles/app.css`, `src/assets/campus-photo.webp`, `public/o6u-mark.png` | Current local run: Chromium and WebKit passed 28/28 at 390/768/1440 for the covered public and guest flows, in both directions. Firefox could not launch on this Windows host (`spawn UNKNOWN`); compare the visual boards individually before claiming pixel-level parity. |
+| Arabic/English visual direction, original campus image, university mark | `src/app/App.tsx`, `src/app/Home.tsx`, `src/styles/app.css`, `src/assets/campus-photo.webp`, `public/o6u-mark.png` | Historical automated run: Chromium and WebKit passed 28/28 at 390/768/1440 for the covered public and guest flows, in both directions. Firefox could not launch on this Windows host (`spawn UNKNOWN`). Browser validation was not repeated in this continuation per user direction; full visual parity remains unverified. |
 | Locally served Noto Sans Arabic and Nunito Sans | `src/assets/fonts/`, `src/styles/app.css` | Production bundle contains local WOFF2 assets and SIL OFL notices; no Google Fonts import. |
-| All exact `@o6u.edu.eg` accounts can register and receive transactional messages | `ReleasePolicy.cs`, `AuthController.cs`, `EmailSender.cs`, `ResendEmailTransport.cs` | Production fallback is `university`; explicit `controlled` host configuration still intentionally applies an allowlist. Confirmation is mandatory before sign-in. A configured test recipient now limits only Resend's shared `@resend.dev` sender, not a verified sender. Integration and transport tests pass; real provider send/receipt remains outstanding. |
+| All exact `@o6u.edu.eg` accounts can register and receive transactional messages | `ReleasePolicy.cs`, `AuthController.cs`, `EmailSender.cs`, `ResendEmailTransport.cs`, deployment templates | Local defaults and deployment templates use `university`; any exact domain address is accepted, with email confirmation required before sign-in and no privileged role granted by registration. `controlled` remains an optional restricted-test mode. Production MonsterASP environment was not inspected or changed; actual provider delivery to university recipients remains unverified. |
 | Account verification and recovery email matching site brand | `CampusEmailContent.cs`, `BrevoEmailTransport.cs` | Automated tests cover branded HTML, safe action links, text fallback and recipient routing. A real message to the approved test mailbox `23012888@o6u.edu.eg`, Brevo event, authentication headers and inbox placement remain unverified. |
-| Maintenance submission, review and tracking | `src/features/maintenance/Maintenance.tsx`, backend maintenance service/controller | Current full backend suite passed against isolated PostgreSQL 16 + pgvector: 178 passed, 0 failed, 0 skipped. Hosted account walkthrough remains outstanding. |
-| Found-item registration, custody transfer and recovery | `src/features/lost-found/LostFound.tsx`, backend lost-found service/controller | Current full backend suite passed against isolated PostgreSQL 16 + pgvector: 178 passed, 0 failed, 0 skipped. Hosted account walkthrough remains outstanding. |
+| Maintenance submission, review and tracking | `src/features/maintenance/Maintenance.tsx`, backend maintenance service/controller | Latest full backend suite passed against isolated PostgreSQL 16 + pgvector: 201 passed, 0 failed, 1 intentional live-provider opt-in skip. Hosted account walkthrough remains outstanding. |
+| Found-item registration, custody transfer and recovery | `src/features/lost-found/LostFound.tsx`, backend lost-found service/controller | Latest full backend suite passed against isolated PostgreSQL 16 + pgvector: 201 passed, 0 failed, 1 intentional live-provider opt-in skip. Hosted account walkthrough remains outstanding. |
 | In-site notifications and account settings | `src/features/account/Account.tsx`, `DirectoryController.cs` | Backend integration suite passed; no request-update email is introduced. |
 | Protected administration, roles and scopes | `src/features/admin/Admin.tsx`, `CampusDirectory.cs`, `DirectoryController.cs` | Backend integration suite passed. Ordinary registration does not grant staff roles. |
 | Named statistics, open workload, resolution metrics, weekly trend and printable report | `StatisticsController.cs`, `src/features/admin/Admin.tsx` | Backend integration suite passed, including named buildings, workload metrics and map-position concurrency checks. Counts use authorized scopes and documented rules. |
@@ -20,8 +20,8 @@ This matrix maps the approved non-AI release request to code and recorded accept
 
 ## Verification completed
 
-- Backend: `dotnet test backend/SmartCampus.slnx --configuration Release` with isolated local PostgreSQL 16 + pgvector — 178 passed, 0 failed, 0 skipped.
-- Frontend: Vitest 65/65, TypeScript typecheck, ESLint and Vite production build passed.
+- Backend: latest `dotnet test backend/SmartCampus.slnx --configuration Release` with isolated local PostgreSQL 16 + pgvector — 201 passed, 0 failed, 1 intentional live-provider opt-in skip. The live-provider path was tested separately with the replacement key: six free synthetic API requests passed.
+- Frontend: latest Vitest 80/80, TypeScript typecheck, ESLint and Vite production build passed.
 - Browser: Chromium and WebKit Playwright E2E 28/28 passed, including keyboard focus, guest access boundaries, responsive layouts at 390/768/1440 and both languages. Firefox launch failed on this Windows host (`spawn UNKNOWN`) before tests could run.
 - `dotnet ef migrations has-pending-model-changes` reported no pending model changes after aligning the `PositionVersion` default and concurrency token.
 - `git diff --check` passed.
@@ -64,3 +64,29 @@ The Supabase security advisor also reports legacy findings in the `public` schem
 - Frontend: Vitest 65/65, `npm run typecheck`, `npm run lint`, and `npm run build` passed.
 - Browser: Chromium and WebKit 28/28 passed. Firefox 14/14 did not start because the local Firefox executable failed with Windows `spawn UNKNOWN`; no Firefox test body ran.
 - `git diff --check` passed. No hosted data, application settings, DNS, or provider state were changed during this verification.
+
+## Account eligibility and AI provider continuation — 13 November 2026 (unreleased)
+
+- Updated both deployment templates to `Release__Mode=university`, matching the approved requirement for all exact `@o6u.edu.eg` accounts. The existing `ReleaseTests.University_mode_registers_any_campus_email_and_requires_confirmation_before_login` and domain-negative tests verify any university address, exact-domain rejection, and confirmation-before-login. Production MonsterASP variables were not viewed or altered.
+- The replacement encrypted OpenRouter test key passed the opt-in application test for both maintenance modalities and passage/query embeddings: six fictional requests, all free models with zero price cap, no fallback, no retries. This proves API integration only, not accuracy or durable application workflow. Search remains fail-closed pending independent calibration and governance approval.
+- Verification: backend 201 passed/1 skipped; frontend 80/80; typecheck, lint, production build and `git diff --check` passed. No browser, commit, push, merge, or deploy was used.
+
+## Local implementation continuation — 13 November 2026 (unreleased)
+
+This continuation changes the working tree only; it has not been committed, pushed, merged or deployed. The latest isolated PostgreSQL 16 + pgvector backend run passed 177/177. Frontend now passes 67/67 Vitest cases, typecheck, lint and build. It pins maintenance AI to the existing OpenRouter free model, reuses current-revision found-item vectors on resumed work, restores private text/image search UI, and removes operational AI evaluation/demo surfaces per the latest user scope. No real OpenRouter request was run and no retrieval calibration/accuracy is claimed. Brave manual inspection covered public home/auth/recovery/verification views, but not authenticated user/staff/admin journeys; the local API was unavailable and `/api/v1/auth/me` returned 500 through the Vite proxy. Therefore no full 55-requirement or end-to-end acceptance is claimed. See [BACKEND_PROGRESS.md](BACKEND_PROGRESS.md) for exact browser scope and remaining gates.
+
+## Follow-up source fixes — 13 November 2026 (unreleased)
+
+- The admin map editor is keyboard-operable: arrow keys move the point, Shift moves by five units, focus instructions are linked accessibly, and pointer placement has a zero-size layout fallback. A focused component test verifies keyboard placement and versioned save.
+- EF Core's false-positive `First`/`FirstOrDefault`-without-order warning was removed for the already ordered/limited raw job query. Retryable maintenance-provider failures remain `pending`; only terminal failures show unavailable/error.
+- Retrieval SQL now discovers and quotes the installed pgvector extension schema, so it works when the extension is installed outside `public`; regression coverage includes the isolated `extensions` schema.
+- Repeated searches refresh an existing per-user result grant in place, even after expiry, instead of creating another temporary authorization row for the same result. The retrieval integration test verifies one grant remains after repeated searches and an expiry cycle.
+- Hosted indexing reuses a persisted embedding only when its dimension matches the pinned 1024-dimensional model; a mismatched stored vector is regenerated and the dimension constraint is preserved.
+- Removed orphaned AI Evaluation responsive/print styles from the operational stylesheet; general administration print styles remain. The frontend suite and production bundle passed after cleanup.
+- Verification after these changes: PostgreSQL 16 + pgvector backend 177/177; frontend Vitest 68/68; typecheck, ESLint and production build passed. Brave was not used in this follow-up by user direction. No real provider request, complete 55-requirement acceptance, or live-site journey is claimed.
+
+## Found-item list query follow-up — 13 November 2026 (unreleased)
+
+`LostFoundService.List` now batches associated data rather than calling `Detail` per result. A related claimant was missing from the list even though item detail authorization permits it; the list now includes the claim-based access path. Integration coverage proves the same database read count for 1 and 100 rows (at most ten), and validates owner, receiving-department, claimant, outsider, and admin access plus contact/storage-key privacy. Complete Release backend suite: 178/178; the tightened focused read-count/privacy test also passed. No browser or production check was performed.
+
+The admin accounts page also batches role, scope, and synthetic-account marker reads. Its integration test verifies bounded, page-size-independent reads and retained staff role/scope values. The complete Release backend suite after both list fixes passed 179/179.

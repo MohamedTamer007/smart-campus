@@ -52,11 +52,13 @@ test("browser maintenance submission, staff assignment and resolution persist", 
   await expect(page.getByText("Resolved", { exact: true })).toHaveCount(2);
 });
 
-test("browser logout revokes access and uncalibrated search stays unavailable", async ({ page }) => {
+test("browser search reports calibration failure distinctly and logout revokes protected access", async ({ page }) => {
   await login(page, "student");
   await page.goto("/search");
-  await expect(page.getByRole("status")).toContainText("Smart lost-item search is currently deferred");
-  await expect(page.getByRole("link", { name: "Browse available items", exact: true })).toHaveAttribute("href", "/found");
+  await page.getByLabel(/^Description of the lost item/).fill("DEMO ONLY fictional red notebook with blue corner");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("matching quality is safely approved");
+  await expect(page.getByText("No qualifying results appeared", { exact: false })).toHaveCount(0);
   await page.goto("/settings");
   await logout(page);
   await page.goto("/maintenance");

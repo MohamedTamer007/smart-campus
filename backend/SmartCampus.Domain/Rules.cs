@@ -11,6 +11,14 @@ public sealed class RuleException(string code, int status = 400, DateTimeOffset?
 
 public static class Rules
 {
+    public static (int Offset, int Size) PageWindow(int page, int pageSize)
+    {
+        var size = Math.Clamp(pageSize, 1, 100);
+        var normalizedPage = Math.Max(page, 1);
+        var offset = ((long)normalizedPage - 1) * size;
+        return ((int)Math.Min(offset, int.MaxValue), size);
+    }
+
     public static string UniversityEmail(string input)
     {
         var email = input.Trim();
@@ -24,6 +32,13 @@ public static class Rules
     {
         var text = input?.Trim();
         if (string.IsNullOrEmpty(text) || text.Length > maximum) throw new RuleException("invalid_input");
+        return text;
+    }
+
+    public static string OptionalText(string? input, int maximum = 4000)
+    {
+        var text = input?.Trim() ?? "";
+        if (text.Length > maximum) throw new RuleException("invalid_input");
         return text;
     }
 

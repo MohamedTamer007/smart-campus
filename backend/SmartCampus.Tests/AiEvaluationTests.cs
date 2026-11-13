@@ -15,7 +15,7 @@ namespace SmartCampus.Tests;
 
 public sealed class AiEvaluationTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
-    private sealed class FreeOpenRouterBoundary : HttpMessageHandler, IHttpClientFactory
+    private sealed class SyntheticProviderBoundary : HttpMessageHandler, IHttpClientFactory
     {
         public int Calls { get; private set; }
         public HttpClient CreateClient(string _) => new(this, disposeHandler: false);
@@ -23,19 +23,27 @@ public sealed class AiEvaluationTests(CampusFixture campus) : IClassFixture<Camp
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
         {
             Calls++;
-            Assert.Equal("openrouter.ai", request.RequestUri!.Host);
-            Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
-            Assert.Equal("test-only-openrouter-key", request.Headers.Authorization?.Parameter);
             using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellation));
-            var model = payload.RootElement.GetProperty("model").GetString();
-            Assert.Contains(model, new[] { "nvidia/nemotron-3.5-super-vl:free", "nvidia/nemotron-3.5-embed-8b:free" });
-            var route = payload.RootElement.GetProperty("provider");
-            Assert.False(route.GetProperty("allow_fallbacks").GetBoolean());
-            Assert.Equal(0, route.GetProperty("max_price").GetProperty("prompt").GetInt32());
-            Assert.Equal(0, route.GetProperty("max_price").GetProperty("completion").GetInt32());
-            var body = request.RequestUri.AbsolutePath.EndsWith("/embeddings", StringComparison.Ordinal)
-                ? EmbeddingResponse()
-                : ClassificationResponse();
+            string body;
+            if (request.RequestUri!.Host == "openrouter.ai")
+            {
+                Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+                Assert.Equal("test-only-openrouter-key", request.Headers.Authorization?.Parameter);
+                Assert.Equal("nvidia/nemotron-3.5-super-vl:free", payload.RootElement.GetProperty("model").GetString());
+                var route = payload.RootElement.GetProperty("provider");
+                Assert.False(route.GetProperty("allow_fallbacks").GetBoolean());
+                Assert.Equal(0, route.GetProperty("max_price").GetProperty("prompt").GetInt32());
+                Assert.Equal(0, route.GetProperty("max_price").GetProperty("completion").GetInt32());
+                body = ClassificationResponse();
+            }
+            else
+            {
+                Assert.Equal("generativelanguage.googleapis.com", request.RequestUri.Host);
+                Assert.Equal(RemoteEmbeddings.Endpoint, request.RequestUri.ToString());
+                Assert.Equal("test-only-gemini-key", request.Headers.GetValues("x-goog-api-key").Single());
+                Assert.Equal(768, payload.RootElement.GetProperty("outputDimensionality").GetInt32());
+                body = EmbeddingResponse();
+            }
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
         }
 
@@ -44,21 +52,25 @@ public sealed class AiEvaluationTests(CampusFixture campus) : IClassFixture<Camp
 
         private static string EmbeddingResponse()
         {
-            var vector = new float[1024];
+            var vector = new float[768];
             vector[0] = 1;
-            return JsonSerializer.Serialize(new { model = "nvidia/nemotron-3.5-embed-8b", data = new[] { new { index = 0, embedding = vector } } });
+            return JsonSerializer.Serialize(new { embedding = new { values = vector } });
         }
     }
 
-    private async Task<(WebApplicationFactory<Program> Host, HttpClient Client, FreeOpenRouterBoundary Provider)> AdminClient()
+    private async Task<(WebApplicationFactory<Program> Host, HttpClient Client, SyntheticProviderBoundary Provider)> AdminClient()
     {
-        var provider = new FreeOpenRouterBoundary();
+        var provider = new SyntheticProviderBoundary();
         var host = campus.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?> {
                 ["AI:OpenRouterKey"] = "test-only-openrouter-key",
                 ["AI:OpenRouterDailyRequestLimit"] = "50",
-                ["AI:OpenRouterRequestsPerMinute"] = "20"
+                ["AI:OpenRouterRequestsPerMinute"] = "20",
+                ["AI:GeminiKey"] = "test-only-gemini-key",
+                ["AI:GeminiFreeTierOnly"] = "true",
+                ["AI:GeminiDailyRequestLimit"] = "50",
+                ["AI:GeminiRequestsPerMinute"] = "10"
             }));
             builder.ConfigureServices(services => {
                 services.RemoveAll<IHttpClientFactory>();

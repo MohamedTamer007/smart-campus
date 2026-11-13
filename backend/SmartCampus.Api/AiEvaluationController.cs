@@ -15,7 +15,7 @@ namespace SmartCampus.Api;
 public sealed class AiEvaluationController(CampusDb db, Access access, IConfiguration config,
     IHttpClientFactory clients, IInferenceBudget budget, TimeProvider clock) : ControllerBase
 {
-    private const string SuiteVersion = "2026-11-13-v1";
+    private const string SuiteVersion = "2026-11-13-gemini-embedding-2-v1";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly string[] Priorities = ["low", "medium", "high"];
     private static readonly string[] FaultTypes = ["plumbing", "electrical", "other"];
@@ -25,10 +25,11 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
     {
         await RequireAdmin(cancellation);
         await ExpireInterruptedRuns(cancellation);
-        var usage = await CurrentUsage(cancellation);
         var runs = await db.AiEvaluationRuns.OrderByDescending(x => x.CreatedAt)
             .Select(x => new EvaluationRunSummary(x.Id, x.Suite, x.SuiteVersion, x.State, x.CreatedAt, x.UpdatedAt))
             .Take(30).ToArrayAsync(cancellation);
+        var latestSuite = runs.FirstOrDefault()?.Suite;
+        var usage = await CurrentUsage(cancellation, latestSuite == "lost-found" ? "gemini" : "openrouter");
         var selectedRunId = runId ?? runs.FirstOrDefault()?.Id;
         var cases = selectedRunId.HasValue && runs.Any(x => x.Id == selectedRunId.Value)
             ? await db.AiEvaluationCases.Where(x => x.RunId == selectedRunId.Value).OrderBy(x => x.CaseKey).ToArrayAsync(cancellation)
@@ -41,7 +42,7 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
     {
         await RequireAdmin(cancellation);
         var specifications = Specifications(suite);
-        var usage = await CurrentUsage(cancellation);
+        var usage = await CurrentUsage(cancellation, suite == "lost-found" ? "gemini" : "openrouter");
         var calls = await CallsRequired(specifications, cancellation);
         return new EvaluationPreflight(suite, SuiteVersion, specifications.Length, calls, usage,
             calls == 0 ? "cached_embeddings" : usage.DailyRemaining == 0 || usage.MinuteRemaining == 0 ? "quota_blocked" : "ready");
@@ -55,7 +56,7 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         await ExpireInterruptedRuns(cancellation);
         if (await db.AiEvaluationRuns.AnyAsync(x => x.IsActive, cancellation))
             throw new RuleException("ai_evaluation_run_active", 409);
-        var usage = await CurrentUsage(cancellation);
+        var usage = await CurrentUsage(cancellation, request.Suite == "lost-found" ? "gemini" : "openrouter");
         var callsRequired = await CallsRequired(specifications, cancellation);
         if (callsRequired > 0 && (usage.DailyRemaining == 0 || usage.MinuteRemaining == 0))
             throw new RuleException("ai_quota_exhausted", 429, usage.NextMinuteAt);
@@ -79,7 +80,8 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         await RequireAdmin(cancellation);
         var run = await ClaimRun(runId, cancellation);
         var step = await ClaimNextCase(run, cancellation);
-        if (step is null) return Ok(new EvaluationStepResponse(run.Id, run.State, null, await CurrentUsage(cancellation)));
+        var provider = run.Suite == "lost-found" ? "gemini" : "openrouter";
+        if (step is null) return Ok(new EvaluationStepResponse(run.Id, run.State, null, await CurrentUsage(cancellation, provider)));
         try
         {
             var output = await ExecuteCase(run.Id, step, cancellation);
@@ -97,7 +99,7 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
             run.ActiveUntil = null;
             run.UpdatedAt = clock.GetUtcNow();
             await db.SaveChangesAsync(cancellation);
-            return Ok(new EvaluationStepResponse(run.Id, run.State, ToResponse(step), await CurrentUsage(cancellation), "quota"));
+            return Ok(new EvaluationStepResponse(run.Id, run.State, ToResponse(step), await CurrentUsage(cancellation, provider), "quota"));
         }
         catch (RuleException error)
         {
@@ -124,7 +126,7 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
             run.IsActive = false;
         }
         await db.SaveChangesAsync(cancellation);
-        return Ok(new EvaluationStepResponse(run.Id, run.State, ToResponse(step), await CurrentUsage(cancellation)));
+        return Ok(new EvaluationStepResponse(run.Id, run.State, ToResponse(step), await CurrentUsage(cancellation, provider)));
     }
 
     [HttpPost("runs/{runId:guid}/pause")]
@@ -270,15 +272,16 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
     {
         var timer = Stopwatch.StartNew();
         var input = JsonSerializer.Deserialize<EvaluationInput>(row.InputJson, JsonOptions)!;
-        var settings = OpenRouterSettings();
         if (row.Kind.StartsWith("maintenance", StringComparison.Ordinal))
         {
+            var maintenanceSettings = OpenRouterSettings();
             var bytes = input.ImageDataUrl is null ? null : ImageBytes(input.ImageDataUrl);
-            var suggestion = await new AiProviders(clients, settings, budget).Assess(input.Text!, cancellation, bytes);
+            var suggestion = await new AiProviders(clients, maintenanceSettings, budget).Assess(input.Text!, cancellation, bytes);
             timer.Stop();
             return StepOutput.Create(new { suggestion.Type, suggestion.Priority, suggestion.Risk, suggestion.Explanation },
-                AiProviders.SelectedModel(settings, bytes is not null), timer.ElapsedMilliseconds);
+                AiProviders.SelectedModel(maintenanceSettings, bytes is not null), timer.ElapsedMilliseconds);
         }
+        var settings = GeminiEmbeddingSettings();
         var key = row.EmbeddingCacheKey!;
         var revision = RemoteEmbeddings.Revision(settings);
         var cached = await db.AiEvaluationVectors.SingleOrDefaultAsync(x => x.CacheKey == key && x.Revision == revision, cancellation);
@@ -300,17 +303,35 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         else embedding = new EmbeddingResponse(RemoteEmbeddings.Model, cached.Revision, cached.Dimension,
             JsonSerializer.Deserialize<float[]>(cached.VectorJson, JsonOptions)!);
         timer.Stop();
-        object actual = new { embedding.Model, embedding.Revision, embedding.Dimension, Source = cached is null ? "OpenRouter API" : "previous saved API embedding" };
+        object actual = new { embedding.Model, embedding.Revision, embedding.Dimension, Source = cached is null ? "Google Gemini API" : "previous saved API embedding" };
         if (row.Kind.StartsWith("embedding-query", StringComparison.Ordinal))
         {
             var expected = JsonSerializer.Deserialize<EvaluationExpected>(row.ExpectedJson, JsonOptions)!;
             var candidates = await Rank(runId, input.Modality!, embedding.Vector, revision, cancellation);
-            actual = new { embedding.Model, embedding.Revision, embedding.Dimension, Source = cached is null ? "OpenRouter API" : "previous saved API embedding",
+            actual = new { embedding.Model, embedding.Revision, embedding.Dimension, Source = cached is null ? "Google Gemini API" : "previous saved API embedding",
                 Candidates = candidates,
                 Top1 = expected.ItemId is null ? (bool?)null : candidates.FirstOrDefault()?.ItemId == expected.ItemId,
                 Top5 = expected.ItemId is null ? (bool?)null : candidates.Take(5).Any(x => x.ItemId == expected.ItemId) };
         }
-        return StepOutput.Create(actual, RemoteEmbeddings.OpenRouterModel, timer.ElapsedMilliseconds, cached is not null);
+        return StepOutput.Create(actual, RemoteEmbeddings.Model, timer.ElapsedMilliseconds, cached is not null);
+    }
+
+    private IConfiguration GeminiEmbeddingSettings()
+    {
+        var apiKey = config["AI:GeminiKey"];
+        var values = new Dictionary<string, string?> {
+            ["AI:GeminiKey"] = apiKey,
+            ["AI:GeminiFreeTierOnly"] = "true",
+            ["AI:GeminiDailyRequestLimit"] = config["AI:GeminiDailyRequestLimit"] ?? "50",
+            ["AI:GeminiRequestsPerMinute"] = config["AI:GeminiRequestsPerMinute"] ?? "10",
+            ["Search:Provider"] = "hosted",
+            ["Search:ExternalProcessingApproved"] = "true",
+            ["Search:GeminiExternalProcessingApproved"] = "true",
+            ["Search:ExternalImagesApproved"] = "true",
+            ["Search:GeminiExternalImagesApproved"] = "true",
+            ["Search:GeminiProviderDataCollection"] = "allow" // synthetic evaluation fixtures only
+        };
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
     }
 
     private async Task<EvaluationCandidate[]> Rank(Guid runId, string modality, float[] query, string revision, CancellationToken cancellation)
@@ -338,31 +359,33 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         if (string.IsNullOrWhiteSpace(apiKey)) throw new RuleException("ai_not_configured", 503);
         var values = new Dictionary<string, string?> {
             ["AI:Provider"] = "openrouter", ["AI:AllowNonSensitiveInference"] = "true", ["AI:AllowNonSensitiveImages"] = "true",
+            ["AI:ProviderDataCollection"] = "allow",
             ["AI:OpenRouterKey"] = apiKey, ["AI:OpenRouterDailyRequestLimit"] = config["AI:OpenRouterDailyRequestLimit"],
             ["AI:OpenRouterRequestsPerMinute"] = config["AI:OpenRouterRequestsPerMinute"],
             ["AI:FaultTypes:0"] = FaultTypes[0], ["AI:FaultTypes:1"] = FaultTypes[1], ["AI:FaultTypes:2"] = FaultTypes[2],
             ["AI:Priorities:0"] = Priorities[0], ["AI:Priorities:1"] = Priorities[1], ["AI:Priorities:2"] = Priorities[2],
             ["AI:Risks:0"] = Priorities[0], ["AI:Risks:1"] = Priorities[1], ["AI:Risks:2"] = Priorities[2],
             ["Search:Provider"] = "hosted", ["Search:ExternalProcessingApproved"] = "true",
-            ["Search:ExternalImagesApproved"] = "true", ["Search:ProviderDataCollection"] = "deny"
+            ["Search:ExternalImagesApproved"] = "true", ["Search:ProviderDataCollection"] = "allow" // fixed synthetic maintenance inputs only
         };
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
     }
 
-    private async Task<EvaluationUsage> CurrentUsage(CancellationToken cancellation)
+    private async Task<EvaluationUsage> CurrentUsage(CancellationToken cancellation, string provider = "openrouter")
     {
         var now = clock.GetUtcNow();
         var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
         var minute = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, TimeSpan.Zero);
-        var dailyLimit = config.GetValue("AI:OpenRouterDailyRequestLimit", 50);
-        var minuteLimit = config.GetValue("AI:OpenRouterRequestsPerMinute", 20);
-        var entries = await db.InferenceUsage.Where(x => x.Provider == "openrouter" && (x.WindowStart == day || x.WindowStart == minute))
+        var gemini = provider == "gemini";
+        var dailyLimit = config.GetValue(gemini ? "AI:GeminiDailyRequestLimit" : "AI:OpenRouterDailyRequestLimit", 50);
+        var minuteLimit = config.GetValue(gemini ? "AI:GeminiRequestsPerMinute" : "AI:OpenRouterRequestsPerMinute", gemini ? 10 : 20);
+        var entries = await db.InferenceUsage.Where(x => x.Provider == provider && (x.WindowStart == day || x.WindowStart == minute))
             .ToArrayAsync(cancellation);
         var dayUsed = entries.SingleOrDefault(x => x.Window == "day")?.Count ?? 0;
         var minuteUsed = entries.SingleOrDefault(x => x.Window == "minute")?.Count ?? 0;
         return new EvaluationUsage(dayUsed, dailyLimit, Math.Max(0, dailyLimit - dayUsed), minuteUsed, minuteLimit,
             Math.Max(0, minuteLimit - minuteUsed), day.AddDays(1), minute.AddMinutes(1),
-            RemoteEmbeddings.OpenRouterModel, "nvidia/nemotron-3.5-super-vl:free", 0, false);
+            RemoteEmbeddings.Model, "nvidia/nemotron-3.5-super-vl:free", 0, false);
     }
 
     private async Task<int> CallsRequired(EvaluationSpec[] specs, CancellationToken cancellation)
@@ -486,7 +509,8 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
             ("query-07-absent-text", "embedding-query-text", "A fictional purple violin case with brass corners", null, null, "text"),
             ("query-08-absent-image", "embedding-query-image", null, images["query-absent"], null, "image")
         };
-        cases.AddRange(queries.Select(q => EmbedCase(q.Id, q.Kind, q.Text, q.Image, "query:" + q.Id + ":v1", q.Match, q.Modality)));
+        cases.AddRange(queries.Select(q => EmbedCase(q.Id, q.Kind, q.Text, q.Image,
+            "query:" + q.Id + (q.Id == "query-08-absent-image" ? ":v2" : ":v1"), q.Match, q.Modality)));
         return cases.ToArray();
     }
 
@@ -536,6 +560,15 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         else if (name == "spark") { canvas.DrawRoundRect(new SKRect(100, 58, 220, 170), 12, 12, outline); canvas.DrawCircle(135, 110, 9, blue); canvas.DrawCircle(185, 110, 9, blue); canvas.DrawLine(158, 35, 145, 65, orange); canvas.DrawLine(175, 38, 168, 69, orange); }
         else if (name == "light") { canvas.DrawCircle(160, 93, 48, orange); canvas.DrawRoundRect(new SKRect(138, 135, 182, 170), 6, 6, outline); canvas.DrawLine(145, 179, 175, 179, outline); }
         else if (name == "wall") { canvas.DrawRect(new SKRect(54, 34, 266, 190), outline); canvas.DrawLine(156, 50, 138, 88, outline); canvas.DrawLine(138, 88, 176, 117, outline); canvas.DrawLine(176, 117, 150, 155, outline); }
+        else if (name == "query-absent")
+        {
+            using var purple = new SKPaint { Color = new SKColor(103, 69, 150), IsAntialias = true };
+            using var brass = new SKPaint { Color = new SKColor(193, 147, 64), StrokeWidth = 7, IsAntialias = true, Style = SKPaintStyle.Stroke };
+            canvas.DrawOval(new SKRect(65, 31, 255, 190), purple);
+            canvas.DrawOval(new SKRect(82, 45, 238, 176), brass);
+            canvas.DrawLine(160, 48, 160, 171, brass);
+            canvas.DrawCircle(160, 110, 9, brass);
+        }
         else if (name.Contains("bottle", StringComparison.Ordinal)) { canvas.DrawRoundRect(new SKRect(118, 55, 202, 180), 28, 28, blue); canvas.DrawRoundRect(new SKRect(140, 35, 180, 60), 7, 7, outline); canvas.DrawCircle(160, 35, 17, outline); }
         else if (name == "headphones") { canvas.DrawArc(new SKRect(92, 35, 228, 170), 180, 180, false, outline); canvas.DrawRoundRect(new SKRect(84, 105, 120, 177), 14, 14, blue); canvas.DrawRoundRect(new SKRect(200, 105, 236, 177), 14, 14, blue); }
         else if (name == "umbrella") { canvas.DrawArc(new SKRect(60, 40, 260, 165), 180, 180, true, blue); canvas.DrawLine(160, 102, 160, 185, outline); canvas.DrawLine(160, 185, 187, 185, outline); }

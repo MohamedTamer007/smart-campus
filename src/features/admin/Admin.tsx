@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../../app/context";
 import { DirectoryOptions } from "../../components/DirectoryOptions";
@@ -10,63 +10,15 @@ import {
   type AssignableRole,
   type DashboardScope,
   saveBuildingPosition,
-  demoPreparationStatus,
-  prepareDemoEnvironment,
-  type DemoPreparationResult,
 } from "../../services/admin";
 import {
   maintenance,
+  maintenanceValueLabel,
   type MaintenanceStatus,
 } from "../../services/maintenance";
 import { lostFound, currentCustodian } from "../../services/lostFound";
-import { ServiceError, type Role } from "../../services/contracts";
+import { hasRole, ServiceError, type Role } from "../../services/contracts";
 import { OperationsStatus } from "./OperationsStatus";
-function DemoEnvironmentSetup() {
-  const { t } = useApp();
-  const [enabled, setEnabled] = useState(false);
-  const [prepared, setPrepared] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<DemoPreparationResult | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    void demoPreparationStatus().then(status => {
-      setEnabled(status.enabled);
-      setPrepared(status.alreadyPrepared);
-    }).catch(() => setEnabled(false));
-  }, []);
-  if (!enabled) return null;
-  async function prepare() {
-    setBusy(true);
-    setFailed(false);
-    try {
-      const preparedResult = await prepareDemoEnvironment();
-      setResult(preparedResult);
-      setPrepared(true);
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return <section className="panel demo-setup" aria-labelledby="demo-setup-title">
-    <h2 id="demo-setup-title">{t("تجهيز حسابات العرض", "Prepare demo accounts")}</h2>
-    <p>{t("ينشئ خمس هويات وبيانات خيالية فقط. كلمة المرور تظهر مرة واحدة بعد الإنشاء؛ احفظها في مكان آمن. بعد التجهيز عطّل Demo:PreparationEnabled من إعدادات الاستضافة.", "Creates five fictional identities and records only. Passwords appear once after creation; save them securely. After setup, disable Demo:PreparationEnabled in hosting settings.")}</p>
-    {failed && <Feedback kind="error">{t("تعذر تجهيز العرض. تحقق من إعداد التخزين وسجل التشغيل.", "Demo preparation failed. Check storage configuration and the application log.")}</Feedback>}
-    {prepared && !result && <Feedback>{t("البيانات مجهزة بالفعل. لن تُعرض كلمات المرور مرة أخرى.", "Demo data is already prepared. Passwords are not shown again.")}</Feedback>}
-    {!prepared && <button className="button" type="button" disabled={busy} onClick={() => { void prepare(); }}>
-      {busy ? t("جارٍ التجهيز…", "Preparing…") : t("جهّز حسابات وبيانات العرض", "Prepare demo accounts and data")}
-    </button>}
-    {result && <div role="status">
-      <Feedback>{t("اكتمل تجهيز البيانات. احفظ كلمات المرور الآن ثم عطّل الإعداد المؤقت.", "Demo data is ready. Save the passwords now, then disable the temporary setting.")}</Feedback>
-      {result.credentials.length > 0 ? <div className="table-wrap"><table className="data-table demo-credentials">
-        <thead><tr><th>{t("الدور", "Role")}</th><th>Email</th><th>{t("كلمة المرور التي تظهر مرة واحدة", "One-time password")}</th></tr></thead>
-        <tbody>{result.credentials.map(credential => <tr key={credential.role}>
-          <td>{credential.role}</td><td><bdi>{credential.email}</bdi></td><td><code>{credential.password ?? "—"}</code></td>
-        </tr>)}</tbody>
-      </table></div> : <p>{t("التهيئة موجودة من قبل، ولا يمكن استعادة كلمات المرور من النظام.", "The setup already existed; passwords cannot be recovered from the system.")}</p>}
-    </div>}
-  </section>;
-}
 const labels: Record<MaintenanceStatus, [string, string]> = {
   submitted: ["تم الإرسال", "Submitted"],
   review: ["قيد المراجعة", "Under review"],
@@ -98,6 +50,38 @@ function scopeName(
       : scope === "maintenance"
         ? t("الصيانة", "Maintenance")
         : "—";
+}
+function MetricDistribution({
+  title,
+  values,
+  t,
+}: {
+  title: string;
+  values: Record<string, number>;
+  t: (arabic: string, english: string) => string;
+}) {
+  const entries = Object.entries(values).sort(([left], [right]) => left.localeCompare(right));
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  return (
+    <div className="panel">
+      <h2>{title}</h2>
+      {entries.length ? (
+        <div className="bar-chart">
+          {entries.map(([value, count]) => (
+            <div className="bar-row" key={value}>
+              <span>{maintenanceValueLabel(value, t)}</span>
+              <div className="bar-track" aria-hidden="true">
+                <span style={{ width: `${total ? (count / total) * 100 : 0}%` }} />
+              </div>
+              <b>{count}</b>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Feedback>{t("لا توجد قرارات موظفين ضمن الفترة المحددة.", "No staff decisions in the selected period.")}</Feedback>
+      )}
+    </div>
+  );
 }
 export function Requests() {
   const { t, account } = useApp();
@@ -200,7 +184,6 @@ export function AdminOverview() {
         "Statistics for recorded reports and items.",
       )}
     >
-      <DemoEnvironmentSetup />
       <div className="panel">
         <div className="field-grid">
           <Field label={t("من تاريخ", "From date")}>
@@ -243,9 +226,6 @@ export function AdminOverview() {
         )}
       </div>
       <div className="actions">
-        <Link className="button" to="/admin/ai-evaluation">
-          {t("نتائج تقييم الذكاء الاصطناعي", "AI Evaluation")}
-        </Link>
         <button className="button secondary no-print" onClick={() => window.print()}>{t("طباعة التقرير", "Print report")}</button>
         <Link className="button secondary" to="/admin/accounts">
           {t("المستخدمون والصلاحيات", "Accounts and permissions")}
@@ -263,6 +243,9 @@ export function AdminOverview() {
       <div className="spacer" />
       <AsyncView key={`${account.id}-${from}-${to}-${scope}-${revision}`} load={load}>
         {(stats) => {
+          const mapBuildings = Array.from(new Map(
+            [...(stats.unplacedBuildings ?? []), ...(stats.buildings ?? [])].map(building => [building.id, building]),
+          ).values());
           return (
             <>
               <div className="stats admin-stats">
@@ -348,7 +331,7 @@ export function AdminOverview() {
                   {Object.entries(stats.faultTypes).length ? (
                     Object.entries(stats.faultTypes).map(([type, count]) => (
                       <p key={type}>
-                        {type}: {count}
+                        {maintenanceValueLabel(type, t)}: {count}
                       </p>
                     ))
                   ) : (
@@ -361,13 +344,20 @@ export function AdminOverview() {
                   )}
                   <h2>{t("الأعطال المتكررة التي سجلها الموظفون", "Recurring staff-recorded faults")}</h2>
                   {(stats.recurrence ?? []).length ? stats.recurrence!.map((fault) => <p key={`${fault.type}-${fault.buildingAr}-${fault.floorAr}`}>
-                    {fault.type} · {t(fault.buildingAr, fault.buildingEn)} · {t(fault.floorAr, fault.floorEn)}: {fault.count}
+                    {maintenanceValueLabel(fault.type, t)} · {t(fault.buildingAr, fault.buildingEn)} · {t(fault.floorAr, fault.floorEn)}: {fault.count}
                   </p>) : <p>{t("لا توجد أعطال متكررة معتمدة في هذه الفترة.", "No staff-confirmed recurring faults in this period.")}</p>}
                 </div>
               </div>
+              <p className="muted">
+                {t("التوزيعات التالية من القرارات التشغيلية التي سجلها الموظفون؛ لا تشمل اقتراحات AI.", "The following distributions use staff-entered operational decisions; AI suggestions are excluded.")}
+              </p>
+              <div className="split">
+                <MetricDistribution title={t("الأولوية المعتمدة", "Staff-confirmed priority")} values={stats.priorities ?? {}} t={t} />
+                <MetricDistribution title={t("الخطورة المعتمدة", "Staff-confirmed risk")} values={stats.risks ?? {}} t={t} />
+              </div>
               <div className="split">
                 <section className="panel campus-map-panel">
-                  <h2>{t("مخطط الحرم التجريبي", "Demo campus map")}</h2>
+                  <h2>{t("مخطط مواقع البلاغات", "Report location map")}</h2>
                   <p>{t("مخطط توضيحي غير جغرافي؛ الأسماء والأعداد من بيانات النظام، وتُحفظ مواضع المباني يدويًا.", "Schematic, not geographic. Names and counts come from records; building positions are set manually.")}</p>
                   <svg className="campus-map" viewBox="0 0 100 56" role="img" aria-label={t("مخطط مباني الحرم وعدد البلاغات", "Campus building schematic and report counts")}>
                     <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
@@ -377,24 +367,55 @@ export function AdminOverview() {
                       <text y="5.5" textAnchor="middle" fontSize="2.7" fontWeight="700" fill="#c44300">{b.count}</text>
                     </g>)}
                   </svg>
-                  {account.role === "admin" && <div className="map-editor no-print">
+                  {hasRole(account, "admin") && <div className="map-editor no-print">
                     {mapSaveFailed && <Feedback kind="error">{t("تعذر حفظ الموضع؛ أعد تحميل اللوحة ثم حاول مجددًا.", "The position could not be saved. Reload the dashboard and try again.")}</Feedback>}
                     <Field label={t("مبنى لتحديد موضعه", "Building to position")}>
                       <select value={buildingId} onChange={event => { setBuildingId(event.target.value); setMapDraft(null); }}>
                         <option value="">{t("اختر مبنى", "Choose a building")}</option>
-                        {[...(stats.unplacedBuildings ?? []), ...(stats.buildings ?? [])].map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
+                        {mapBuildings.map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
                       </select>
                     </Field>
-                    <p>{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر المخطط لتحديد موضعه.", "Choose a building, then click the schematic to set its position.")}</p>
-                    <svg className="campus-map map-editor-canvas" viewBox="0 0 100 56" preserveAspectRatio="none" onClick={event => {
-                      if (!buildingId) return;
-                      const rect = event.currentTarget.getBoundingClientRect();
-                      setMapDraft({ x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)), y: Math.max(0, Math.min(56, (event.clientY - rect.top) / rect.height * 56)) });
-                    }} aria-label={t("انقر لاختيار موضع المبنى", "Click to choose a building position")}>
-                      <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
-                      {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y!} r="2" fill="#144caa" />)}
-                      {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y} r="2.8" fill="#c44300" />}
-                    </svg>
+                    <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر المخطط، أو استخدم الأسهم بعد التركيز عليه. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the schematic, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
+                    <button
+                      type="button"
+                      className="map-editor-canvas-button"
+                      disabled={!buildingId}
+                      aria-label={t("اختيار موضع المبنى على المخطط", "Set building position on the schematic")}
+                      aria-describedby="map-editor-help"
+                      onKeyDown={event => {
+                        const movement: Record<string, { x: number; y: number }> = {
+                          ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
+                          ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
+                        };
+                        const delta = movement[event.key];
+                        if (!delta) return;
+                        event.preventDefault();
+                        const current = mapDraft ?? { x: 50, y: 28 };
+                        const step = event.shiftKey ? 5 : 1;
+                        setMapDraft({
+                          x: Math.max(0, Math.min(100, current.x + delta.x * step)),
+                          y: Math.max(0, Math.min(56, current.y + delta.y * step)),
+                        });
+                      }}
+                      onClick={event => {
+                        if (!buildingId) return;
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        if (rect.width <= 0 || rect.height <= 0) {
+                          setMapDraft({ x: 50, y: 28 });
+                          return;
+                        }
+                        setMapDraft({
+                          x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)),
+                          y: Math.max(0, Math.min(56, (event.clientY - rect.top) / rect.height * 56)),
+                        });
+                      }}
+                    >
+                      <svg className="campus-map map-editor-canvas" viewBox="0 0 100 56" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
+                        {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y!} r="2" fill="#144caa" />)}
+                        {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y} r="2.8" fill="#c44300" />}
+                      </svg>
+                    </button>
                     <div className="actions">
                       <button className="button" disabled={!buildingId || !mapDraft} onClick={async () => {
                         const target = (stats.unplacedBuildings ?? []).concat(stats.buildings ?? []).find(b => b.id === buildingId);

@@ -53,6 +53,8 @@ export interface Stats {
   pendingClaims: number;
   locations: Record<string, number>;
   faultTypes: Record<string, number>;
+  priorities?: Record<string, number>;
+  risks?: Record<string, number>;
   buildings?: { id: string; ar: string; en: string; count: number; x: number | null; y: number | null; version: number }[];
   unplacedBuildings?: { id: string; ar: string; en: string; count: number; x: number | null; y: number | null; version: number }[];
   recurrence?: { type: string; buildingAr: string; buildingEn: string; floorAr: string; floorEn: string; count: number }[];
@@ -64,16 +66,6 @@ export interface Stats {
 }
 export const saveBuildingPosition = (id: string, x: number | null, y: number | null, version: number) =>
   api<{ version: number }>(`/admin/locations/${id}/position`, json("PUT", { x, y, version }));
-export interface DemoCredential { role: string; email: string; password: string | null; created: boolean }
-export interface DemoPreparationResult {
-  prepared: boolean;
-  alreadyPrepared?: boolean;
-  recoveryGrantExpiresAt: string | null;
-  credentials: DemoCredential[];
-  records: { maintenanceReport: string; recoveryItem: string; departmentCustodyItem: string };
-}
-export const demoPreparationStatus = () => api<{ enabled: boolean; alreadyPrepared: boolean }>("/admin/demo/status");
-export const prepareDemoEnvironment = () => api<DemoPreparationResult>("/admin/demo/prepare", json("POST", {}));
 export type DashboardScope = "all" | "maintenance" | "security" | "secretariat";
 export interface OperationsSnapshot {
   sampledAt: string;
@@ -91,95 +83,10 @@ export interface OperationsSnapshot {
     taxonomyConfigured: boolean;
     textTransferEnabled: boolean;
     imageTransferEnabled: boolean;
-    nvidiaKeyPresent: boolean;
-    openRouterKeyPresent: boolean;
-    nvidiaBudgetConfigured: boolean;
-    openRouterBudgetConfigured: boolean;
-    syntheticSmokeTestsEnabled: boolean;
-    adminSyntheticDiagnosticEnabled?: boolean;
+    providerDataCollectionApproved?: boolean;
   };
 }
 export const operations = () => api<OperationsSnapshot>("/admin/operations");
-export interface AiSmokeResult {
-  status: "validated";
-  provider: string;
-  model: string;
-}
-export const smokeAi = () => api<AiSmokeResult>("/admin/operations/ai-smoke", json("POST", {}));
-export interface AiDemoResult extends AiSmokeResult {
-  type: "plumbing" | "electrical" | "other";
-  priority: "low" | "medium" | "high";
-  risk: "low" | "medium" | "high";
-  explanation: string;
-}
-export const demoAi = () => api<AiDemoResult>("/admin/operations/ai-demo", json("POST", {}));
-export interface OpenRouterSmokeResult {
-  status: "validated";
-  provider: string;
-  textModel: string;
-  visionModel: string;
-  embeddingModel: string;
-  revision: string;
-  dimension: number;
-  textType: string;
-  textPriority: string;
-  textRisk: string;
-  imageType: string;
-  imagePriority: string;
-  imageRisk: string;
-  textClassificationValidated: boolean;
-  imageAnalysisValidated: boolean;
-  textEmbeddingValidated: boolean;
-  imageEmbeddingValidated: boolean;
-}
-export const smokeOpenRouter = () => api<OpenRouterSmokeResult>("/admin/operations/openrouter-smoke", json("POST", {}));
-export type EvaluationSuite = "integration" | "maintenance-text" | "maintenance-image" | "lost-found";
-export interface EvaluationUsage {
-  dailyUsed: number; dailyLimit: number; dailyRemaining: number;
-  minuteUsed: number; minuteLimit: number; minuteRemaining: number;
-  nextDayAt: string; nextMinuteAt: string; embeddingModel: string;
-  classificationModel: string; maximumPrice: number; paidFallbacks: boolean;
-}
-export interface EvaluationCase {
-  id: string; runId: string; caseKey: string; kind: string; state: string;
-  input: Record<string, unknown>; expected: Record<string, unknown>;
-  actual: Record<string, unknown> | null; errorCode: string | null; model: string | null;
-  elapsedMilliseconds: number | null; startedAt: string | null; finishedAt: string | null;
-}
-export interface EvaluationRun {
-  id: string; suite: EvaluationSuite; suiteVersion: string; state: string;
-  createdAt: string; updatedAt: string;
-}
-export interface EvaluationHistory { date: string; source: string; metrics: string; limits: string; chartLabels: string[]; chartValues: number[] }
-export interface EvaluationSnapshot {
-  usage: EvaluationUsage; runs: EvaluationRun[]; cases: EvaluationCase[]; history: EvaluationHistory[];
-}
-export interface EvaluationCreated {
-  id: string; suite: EvaluationSuite; caseCount: number; apiCallsRequired: number;
-  usage: EvaluationUsage; suiteVersion: string;
-}
-export interface EvaluationPreflight {
-  suite: EvaluationSuite; suiteVersion: string; caseCount: number; apiCallsRequired: number;
-  usage: EvaluationUsage; status: string;
-}
-export interface EvaluationStep {
-  runId: string; runState: string; case: EvaluationCase | null;
-  usage: EvaluationUsage; pauseReason: string | null;
-}
-export const aiEvaluations = {
-  snapshot: (runId?: string) => api<EvaluationSnapshot>("/admin/ai-evaluations" + (runId ? "?runId=" + encodeURIComponent(runId) : "")),
-  preflight: (suite: EvaluationSuite) => api<EvaluationPreflight>("/admin/ai-evaluations/preflight?suite=" + encodeURIComponent(suite)),
-  create: (suite: EvaluationSuite) => api<EvaluationCreated>("/admin/ai-evaluations/runs", json("POST", { suite })),
-  next: (runId: string) => api<EvaluationStep>("/admin/ai-evaluations/runs/" + runId + "/next", json("POST", {})),
-  pause: (runId: string) => api<EvaluationRun>("/admin/ai-evaluations/runs/" + runId + "/pause", json("POST", {})),
-  resume: (runId: string) => api<EvaluationRun>("/admin/ai-evaluations/runs/" + runId + "/resume", json("POST", {})),
-  detail: (runId: string) => api<{ run: EvaluationRun; cases: EvaluationCase[] }>("/admin/ai-evaluations/runs/" + runId),
-  csv: async (runId: string) => {
-    const response = await fetch("/api/v1/admin/ai-evaluations/runs/" + runId + "/csv", { credentials: "same-origin" });
-    if (!response.ok) throw new Error("csv_export_failed");
-    return response.blob();
-  },
-};
 export function calculateStats(
   reports: MaintenanceReport[],
   items: FoundItem[],

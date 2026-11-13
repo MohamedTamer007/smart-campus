@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   useNavigate,
@@ -9,9 +9,11 @@ import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
 import { ActionForm, Feedback, Field, Page } from "../../components/ui";
 import { ServiceError } from "../../services/contracts";
+import { validateCampusImage, type ImageUploadError } from "../../services/imageUpload";
 import {
   maintenance,
   maintenanceInput,
+  maintenanceValueLabel,
   type LocationOption,
   type MaintenanceInput,
   type MaintenanceReport,
@@ -82,8 +84,30 @@ export function ImageField({
 }) {
   const { t } = useApp();
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const selection = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => () => { selection.current++; }, []);
+  function removePhoto() {
+    selection.current++;
+    fileInput.current?.setCustomValidity("");
+    setChecking(false);
+    setError("");
+    onChange();
+  }
+  function errorMessage(reason: ImageUploadError) {
+    switch (reason) {
+      case "too_large":
+        return t("حجم الصورة يتجاوز 5 ميجابايت.", "Image exceeds 5 MiB.");
+      case "type_mismatch":
+      case "invalid_image":
+        return t("الملف ليس صورة JPEG أو PNG أو WebP صالحة.", "The file is not a valid JPEG, PNG or WebP image.");
+      default:
+        return t("ملف الصورة فارغ.", "The image file is empty.");
+    }
+  }
   return (
-    <div className="upload">
+    <div className="upload" aria-busy={checking}>
       <Field
         label={
           label ??
@@ -98,29 +122,39 @@ export function ImageField({
         )}
       >
         <input
+          ref={fileInput}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           required={required && !photo}
-          onChange={(event) => {
+          onChange={async (event) => {
             const file = event.target.files?.[0];
-            if (file && (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024)) {
-              setError(
-                t("اختر JPEG أو PNG أو WebP حتى 5 ميجابايت.", "Choose JPEG, PNG or WebP up to 5 MiB."),
-              );
+            const input = event.currentTarget;
+            input.value = "";
+            if (!file) return;
+            const currentSelection = ++selection.current;
+            setChecking(true);
+            setError("");
+            input.setCustomValidity(t("جارٍ فحص الصورة.", "Checking image."));
+            const reason = await validateCampusImage(file);
+            if (currentSelection !== selection.current) return;
+            setChecking(false);
+            input.setCustomValidity("");
+            if (reason) {
+              setError(errorMessage(reason));
               onChange();
             } else {
               setError("");
               onChange(file);
             }
-            event.currentTarget.value = "";
           }}
         />
       </Field>
+      {checking && <p role="status">{t("جارٍ فحص الصورة…", "Checking image…")}</p>}
       {error && <Feedback kind="error">{error}</Feedback>}
       <PhotoPreview photo={photo} />
-      {photo && (
-        <button type="button" className="button" onClick={() => onChange()}>
-          {t("إزالة الصورة", "Remove photo")}
+      {(photo || checking) && (
+        <button type="button" className="button" onClick={removePhoto}>
+          {photo ? t("إزالة الصورة", "Remove photo") : t("إلغاء اختيار الصورة", "Cancel photo selection")}
         </button>
       )}
     </div>
@@ -178,6 +212,7 @@ function ReportForm({
     >
       <Field label={t("وصف العطل", "Fault description")} required>
         <textarea
+          maxLength={4000}
           value={values.description}
           required
           onChange={(e) => change({ description: e.target.value })}
@@ -231,6 +266,7 @@ function ReportForm({
       </Field>
       <Field label={t("تفاصيل الموقع", "Precise location")} required>
         <input
+          maxLength={1000}
           required
           value={values.details}
           onChange={(e) => change({ details: e.target.value })}
@@ -436,7 +472,7 @@ function StaffActions({
           }
           required={status === "rejected"}
         >
-          <textarea name="note" required={status === "rejected"} />
+          <textarea name="note" maxLength={4000} required={status === "rejected"} />
         </Field>
       </ActionForm>
     </div>
@@ -557,9 +593,9 @@ function Detail({
               <div className="feedback">
                 <b>{t("اقتراح AI — يحتاج مراجعة الموظف", "AI suggestion — staff review required")}</b>
                 <dl className="details-grid">
-                  <div><dt>{t("نوع العطل المقترح", "Suggested fault type")}</dt><dd>{report.assessment.type || "—"}</dd></div>
-                  <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{report.assessment.priority || "—"}</dd></div>
-                  <div><dt>{t("الخطورة المقترحة", "Suggested risk")}</dt><dd>{report.assessment.risk || "—"}</dd></div>
+                  <div><dt>{t("نوع العطل المقترح", "Suggested fault type")}</dt><dd>{maintenanceValueLabel(report.assessment.type, t)}</dd></div>
+                  <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{maintenanceValueLabel(report.assessment.priority, t)}</dd></div>
+                  <div><dt>{t("الخطورة المقترحة", "Suggested risk")}</dt><dd>{maintenanceValueLabel(report.assessment.risk, t)}</dd></div>
                 </dl>
                 {report.assessment.explanation && <p>{report.assessment.explanation}</p>}
               </div>

@@ -57,14 +57,36 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
         return "database_or_network_other";
     }
 
-    private async Task RunNext(CancellationToken cancellation)
+    public async Task RunNext(CancellationToken cancellation)
     {
         using var scope = scopes.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
         await using var transaction = await db.Database.BeginTransactionAsync(cancellation);
         var job = await db.Jobs.FromSqlRaw("SELECT * FROM smart_campus.\"Jobs\" WHERE \"State\" IN ('pending','running') AND \"AvailableAt\" <= now() ORDER BY \"CreatedAt\" LIMIT 1 FOR UPDATE SKIP LOCKED")
-            .FirstOrDefaultAsync(cancellation);
+            // The raw SQL already applies eligibility, deterministic ordering, and LIMIT 1.
+            // SingleOrDefault avoids EF's FirstWithoutOrderByAndFilter warning, which cannot
+            // see the ORDER BY and WHERE clauses embedded in FromSqlRaw.
+            .SingleOrDefaultAsync(cancellation);
         if (job is null) return;
+        // A process may stop before the provider result is persisted. Reclaiming
+        // an expired lease must still respect the same bounded attempt budget.
+        if (job.Attempts >= 3)
+        {
+            job.State = "unavailable";
+            if (job.Kind == "maintenance")
+            {
+                var exhausted = await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == job.EntityId && a.InputVersion == job.InputVersion, cancellation);
+                if (exhausted?.State == "completed") job.State = "completed";
+                else if (exhausted is not null)
+                {
+                    exhausted.State = "unavailable";
+                    exhausted.FailureCode = "job_attempts_exhausted";
+                }
+            }
+            await db.SaveChangesAsync(cancellation);
+            await transaction.CommitAsync(cancellation);
+            return;
+        }
         job.State = "running";
         job.Attempts++;
         job.AvailableAt = DateTimeOffset.UtcNow.AddMinutes(2);
@@ -83,7 +105,15 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
             job.State = job.Attempts >= 3 || exception is RuleException { Code: "ai_not_configured" or "search_provider_not_configured" or "search_external_images_not_approved" or "taxonomy_unavailable" or "ai_quota_not_configured" or "ai_input_review_required" or "email_not_configured" or "email_test_recipient_required" or "email_recipient_not_allowed" or "email_rejected" or "release_restricted" } ? "unavailable" : "pending";
             job.AvailableAt = exception is RuleException { RetryAt: { } retryAt } ? retryAt : DateTimeOffset.UtcNow.AddMinutes(job.Attempts * 2);
             var assessment = await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == job.EntityId && a.InputVersion == job.InputVersion, cancellation);
-            if (assessment is not null) { assessment.State = "unavailable"; assessment.FailureCode = exception is RuleException rule ? rule.Code : "provider_unavailable"; }
+            if (assessment is not null)
+            {
+                // A retryable job is still queued; expose that state instead of
+                // telling staff the provider is unavailable before retries end.
+                assessment.State = job.State == "unavailable" ? "unavailable" : "pending";
+                assessment.FailureCode = job.State == "unavailable"
+                    ? exception is RuleException rule ? rule.Code : "provider_unavailable"
+                    : null;
+            }
             logger.LogWarning("Job {JobId} returned {State}", job.Id, job.State);
         }
         await db.SaveChangesAsync(cancellation);

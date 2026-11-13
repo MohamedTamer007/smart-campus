@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using SkiaSharp;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -14,19 +13,13 @@ public sealed class PrivateMedia(IHttpClientFactory clients, IConfiguration conf
 
     public async Task<MediaObject> Upload(IFormFile file, MediaObject metadata)
     {
-        if (file.Length is <= 0 or > 5242880) throw new RuleException("invalid_upload");
+        if (file.Length is <= 0 or > CampusImageNormalizer.MaximumUploadBytes) throw new RuleException("invalid_upload");
         using var input = file.OpenReadStream();
         using var bounded = new MemoryStream();
         await input.CopyToAsync(bounded);
-        using var encodedSource = SKData.CreateCopy(bounded.ToArray());
-        using var codec = SKCodec.Create(encodedSource);
-        if (codec is null || codec.EncodedFormat is not (SKEncodedImageFormat.Jpeg or SKEncodedImageFormat.Png or SKEncodedImageFormat.Webp) ||
-            (long)codec.Info.Width * codec.Info.Height > 16000000) throw new RuleException("invalid_upload");
-        using var bitmap = SKBitmap.Decode(encodedSource) ?? throw new RuleException("invalid_upload");
-        using var image = SKImage.FromBitmap(bitmap);
-        using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, 85);
+        var jpeg = CampusImageNormalizer.ToJpeg(bounded.ToArray());
         metadata.ObjectKey = "smart-campus/" + metadata.Id.ToString("N") + ".jpg";
-        await Write(metadata, encoded.ToArray());
+        await Write(metadata, jpeg);
         return metadata;
     }
 

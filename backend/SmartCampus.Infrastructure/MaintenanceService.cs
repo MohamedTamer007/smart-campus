@@ -36,10 +36,11 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
     public async Task<object[]> List(int page, int pageSize)
     {
         var actor = await access.Current();
+        var (offset, size) = Rules.PageWindow(page, pageSize);
         var query = db.Reports.Where(r => actor.Admin || r.ReporterId == actor.Id ||
             (actor.Roles.Contains("maintenance") && actor.Scopes.Contains(r.DepartmentId)));
-        var reports = await query.AsNoTracking().OrderByDescending(r => r.CreatedAt)
-            .Skip((page - 1) * pageSize).Take(pageSize).ToArrayAsync();
+        var reports = await query.AsNoTracking().OrderByDescending(r => r.CreatedAt).ThenBy(r => r.Id)
+            .Skip(offset).Take(size).ToArrayAsync();
         return await Responses(reports, actor, includeAiExplanation: false);
     }
 
@@ -214,15 +215,20 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         Rules.Version(report.Version, input.Version);
         if (report.CancelledAt.HasValue) throw new RuleException("invalid_transition", 409);
         Rules.Transition(report.Status, input.Status);
-        if (input.Status == "rejected") Rules.Required(input.Note);
-        if (!string.IsNullOrEmpty(input.Assignee))
+        var note = Rules.OptionalText(input.Note);
+        if (input.Status == "rejected") Rules.Required(note);
+        if (input.Assignee is not null)
         {
-            if (!Guid.TryParse(input.Assignee, out var assignee)) throw new RuleException("invalid_assignee");
-            var roleId = await db.Roles.Where(r => r.Name == "maintenance").Select(r => r.Id).FirstOrDefaultAsync();
-            Access.Require(await db.Scopes.AnyAsync(s => s.UserId == assignee && s.DepartmentId == report.DepartmentId) &&
-                await db.UserRoles.AnyAsync(r => r.UserId == assignee && r.RoleId == roleId) &&
-                await db.Users.AnyAsync(u => u.Id == assignee && u.Active && u.EmailConfirmed));
-            report.AssigneeId = assignee;
+            if (string.IsNullOrWhiteSpace(input.Assignee)) report.AssigneeId = null;
+            else
+            {
+                if (!Guid.TryParse(input.Assignee, out var assignee)) throw new RuleException("invalid_assignee");
+                var roleId = await db.Roles.Where(r => r.Name == "maintenance").Select(r => r.Id).FirstOrDefaultAsync();
+                Access.Require(await db.Scopes.AnyAsync(s => s.UserId == assignee && s.DepartmentId == report.DepartmentId) &&
+                    await db.UserRoles.AnyAsync(r => r.UserId == assignee && r.RoleId == roleId) &&
+                    await db.Users.AnyAsync(u => u.Id == assignee && u.Active && u.EmailConfirmed));
+                report.AssigneeId = assignee;
+            }
         }
         if (input.Status == "repair" && report.AssigneeId is null) throw new RuleException("assignee_required");
         report.Status = input.Status;
@@ -234,7 +240,7 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
             report.Risk = Rules.Required(input.Decision.Risk, 50);
         }
         if (report.Status == "resolved") report.ResolvedAt = DateTimeOffset.UtcNow;
-        History(actor, report, input.Note);
+        History(actor, report, note);
         events.Audit(actor, "MaintenanceUpdated", id);
         events.Notify([report.ReporterId], report.Status, "maintenance", id);
         await db.SaveChangesAsync();

@@ -171,7 +171,7 @@ export function Notifications() {
                         label={t("تحديد كمقروء", "Mark as read")}
                         onSubmit={async () => {
                           await accountService.markRead(account, n.id);
-                          setRevision(revision + 1);
+                          setRevision(value => value + 1);
                         }}
                       >
                         <span className="sr-only">{t(n.ar, n.en)}</span>

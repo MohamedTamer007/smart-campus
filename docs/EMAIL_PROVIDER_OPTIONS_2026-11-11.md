@@ -22,8 +22,8 @@ Official references:
    - `Email__BrevoKey=<PRIVATE BREVO v3 API KEY>`
    - `Email__BrevoSenderVerified=true` **only after verifying the sender**
    - `Email__LocalSink=false`
-3. Keep `Release__Mode=controlled` and the existing limited allowed university test-account list. Do not widen the list automatically.
-4. Trigger a verification or reset in a **controlled account**; inspect the Brevo transaction log by provider `messageId` and check Delivered/bounce events and actual university inbox. Don't store or paste activation links in tickets/chat.
+3. For the required university-wide account eligibility, set `Release__Mode=university`; every exact `@o6u.edu.eg` address can register and must verify before sign-in. Use `controlled` with an allowlist only for a deliberately restricted test deployment. Do not use a shared test sender for university-wide mail because its recipient restriction does not support delivery to all campus accounts.
+4. Trigger a verification or reset to an authorized university mailbox; inspect the Brevo transaction log by provider `messageId` and check Delivered/bounce events and the actual inbox. Don't store or paste activation links in tickets/chat.
 5. Confirm reset token/session behavior, throttle, repeated requests and appropriate failures before switching live provider. If sending from SnapDeploy fails, inspect network errors rather than assuming keys are wrong.
 
 Brevo API adapter uses `https://api.brevo.com/v3/smtp/email`, `api-key` in headers, `textContent` in the body, a fixed service endpoint and bounded response parsing. It accepts a **valid UUID** derived from the durable outbox job ID as Brevo's idempotency key, preserving the identifier for retries. Provider TTL is limited; it does not prove indefinite exactly-once delivery. Errors are mapped to sanitized codes.

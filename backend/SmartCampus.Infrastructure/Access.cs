@@ -63,6 +63,7 @@ public sealed class Events(CampusDb db)
         if (found.CustodianId.HasValue) return [found.CustodianId.Value];
         var roleId = await db.Roles.Where(r => r.Name == "department").Select(r => r.Id).SingleAsync();
         return await db.Scopes.Where(s => s.DepartmentId == found.CustodianDepartmentId &&
+                db.Users.Any(user => user.Id == s.UserId && user.Active && user.EmailConfirmed) &&
                 db.UserRoles.Any(r => r.UserId == s.UserId && r.RoleId == roleId))
             .Select(s => s.UserId).Distinct().ToArrayAsync();
     }

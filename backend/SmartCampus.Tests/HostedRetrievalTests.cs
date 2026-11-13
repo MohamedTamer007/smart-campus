@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using SmartCampus.Infrastructure;
 using Xunit;
 
@@ -27,17 +28,17 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
         {
             Calls++;
-            Assert.Equal("https://openrouter.ai/api/v1/embeddings", request.RequestUri!.ToString());
+            Assert.Equal(RemoteEmbeddings.Endpoint, request.RequestUri!.ToString());
             using var input = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellation));
             var root = input.RootElement;
-            Assert.Equal(RemoteEmbeddings.OpenRouterModel, root.GetProperty("model").GetString());
-            var description = root.GetProperty("input").GetString();
+            Assert.Equal(768, root.GetProperty("outputDimensionality").GetInt32());
+            Assert.Equal("synthetic-gemini-key", request.Headers.GetValues("x-goog-api-key").Single());
+            var description = root.GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
             Assert.NotNull(description); // no image can leave this test process
             float[] vector = new float[RemoteEmbeddings.Dimension];
             vector[description.Contains("Blue", StringComparison.Ordinal) ? 0 :
                 description.Contains("Red", StringComparison.Ordinal) ? 1 : 2] = 1;
-            var response = new { model = RemoteEmbeddings.OpenRouterModel,
-                data = new[] { new { index = 0, embedding = vector } } };
+            var response = new { embedding = new { values = vector } };
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(response) };
         }
     }
@@ -46,7 +47,7 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
     {
         public Task Reserve(string provider, CancellationToken cancellation)
         {
-            Assert.Equal("openrouter", provider);
+            Assert.Equal("gemini", provider);
             return Task.CompletedTask;
         }
     }
@@ -72,13 +73,18 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
             ["Search:Provider"] = "hosted",
             ["Search:ExternalProcessingApproved"] = "true", // synthetic test only
-            ["Search:ExternalImagesApproved"] = "false",
-            ["Search:MinimumScore"] = "0.9",
+            ["Search:GeminiExternalProcessingApproved"] = "true",
+            ["Search:ExternalImagesApproved"] = "true", // generic approval cannot substitute for the independent Google image approval
+            ["Search:GeminiExternalImagesApproved"] = "false",
+            ["Search:GeminiProviderDataCollection"] = "allow", // synthetic fixture only
+            ["Search:TextMinimumScore"] = "0.9",
+            ["Search:MultimodalMinimumScore"] = "0.9",
             ["Search:CalibrationApproval"] = "TEST ONLY — not a real score approval",
-            ["Search:CalibrationRevision"] = "nemotron35-8b-openrouter-1024-v1",
-            ["AI:OpenRouterKey"] = "synthetic-not-real-key",
-            ["AI:OpenRouterDailyRequestLimit"] = "50",
-            ["AI:OpenRouterRequestsPerMinute"] = "20"
+            ["Search:CalibrationRevision"] = "gemini-embedding-2-google-768-v1",
+            ["AI:GeminiKey"] = "synthetic-gemini-key",
+            ["AI:GeminiFreeTierOnly"] = "true",
+            ["AI:GeminiDailyRequestLimit"] = "50",
+            ["AI:GeminiRequestsPerMinute"] = "10"
         }).Build();
 
         using var boundary = new SyntheticBoundary();
@@ -87,6 +93,32 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
             scope.ServiceProvider.GetRequiredService<PrivateMedia>(), remote);
         await retrieval.Index(blue);
         await retrieval.Index(red);
+        // A worker restart/requeue must reuse the persisted model revision.
+        await retrieval.Index(blue);
+        Assert.Equal(2, boundary.Calls);
+        await db.Database.OpenConnectionAsync();
+        var connection = (NpgsqlConnection)db.Database.GetDbConnection();
+        await using (var schemaCommand = connection.CreateCommand())
+        {
+            schemaCommand.CommandText = "SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='vector'";
+            var extensionSchema = (string?)await schemaCommand.ExecuteScalarAsync();
+            Assert.False(string.IsNullOrWhiteSpace(extensionSchema));
+            var quotedSchema = new NpgsqlCommandBuilder().QuoteIdentifier(extensionSchema!);
+            await using var corrupt = connection.CreateCommand();
+            corrupt.CommandText = $"UPDATE smart_campus.\"Embeddings\" SET \"Dimension\"=512, \"Model\"='stale-model', \"Kind\"='image', \"Vector\"=CAST(@vector AS {quotedSchema}.vector) WHERE \"SourceId\"=@source AND \"Revision\"=@revision";
+            corrupt.Parameters.AddWithValue("vector", "[" + string.Join(',', Enumerable.Range(0, 512).Select(i => i == 0 ? "1" : "0")) + "]");
+            corrupt.Parameters.AddWithValue("source", blue);
+            corrupt.Parameters.AddWithValue("revision", RemoteEmbeddings.Revision(config));
+            Assert.Equal(1, await corrupt.ExecuteNonQueryAsync());
+        }
+        await retrieval.Index(blue);
+        Assert.Equal(2, boundary.Calls); // mismatch is repaired from the bounded embedding cache, without another provider request
+        Assert.Equal(RemoteEmbeddings.Dimension, await db.Database.SqlQuery<int>(
+            $"SELECT \"Dimension\" AS \"Value\" FROM smart_campus.\"Embeddings\" WHERE \"SourceId\"={blue} AND \"Revision\"={RemoteEmbeddings.Revision(config)}").SingleAsync());
+        Assert.Equal(RemoteEmbeddings.Model, await db.Database.SqlQuery<string>(
+            $"SELECT \"Model\" AS \"Value\" FROM smart_campus.\"Embeddings\" WHERE \"SourceId\"={blue} AND \"Revision\"={RemoteEmbeddings.Revision(config)}").SingleAsync());
+        Assert.Equal("description", await db.Database.SqlQuery<string>(
+            $"SELECT \"Kind\" AS \"Value\" FROM smart_campus.\"Embeddings\" WHERE \"SourceId\"={blue} AND \"Revision\"={RemoteEmbeddings.Revision(config)}").SingleAsync());
         await db.Jobs.Where(j => j.Kind == "index" && (j.EntityId == blue || j.EntityId == red))
             .ExecuteUpdateAsync(update => update.SetProperty(j => j.State, "completed"));
 
@@ -95,8 +127,18 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         Assert.Equal(RemoteEmbeddings.Revision(config), response.GetProperty("rankingVersion").GetString());
         Assert.Empty(JsonSerializer.SerializeToElement(await retrieval.Search("Green unrelated object", null))
             .GetProperty("itemIds").EnumerateArray());
-        Assert.Equal(4, boundary.Calls); // two indexed descriptions and two text queries; no images
+        Assert.Equal(4, boundary.Calls); // two passages and two distinct text queries; no image request
         Assert.True(await db.SearchGrants.AnyAsync(g => g.ItemId == blue && g.UserId == campus.Other));
         Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == red && g.UserId == campus.Other));
+
+        await retrieval.Search("Blue distinctive bottle", null);
+        Assert.Equal(1, await db.SearchGrants.CountAsync(g => g.ItemId == blue && g.UserId == campus.Other));
+        var grant = await db.SearchGrants.SingleAsync(g => g.ItemId == blue && g.UserId == campus.Other);
+        grant.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+        await retrieval.Search("Blue distinctive bottle", null);
+        Assert.Equal(1, await db.SearchGrants.CountAsync(g => g.ItemId == blue && g.UserId == campus.Other));
+        Assert.True(grant.ExpiresAt > DateTimeOffset.UtcNow);
+        Assert.Equal(4, boundary.Calls); // cached query embeddings reuse the provider result; grants are still refreshed in place
     }
 }

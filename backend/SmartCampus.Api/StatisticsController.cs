@@ -11,6 +11,7 @@ public sealed record RecurringFault(string Type, string BuildingAr, string Build
 public sealed record WeeklyReportCount(DateOnly WeekOf, int Count);
 public sealed record StatisticsResponse(int TotalReports, Dictionary<string, int> ByStatus, int AvailableItems,
     int PendingClaims, Dictionary<string, int> Locations, Dictionary<string, int> FaultTypes,
+    Dictionary<string, int> Priorities, Dictionary<string, int> Risks,
     StatisticsLocation[] Buildings, StatisticsLocation[] UnplacedBuildings, RecurringFault[] Recurrence,
     int OpenReports, double ResolutionRate, double? AverageResolutionHours, double? OldestOpenDays,
     WeeklyReportCount[] WeeklyTrend);
@@ -51,8 +52,15 @@ public sealed class StatisticsController(CampusDb db, Access access) : Controlle
         var locations = await reports.Join(db.Locations.AsNoTracking(), r => r.FacultyId, l => l.Id, (r, l) => l.Ar)
             .GroupBy(name => name).Select(g => new { name = g.Key, count = g.Count() })
             .ToDictionaryAsync(x => x.name, x => x.count);
-        var faultTypes = await reports.Where(r => r.FaultType != null).GroupBy(r => r.FaultType!)
+        // DSS distributions describe only operational decisions entered by staff. The
+        // separate Assessments table contains AI suggestions and must never be counted.
+        var decisions = reports.Where(r => !r.CancelledAt.HasValue);
+        var faultTypes = await decisions.Where(r => r.FaultType != null).GroupBy(r => r.FaultType!)
             .Select(g => new { type = g.Key, count = g.Count() }).ToDictionaryAsync(g => g.type, g => g.count);
+        var priorities = await decisions.Where(r => r.Priority != null).GroupBy(r => r.Priority!)
+            .Select(g => new { value = g.Key, count = g.Count() }).ToDictionaryAsync(g => g.value, g => g.count);
+        var risks = await decisions.Where(r => r.Risk != null).GroupBy(r => r.Risk!)
+            .Select(g => new { value = g.Key, count = g.Count() }).ToDictionaryAsync(g => g.value, g => g.count);
         var buildingGroups = await reports.Join(db.Locations.AsNoTracking(), r => r.BuildingId, l => l.Id, (r, l) => new { Report = r, Building = l })
             .GroupBy(x => new { x.Building.Id, x.Building.Ar, x.Building.En, x.Building.MapX, x.Building.MapY, x.Building.PositionVersion })
             .Select(g => new { g.Key.Id, g.Key.Ar, g.Key.En, g.Key.MapX, g.Key.MapY, g.Key.PositionVersion, Count = g.Count() }).ToArrayAsync();
@@ -96,7 +104,7 @@ public sealed class StatisticsController(CampusDb db, Access access) : Controlle
         var unplaced = map.Where(x => !x.X.HasValue || !x.Y.HasValue).ToArray();
 
         return new StatisticsResponse(totalReports, byStatus, await items.CountAsync(f => f.State == "available"), pendingClaims,
-            locations, faultTypes, mapped, unplaced, recurrence, openReports,
+            locations, faultTypes, priorities, risks, mapped, unplaced, recurrence, openReports,
             nonCancelled == 0 ? 0 : (double)byStatus["resolved"] / nonCancelled,
             resolutionHours.Length == 0 ? null : resolutionHours.Average(),
             oldestOpen is null ? null : (now - oldestOpen.Value).TotalDays, trend.ToArray());

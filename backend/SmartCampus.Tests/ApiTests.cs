@@ -15,378 +15,6 @@ namespace SmartCampus.Tests;
 
 public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
-    private sealed class SyntheticAiHttp : HttpMessageHandler, IHttpClientFactory
-    {
-        public int Calls { get; private set; }
-        public HttpClient CreateClient(string _) => new(this, disposeHandler: false);
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
-        {
-            Calls++;
-            Assert.Equal("https://integrate.api.nvidia.com/v1/chat/completions", request.RequestUri!.ToString());
-            using var payload = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellation));
-            Assert.Equal("openai/gpt-oss-20b", payload.RootElement.GetProperty("model").GetString());
-            var textOnly = payload.RootElement.GetProperty("messages")[1].GetProperty("content").GetString();
-            Assert.Contains("TEST ONLY", textOnly);
-            if (payload.RootElement.TryGetProperty("reasoning_effort", out var effort))
-            {
-                Assert.Equal("low", effort.GetString());
-                Assert.False(payload.RootElement.TryGetProperty("response_format", out _));
-                Assert.Contains(payload.RootElement.GetProperty("max_tokens").GetInt32(), new[] { 1024, 2048 });
-                Assert.False(payload.RootElement.GetProperty("stream").GetBoolean());
-            }
-            const string body = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
-        }
-    }
-
-    private sealed class SyntheticOpenRouterHttp : HttpMessageHandler, IHttpClientFactory
-    {
-        public int Calls { get; private set; }
-        public List<string> Bodies { get; } = [];
-        public HttpClient CreateClient(string name)
-        {
-            Assert.Contains(name, new[] { "inference", "retrieval" });
-            return new HttpClient(this, disposeHandler: false);
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellation)
-        {
-            Calls++;
-            Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
-            Assert.Equal("synthetic-openrouter-test-key", request.Headers.Authorization?.Parameter);
-            var body = await request.Content!.ReadAsStringAsync(cancellation);
-            Bodies.Add(body);
-            using var payload = JsonDocument.Parse(body);
-            if (request.RequestUri!.AbsolutePath.EndsWith("/chat/completions", StringComparison.Ordinal))
-            {
-                Assert.Equal("https://openrouter.ai/api/v1/chat/completions", request.RequestUri.ToString());
-                Assert.Equal("nvidia/nemotron-3.5-super-vl:free", payload.RootElement.GetProperty("model").GetString());
-                Assert.False(payload.RootElement.GetProperty("provider").GetProperty("allow_fallbacks").GetBoolean());
-                Assert.Equal(0, payload.RootElement.GetProperty("provider").GetProperty("max_price").GetProperty("prompt").GetInt32());
-                Assert.Equal(0, payload.RootElement.GetProperty("provider").GetProperty("max_price").GetProperty("completion").GetInt32());
-                Assert.Equal("json_object", payload.RootElement.GetProperty("response_format").GetProperty("type").GetString());
-                var content = payload.RootElement.GetProperty("messages")[1].GetProperty("content");
-                const string classification = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"low\",\"risk\":\"low\",\"explanation\":\"Synthetic only\"}"}}]}""";
-                if (content.ValueKind == JsonValueKind.String)
-                {
-                    Assert.Contains("TEST ONLY", content.GetString());
-                    return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(classification) };
-                }
-                Assert.Equal(JsonValueKind.Array, content.ValueKind);
-                Assert.Contains("TEST ONLY", content[0].GetProperty("text").GetString());
-                Assert.StartsWith("data:image/jpeg;base64,", content[1].GetProperty("image_url").GetProperty("url").GetString());
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(classification) };
-            }
-
-            Assert.Equal("https://openrouter.ai/api/v1/embeddings", request.RequestUri.ToString());
-            Assert.Equal(RemoteEmbeddings.OpenRouterModel, payload.RootElement.GetProperty("model").GetString());
-            Assert.Equal("allow", payload.RootElement.GetProperty("provider").GetProperty("data_collection").GetString());
-            var inputType = payload.RootElement.GetProperty("input_type").GetString();
-            if (inputType == "query")
-                Assert.Contains("TEST ONLY", payload.RootElement.GetProperty("input").GetString());
-            else
-            {
-                Assert.Equal("passage", inputType);
-                Assert.StartsWith("data:image/jpeg;base64,", payload.RootElement.GetProperty("input")[0]
-                    .GetProperty("content")[0].GetProperty("image_url").GetProperty("url").GetString());
-            }
-            var vector = new float[RemoteEmbeddings.Dimension];
-            vector[0] = 1;
-            var embedding = new { model = RemoteEmbeddings.OpenRouterModel,
-                data = new[] { new { index = 0, embedding = vector } } };
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(embedding) };
-        }
-    }
-
-    [DatabaseFact]
-    public async Task Student_smoke_is_invisible_and_unavailable_without_separate_opt_in()
-    {
-        using var student = await campus.Login(campus.Student);
-        var status = await student.GetFromJsonAsync<JsonElement>("/api/v1/ai/smoke");
-        Assert.False(status.GetProperty("enabled").GetBoolean());
-        var response = await student.PostAsJsonAsync("/api/v1/ai/smoke", new { attemptedPrivatePayload = "must never be processed" });
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-    }
-
-    [DatabaseFact]
-    public async Task Student_in_controlled_test_release_can_smoke_once_with_only_fixed_fictional_text()
-    {
-        using var boundary = new SyntheticAiHttp();
-        using var host = campus.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["Release:Mode"] = "controlled",
-                ["Release:AllowedEmails:0"] = campus.Email(campus.Student),
-                ["AI:Provider"] = "auto",
-                ["AI:SyntheticSmokeTestsEnabled"] = "true",
-                ["AI:SyntheticUserSmokeTestsEnabled"] = "true",
-                ["AI:AllowNonSensitiveInference"] = "true",
-                ["AI:AllowNonSensitiveImages"] = "false",
-                ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
-                ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
-                ["AI:NvidiaDailyRequestLimit"] = "5",
-                ["AI:NvidiaRequestsPerMinute"] = "5",
-                ["AI:FaultTypes:0"] = "plumbing",
-                ["AI:Priorities:0"] = "low",
-                ["AI:Risks:0"] = "low"
-            }));
-            builder.ConfigureServices(services => {
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(boundary);
-            });
-        });
-        using var student = host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        await CampusFixture.Csrf(student);
-        var login = await student.PostAsJsonAsync("/api/v1/auth/login",
-            new { email = campus.Email(campus.Student), password = campus.Password });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        await CampusFixture.Csrf(student);
-
-        var status = await student.GetFromJsonAsync<JsonElement>("/api/v1/ai/smoke");
-        Assert.True(status.GetProperty("enabled").GetBoolean());
-
-        var first = await CampusFixture.Response(await student.PostAsJsonAsync("/api/v1/ai/smoke", new { attemptedUserPrompt = "must not reach provider" }));
-        Assert.Equal("validated", first.GetProperty("status").GetString());
-        Assert.Equal("nvidia", first.GetProperty("provider").GetString());
-        Assert.Equal("openai/gpt-oss-20b", first.GetProperty("model").GetString());
-        Assert.Equal(3, first.EnumerateObject().Count());
-        Assert.Equal(1, boundary.Calls);
-
-        var repeat = await student.PostAsJsonAsync("/api/v1/ai/smoke", new { });
-        Assert.Equal(HttpStatusCode.TooManyRequests, repeat.StatusCode);
-        Assert.Equal(1, boundary.Calls);
-    }
-
-    [DatabaseFact]
-    public async Task Student_smoke_requires_valid_login_and_csrf()
-    {
-        using var guest = campus.CreateClient();
-        Assert.Equal(HttpStatusCode.Unauthorized, (await guest.GetAsync("/api/v1/ai/smoke")).StatusCode);
-        using var student = await campus.Login(campus.Student);
-        student.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
-        Assert.Equal(HttpStatusCode.BadRequest, (await student.PostAsJsonAsync("/api/v1/ai/smoke", new { })).StatusCode);
-    }
-
-    // These integration tests share one isolated fixture DB and one UTC-day cap.
-    // Never delete or change a live database: only the _test fixture reaches here.
-    private async Task ResetAdminDiagnosticCounter()
-    {
-        using var scope = campus.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
-        await db.InferenceUsage.Where(u => u.Provider == "admin-synthetic-smoke" || u.Provider == "nvidia").ExecuteDeleteAsync();
-    }
-
-    private async Task ResetOpenRouterDiagnosticCounter()
-    {
-        using var scope = campus.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
-        await db.InferenceUsage.Where(u => u.Provider == "admin-openrouter-smoke" || u.Provider == "openrouter").ExecuteDeleteAsync();
-    }
-
-    [DatabaseFact]
-    public async Task Admin_openrouter_diagnostic_validates_text_and_image_classification_and_embeddings_with_fixed_synthetic_inputs()
-    {
-        await ResetOpenRouterDiagnosticCounter();
-        using var boundary = new SyntheticOpenRouterHttp();
-        using var host = campus.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["Search:Provider"] = "hosted",
-                ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
-                ["AI:OpenRouterKey"] = "synthetic-openrouter-test-key",
-                ["AI:OpenRouterDailyRequestLimit"] = "50",
-                ["AI:OpenRouterRequestsPerMinute"] = "20"
-            }));
-            builder.ConfigureServices(services => {
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(boundary);
-            });
-        });
-
-        using var admin = host.CreateClient();
-        await CampusFixture.Csrf(admin);
-        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/v1/auth/login",
-            new { email = campus.Email(campus.Admin), password = campus.Password })).StatusCode);
-        await CampusFixture.Csrf(admin);
-
-        var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke",
-            new { attemptedPrivatePayload = "PRIVATE USER CONTENT MUST NEVER BE SENT" });
-        var result = await CampusFixture.Response(response);
-        Assert.Equal("validated", result.GetProperty("status").GetString());
-        Assert.Equal("openrouter", result.GetProperty("provider").GetString());
-        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", result.GetProperty("textModel").GetString());
-        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", result.GetProperty("visionModel").GetString());
-        Assert.Equal("nemotron35-8b-openrouter-1024-v1", result.GetProperty("revision").GetString());
-        Assert.Equal(RemoteEmbeddings.Dimension, result.GetProperty("dimension").GetInt32());
-        Assert.Equal("plumbing", result.GetProperty("textType").GetString());
-        Assert.Equal("low", result.GetProperty("textPriority").GetString());
-        Assert.Equal("low", result.GetProperty("textRisk").GetString());
-        Assert.Equal("plumbing", result.GetProperty("imageType").GetString());
-        Assert.True(result.GetProperty("textClassificationValidated").GetBoolean());
-        Assert.True(result.GetProperty("imageAnalysisValidated").GetBoolean());
-        Assert.True(result.GetProperty("textEmbeddingValidated").GetBoolean());
-        Assert.True(result.GetProperty("imageEmbeddingValidated").GetBoolean());
-        Assert.Equal(4, boundary.Calls);
-        Assert.All(boundary.Bodies, body => Assert.DoesNotContain("PRIVATE USER CONTENT", body));
-        Assert.DoesNotContain("synthetic-openrouter-test-key", result.GetRawText());
-        Assert.DoesNotContain("\"vector\"", result.GetRawText());
-        Assert.DoesNotContain("PRIVATE USER CONTENT", result.GetRawText());
-
-        var second = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { });
-        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-        Assert.Equal(8, boundary.Calls);
-    }
-
-    [DatabaseFact]
-    public async Task Admin_openrouter_diagnostic_fails_before_provider_calls_when_four_request_budget_is_unavailable()
-    {
-        using var boundary = new SyntheticOpenRouterHttp();
-        foreach (var limits in new[] { (Daily: "3", PerMinute: "20"), (Daily: "50", PerMinute: "3") })
-        {
-            using var host = campus.WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                    ["Search:Provider"] = "hosted",
-                    ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
-                    ["AI:OpenRouterKey"] = "synthetic-openrouter-test-key",
-                    ["AI:OpenRouterDailyRequestLimit"] = limits.Daily,
-                    ["AI:OpenRouterRequestsPerMinute"] = limits.PerMinute
-                }));
-                builder.ConfigureServices(services => {
-                    services.RemoveAll<IHttpClientFactory>();
-                    services.AddSingleton<IHttpClientFactory>(boundary);
-                });
-            });
-
-            using var admin = host.CreateClient();
-            await CampusFixture.Csrf(admin);
-            Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/v1/auth/login",
-                new { email = campus.Email(campus.Admin), password = campus.Password })).StatusCode);
-            await CampusFixture.Csrf(admin);
-            var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { });
-
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            Assert.Contains("ai_not_configured", await response.Content.ReadAsStringAsync());
-            Assert.Equal(0, boundary.Calls);
-        }
-    }
-
-    [DatabaseFact]
-    public async Task Synthetic_smoke_test_requires_explicit_admin_diagnostic_enablement()
-    {
-        using var host = campus.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(
-            (_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["AI:AdminSyntheticDiagnosticEnabled"] = "false"
-            })));
-        using var admin = host.CreateClient();
-        await CampusFixture.Csrf(admin);
-        var login = await admin.PostAsJsonAsync("/api/v1/auth/login", new {
-            email = campus.Email(campus.Admin), password = campus.Password
-        });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        await CampusFixture.Csrf(admin);
-        var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { });
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        Assert.Contains("ai_smoke_disabled", await response.Content.ReadAsStringAsync());
-    }
-
-    [DatabaseFact]
-    public async Task Synthetic_smoke_uses_only_fixed_text_and_respects_configured_daily_budget()
-    {
-        await ResetAdminDiagnosticCounter();
-        using var boundary = new SyntheticAiHttp();
-        using var host = campus.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["AI:Provider"] = "auto",
-                ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
-                ["AI:AllowNonSensitiveInference"] = "false",
-                ["AI:AllowNonSensitiveImages"] = "false",
-                ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
-                ["AI:OpenRouterKey"] = "synthetic-test-only-not-real",
-                ["AI:NvidiaDailyRequestLimit"] = "5",
-                ["AI:NvidiaRequestsPerMinute"] = "1000",
-                // Deliberately omit actual maintenance taxonomy: synthetic diagnostic must still work.
-            }));
-            builder.ConfigureServices(services => {
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(boundary);
-            });
-        });
-        using var admin = host.CreateClient();
-        await CampusFixture.Csrf(admin);
-        var login = await admin.PostAsJsonAsync("/api/v1/auth/login", new { email = campus.Email(campus.Admin), password = campus.Password });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        await CampusFixture.Csrf(admin);
-
-        var response = await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { });
-        var result = await CampusFixture.Response(response);
-        Assert.Equal("validated", result.GetProperty("status").GetString());
-        Assert.Equal("nvidia", result.GetProperty("provider").GetString());
-        Assert.Equal("openai/gpt-oss-20b", result.GetProperty("model").GetString());
-        Assert.Equal(3, result.EnumerateObject().Count());
-        Assert.Equal(1, boundary.Calls);
-        // Keep the mocked HTTP handler dedicated to the synthetic NVIDIA call.
-        // The operations endpoint also probes a retrieval worker via IHttpClientFactory.
-        using var scope = host.Services.CreateScope();
-        var currentConfig = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        Assert.True(currentConfig.GetValue<bool>("AI:AdminSyntheticDiagnosticEnabled"));
-        Assert.False(currentConfig.GetValue<bool>("AI:AllowNonSensitiveInference"));
-        for (var i = 0; i < 4; i++)
-            Assert.Equal(HttpStatusCode.OK,
-                (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests,
-            (await admin.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
-        Assert.Equal(5, boundary.Calls);
-    }
-
-    [DatabaseFact]
-    public async Task Admin_real_AI_demo_classifies_only_fixed_fictional_data()
-    {
-        await ResetAdminDiagnosticCounter();
-        using var boundary = new SyntheticAiHttp();
-        using var host = campus.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["AI:AdminSyntheticDiagnosticEnabled"] = "true",
-                ["AI:AllowNonSensitiveInference"] = "false",
-                ["AI:NvidiaKey"] = "synthetic-test-only-not-real",
-                ["AI:NvidiaDailyRequestLimit"] = "1000",
-                ["AI:NvidiaRequestsPerMinute"] = "1000"
-            }));
-            builder.ConfigureServices(services => {
-                services.RemoveAll<IHttpClientFactory>();
-                services.AddSingleton<IHttpClientFactory>(boundary);
-            });
-        });
-        using var admin = host.CreateClient();
-        await CampusFixture.Csrf(admin);
-        var login = await admin.PostAsJsonAsync("/api/v1/auth/login",
-            new { email = campus.Email(campus.Admin), password = campus.Password });
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        await CampusFixture.Csrf(admin);
-        var result = await CampusFixture.Response(await admin.PostAsJsonAsync(
-            "/api/v1/admin/operations/ai-demo",
-            new { attemptedPersonalData = "should never reach NVIDIA" }));
-        Assert.Equal("validated", result.GetProperty("status").GetString());
-        Assert.Equal("nvidia", result.GetProperty("provider").GetString());
-        Assert.Equal("plumbing", result.GetProperty("type").GetString());
-        Assert.Equal("low", result.GetProperty("priority").GetString());
-        Assert.Equal("low", result.GetProperty("risk").GetString());
-        Assert.Equal(1, boundary.Calls);
-        Assert.DoesNotContain("should never reach NVIDIA", result.GetRawText());
-    }
-
-    [DatabaseFact]
-    public async Task Non_admin_cannot_trigger_smoke_inference()
-    {
-        using var staff = await campus.Login(campus.Staff);
-        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-smoke", new { })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/ai-demo", new { })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await staff.PostAsJsonAsync("/api/v1/admin/operations/openrouter-smoke", new { })).StatusCode);
-    }
-
     [DatabaseFact]
     public async Task Operational_diagnostics_reject_guests_users_and_scoped_staff()
     {
@@ -416,13 +44,12 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.True(ai.GetProperty("taxonomyConfigured").GetBoolean());
         Assert.False(ai.GetProperty("textTransferEnabled").GetBoolean());
         Assert.False(ai.GetProperty("imageTransferEnabled").GetBoolean());
-        Assert.False(ai.GetProperty("nvidiaKeyPresent").GetBoolean());
-        Assert.False(ai.GetProperty("openRouterKeyPresent").GetBoolean());
-        Assert.False(ai.GetProperty("nvidiaBudgetConfigured").GetBoolean());
-        Assert.True(ai.GetProperty("openRouterBudgetConfigured").GetBoolean());
+        Assert.False(ai.GetProperty("providerDataCollectionApproved").GetBoolean());
         Assert.True(response.GetProperty("workingSetBytes").GetInt64() > 0);
         Assert.Contains(response.GetProperty("worker").GetString(), new[] { "available", "unavailable" });
-        Assert.Equal(0, response.GetProperty("quotas").EnumerateArray().Single(q => q.GetProperty("provider").GetString() == "nvidia").GetProperty("dailyLimit").GetInt32());
+        var quota = Assert.Single(response.GetProperty("quotas").EnumerateArray());
+        Assert.Equal("openrouter", quota.GetProperty("provider").GetString());
+        Assert.Equal(50, quota.GetProperty("dailyLimit").GetInt32());
         Assert.DoesNotContain(campus.Email(campus.Student), response.GetRawText());
         Assert.DoesNotContain("ProtectedPayload", response.GetRawText());
         Assert.DoesNotContain("Host=", response.GetRawText());
@@ -465,6 +92,8 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal(HttpStatusCode.Forbidden, (await other.GetAsync($"/api/v1/maintenance/{id}")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await outsider.GetAsync($"/api/v1/maintenance/{id}")).StatusCode);
         var own = await student.GetFromJsonAsync<JsonElement>($"/api/v1/maintenance/{id}");
+        var reference = own.GetProperty("reference").GetString();
+        Assert.Matches("^SC-[A-F0-9]{12}$", reference!);
         Assert.Equal(JsonValueKind.Null, own.GetProperty("assessment").ValueKind);
         var review = await CampusFixture.Response(await staff.PostAsJsonAsync($"/api/v1/maintenance/{id}/updates", new { version = 1, status = "review", assignee = campus.Staff, note = "Reviewed" }));
         Assert.False(review.GetProperty("canEdit").GetBoolean());
@@ -474,7 +103,14 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         var resolved = await CampusFixture.Response(await staff.PostAsJsonAsync($"/api/v1/maintenance/{id}/updates", new { version = 3, status = "resolved", note = "Fixed" }));
         Assert.Equal("resolved", resolved.GetProperty("status").GetString());
         Assert.Equal(4, resolved.GetProperty("history").GetArrayLength());
+        Assert.Equal(reference, resolved.GetProperty("reference").GetString());
         Assert.Equal(HttpStatusCode.Conflict, (await staff.PostAsJsonAsync($"/api/v1/maintenance/{id}/updates", new { version = 4, status = "review", note = "Reopen" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await student.PostAsJsonAsync("/api/v1/auth/logout", new { })).StatusCode);
+        using var restored = await campus.Login(campus.Student);
+        var persisted = await restored.GetFromJsonAsync<JsonElement>($"/api/v1/maintenance/{id}");
+        Assert.Equal(reference, persisted.GetProperty("reference").GetString());
+        Assert.Equal("resolved", persisted.GetProperty("status").GetString());
+        Assert.Equal(4, persisted.GetProperty("history").GetArrayLength());
     }
 
     [DatabaseFact]
@@ -494,6 +130,27 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
+    public async Task Staff_can_unassign_a_report_but_cannot_start_repair_without_an_assignee()
+    {
+        using var student = await campus.Login(campus.Student);
+        using var staff = await campus.Login(campus.Staff);
+        var reportId = await campus.Report(student);
+
+        var assigned = await CampusFixture.Response(await staff.PostAsJsonAsync($"/api/v1/maintenance/{reportId}/updates",
+            new { version = 1, status = "review", assignee = campus.StaffTwo.ToString(), note = "Review", decision = (object?)null }));
+        Assert.Equal(campus.StaffTwo, assigned.GetProperty("assignee").GetGuid());
+
+        var unassigned = await CampusFixture.Response(await staff.PostAsJsonAsync($"/api/v1/maintenance/{reportId}/updates",
+            new { version = 2, status = "review", assignee = "", note = "Reassign later", decision = (object?)null }));
+        Assert.Equal(JsonValueKind.Null, unassigned.GetProperty("assignee").ValueKind);
+        Assert.Equal(HttpStatusCode.BadRequest, (await staff.PostAsJsonAsync($"/api/v1/maintenance/{reportId}/updates",
+            new { version = 3, status = "repair", assignee = "", note = "Start repair", decision = (object?)null })).StatusCode);
+        var remainsUnassigned = await CampusFixture.Response(await staff.GetAsync($"/api/v1/maintenance/{reportId}"));
+        Assert.Equal(JsonValueKind.Null, remainsUnassigned.GetProperty("assignee").ValueKind);
+        Assert.Equal("review", remainsUnassigned.GetProperty("status").GetString());
+    }
+
+    [DatabaseFact]
     public async Task Private_inventory_media_and_uncalibrated_search_do_not_leak()
     {
         using var uploader = await campus.Login(campus.Student);
@@ -508,6 +165,14 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         var unavailable = await other.PostAsync("/api/v1/found/search", search);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, unavailable.StatusCode);
         Assert.Contains("search_calibration_required", await unavailable.Content.ReadAsStringAsync());
+        using var imageOnly = new MultipartFormDataContent { { new ByteArrayContent(await uploader.GetByteArrayAsync(own.GetProperty("mediaUrl").GetString())), "photo", "synthetic.png" } };
+        var imageUnavailable = await other.PostAsync("/api/v1/found/search", imageOnly);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, imageUnavailable.StatusCode);
+        Assert.Contains("search_calibration_required", await imageUnavailable.Content.ReadAsStringAsync());
+        using var blank = new MultipartFormDataContent { { new StringContent(" "), "description" } };
+        var missingInput = await other.PostAsync("/api/v1/found/search", blank);
+        Assert.Equal(HttpStatusCode.BadRequest, missingInput.StatusCode);
+        Assert.Contains("search_input_required", await missingInput.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.Forbidden, (await other.PostAsJsonAsync($"/api/v1/found/{id}/claims", new { message = "Guessed ID" })).StatusCode);
     }
 
@@ -527,6 +192,43 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal(JsonValueKind.Null, received.GetProperty("custodianId").ValueKind);
         Assert.Equal("test-maintenance", received.GetProperty("custodianDepartment").GetString());
         Assert.Equal(HttpStatusCode.Forbidden, (await uploader.PostAsJsonAsync($"/api/v1/found/{id}/handovers/cancel", new { version = 4 })).StatusCode);
+    }
+
+    [DatabaseFact]
+    public async Task Custody_notifications_exclude_inactive_or_unverified_department_accounts()
+    {
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        var inactive = await db.Users.SingleAsync(user => user.Id == campus.StaffTwo);
+        inactive.Active = false;
+        await db.SaveChangesAsync();
+        try
+        {
+            using var uploader = await campus.Login(campus.Student);
+            using var staff = await campus.Login(campus.Staff);
+            using var requester = await campus.Login(campus.Other);
+            var itemId = await campus.Item(uploader);
+            await CampusFixture.Response(await uploader.PostAsJsonAsync($"/api/v1/found/{itemId}/handovers",
+                new { version = 1, department = campus.Department, office = "TEST ONLY desk" }));
+
+            var handoverRecipients = await db.Notifications.Where(notification => notification.EntityType == "found" &&
+                    notification.EntityId == itemId && notification.Kind == "handover_requested")
+                .Select(notification => notification.RecipientId).ToArrayAsync();
+            Assert.Contains(campus.Staff, handoverRecipients);
+            Assert.DoesNotContain(campus.StaffTwo, handoverRecipients);
+
+            await CampusFixture.Response(await staff.PostAsJsonAsync($"/api/v1/found/{itemId}/handovers/confirm", new { version = 2 }));
+            var claimId = await campus.Claim(requester, itemId, campus.Other);
+            var claimRecipients = await db.Notifications.Where(notification => notification.EntityType == "claim" && notification.EntityId == claimId)
+                .Select(notification => notification.RecipientId).ToArrayAsync();
+            Assert.Contains(campus.Staff, claimRecipients);
+            Assert.DoesNotContain(campus.StaffTwo, claimRecipients);
+        }
+        finally
+        {
+            inactive.Active = true;
+            await db.SaveChangesAsync();
+        }
     }
 
     [DatabaseFact]

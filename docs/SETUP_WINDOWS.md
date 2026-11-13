@@ -66,7 +66,7 @@ Configure the identical `Search:WorkerKey` on the API. Keep the worker on loopba
 
 Set provider keys securely and review the broad maintenance labels shipped in `smartcampus.defaults.json`; environment values can override them if the university supplies an exact taxonomy. Enable non-sensitive inference only for inputs permitted by provider terms. Staff approval is required per report, image forwarding has a separate flag, and results remain suggestions. NVIDIA is text-only. No automatic provider fallback or paid routing exists.
 
-General search remains unavailable until `Search:CalibrationApproval` and `Search:MinimumScore` record a reviewed calibration. Jobs must also complete indexing. Failed workers/indexes are not treated as empty results.
+Hosted general search remains unavailable until `Search:CalibrationApproval`, the current `Search:CalibrationRevision`, and separately reviewed `Search:TextMinimumScore` and `Search:MultimodalMinimumScore` values are present. The two modalities use separate score thresholds. Local worker mode continues to use `Search:MinimumScore`. Jobs must also complete indexing. Failed workers/indexes are not treated as empty results.
 
 ## Checks
 

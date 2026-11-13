@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
-using SkiaSharp;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -15,13 +14,13 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
     public static bool Configured(IConfiguration configuration)
     {
         var selection = configuration["AI:Provider"] ?? "openrouter";
-        if (selection is not ("openrouter" or "nvidia" or "auto") ||
-            !configuration.GetValue<bool>("AI:AllowNonSensitiveInference"))
+        if (selection != "openrouter" ||
+            !configuration.GetValue<bool>("AI:AllowNonSensitiveInference") ||
+            !string.Equals(configuration["AI:ProviderDataCollection"], "allow", StringComparison.OrdinalIgnoreCase))
             return false;
-        var required = selection == "auto" ? new[] { "openrouter", "nvidia" } : new[] { selection };
-        return required.All(provider => !string.IsNullOrWhiteSpace(configuration[provider == "nvidia" ? "AI:NvidiaKey" : "AI:OpenRouterKey"]) &&
-            configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaDailyRequestLimit" : "OpenRouterDailyRequestLimit"), provider == "nvidia" ? 0 : 50) > 0 &&
-            configuration.GetValue("AI:" + (provider == "nvidia" ? "NvidiaRequestsPerMinute" : "OpenRouterRequestsPerMinute"), provider == "nvidia" ? 5 : 20) > 0) &&
+        return !string.IsNullOrWhiteSpace(configuration["AI:OpenRouterKey"]) &&
+            configuration.GetValue("AI:OpenRouterDailyRequestLimit", 50) > 0 &&
+            configuration.GetValue("AI:OpenRouterRequestsPerMinute", 20) > 0 &&
             new[] { "FaultTypes", "Priorities", "Risks" }.All(key =>
                 (configuration.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0);
     }
@@ -36,30 +35,29 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
     public static string SelectedProvider(IConfiguration config, bool hasApprovedImage)
     {
         var selection = config["AI:Provider"] ?? "openrouter";
-        return selection == "auto" ? hasApprovedImage ? "openrouter" : "nvidia" : selection;
+        return selection == "openrouter" ? "openrouter" : "unconfigured";
     }
     public static string SelectedModel(IConfiguration config, bool hasApprovedImage) =>
-        SelectedProvider(config, hasApprovedImage) == "nvidia"
-            ? "openai/gpt-oss-20b" : "nvidia/nemotron-3.5-super-vl:free";
+        SelectedProvider(config, hasApprovedImage) == "openrouter"
+            ? "nvidia/nemotron-3.5-super-vl:free"
+            : throw new RuleException("ai_not_configured", 503);
 
     public async Task<AiSuggestion> Assess(string description, CancellationToken cancellation, byte[]? image = null)
     {
-        if (!config.GetValue<bool>("AI:AllowNonSensitiveInference")) throw new RuleException("ai_not_configured", 503);
+        if (!Configured(config)) throw new RuleException("ai_not_configured", 503);
         if (image is not null && !CanReviewImage(config)) throw new RuleException("ai_images_not_permitted", 503);
         var taxonomy = config.GetSection("AI:FaultTypes").Get<string[]>() ?? [];
         var priorities = config.GetSection("AI:Priorities").Get<string[]>() ?? [];
         var risks = config.GetSection("AI:Risks").Get<string[]>() ?? [];
         if (taxonomy.Length == 0 || priorities.Length == 0 || risks.Length == 0) throw new RuleException("taxonomy_unavailable", 503);
-        var provider = SelectedProvider(config, image is not null);
-        if (provider is not ("openrouter" or "nvidia")) throw new RuleException("ai_not_configured", 503);
-        var nvidia = provider == "nvidia";
-        var key = config[nvidia ? "AI:NvidiaKey" : "AI:OpenRouterKey"];
+        const string provider = "openrouter";
+        const string model = "nvidia/nemotron-3.5-super-vl:free";
+        var key = config["AI:OpenRouterKey"];
         if (string.IsNullOrEmpty(key)) throw new RuleException("ai_not_configured", 503);
         using var client = clients.CreateClient("inference");
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", key);
-        var model = SelectedModel(config, image is not null);
         object userContent = Rules.Required(description);
-        if (!nvidia && image is not null)
+        if (image is not null)
             userContent = new object[] { new { type = "text", text = description },
                 new { type = "image_url", image_url = new { url = SafeImageDataUrl(image) } } };
         var payload = new Dictionary<string, object> {
@@ -69,27 +67,17 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
                 new { role = "user", content = userContent }
             },
         };
-        if (nvidia)
-        {
-            // GPT-OSS on NVIDIA NIM uses reasoning_effort (not JSON mode).
-            // The strict parser below still validates every taxonomy label.
-            payload["temperature"] = 0.6;
-            payload["max_tokens"] = 2048;
-            payload["reasoning_effort"] = "low";
-            payload["stream"] = false;
-        }
-        else
-        {
-            payload["response_format"] = new { type = "json_object" };
-            payload["reasoning"] = new { enabled = false };
-            payload["provider"] = new { allow_fallbacks = false, max_price = new { prompt = 0, completion = 0 } };
-        }
+        payload["response_format"] = new { type = "json_object" };
+        payload["reasoning"] = new { enabled = false };
+        payload["provider"] = new {
+            allow_fallbacks = false,
+            data_collection = config["AI:ProviderDataCollection"] ?? "deny",
+            max_price = new { prompt = 0, completion = 0 }
+        };
         await budget.Reserve(provider, cancellation);
         try
         {
-            using var response = await client.PostAsJsonAsync(
-                nvidia ? "https://integrate.api.nvidia.com/v1/chat/completions"
-                       : "https://openrouter.ai/api/v1/chat/completions", payload, cancellation);
+            using var response = await client.PostAsJsonAsync("https://openrouter.ai/api/v1/chat/completions", payload, cancellation);
             if (response.StatusCode == HttpStatusCode.Unauthorized)
                 throw new RuleException("ai_key_rejected", 503);
             if (response.StatusCode == HttpStatusCode.Forbidden)
@@ -105,7 +93,7 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
             if (!response.IsSuccessStatusCode) throw new RuleException("ai_unavailable", 503);
             var json = await response.Content.ReadAsStringAsync(cancellation);
             if (json.Length > 100000) throw new RuleException("invalid_ai_response", 503);
-            if (!nvidia) ValidateOpenRouterModel(json, model);
+            ValidateOpenRouterModel(json, model);
             return Parse(json, taxonomy, priorities, risks);
         }
         catch (HttpRequestException)
@@ -123,22 +111,13 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
         }
     }
 
-    // Never forward unprocessed files/EXIF. Normalize JPEG/PNG/WebP to actual
-    // JPEG pixels and enforce image limits before reserving any provider quota.
+    // Never forward unprocessed files/EXIF. Use the same JPEG/PNG/WebP
+    // normalization and byte/pixel caps as upload and embedding paths before
+    // reserving provider quota.
     private static string SafeImageDataUrl(byte[] image)
     {
-        if (image.Length is <= 0 or > 5 * 1024 * 1024) throw new RuleException("invalid_upload");
-        using var data = SKData.CreateCopy(image);
-        using var codec = SKCodec.Create(data);
-        if (codec is null || codec.EncodedFormat is not (SKEncodedImageFormat.Jpeg or SKEncodedImageFormat.Png or SKEncodedImageFormat.Webp) ||
-            codec.Info.Width <= 0 || codec.Info.Height <= 0 ||
-            (long)codec.Info.Width * codec.Info.Height > 16_000_000)
-            throw new RuleException("invalid_upload");
-        using var bitmap = SKBitmap.Decode(data) ?? throw new RuleException("invalid_upload");
-        using var converted = SKImage.FromBitmap(bitmap);
-        using var encoded = converted.Encode(SKEncodedImageFormat.Jpeg, 80);
-        if (encoded is null || encoded.Size > 2_000_000) throw new RuleException("invalid_upload");
-        return "data:image/jpeg;base64," + Convert.ToBase64String(encoded.ToArray());
+        var normalized = CampusImageNormalizer.ToJpeg(image);
+        return "data:image/jpeg;base64," + Convert.ToBase64String(normalized);
     }
 
     private static void ValidateOpenRouterModel(string envelope, string requestedModel)

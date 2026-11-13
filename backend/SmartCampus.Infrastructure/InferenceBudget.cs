@@ -15,9 +15,10 @@ public sealed class InferenceBudget(CampusDb db, IConfiguration config, TimeProv
 {
     public async Task Reserve(string provider, CancellationToken cancellation)
     {
-        if (provider is not ("openrouter" or "nvidia")) throw new RuleException("ai_not_configured", 503);
-        var daily = config.GetValue("AI:" + (provider == "nvidia" ? "NvidiaDailyRequestLimit" : "OpenRouterDailyRequestLimit"), provider == "nvidia" ? 0 : 50);
-        var perMinute = config.GetValue("AI:" + (provider == "nvidia" ? "NvidiaRequestsPerMinute" : "OpenRouterRequestsPerMinute"), provider == "nvidia" ? 5 : 20);
+        if (provider is not ("openrouter" or "gemini")) throw new RuleException("ai_not_configured", 503);
+        var prefix = provider == "gemini" ? "Gemini" : "OpenRouter";
+        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", 50);
+        var perMinute = config.GetValue($"AI:{prefix}RequestsPerMinute", provider == "gemini" ? 10 : 20);
         if (daily <= 0 || perMinute <= 0) throw new RuleException("ai_quota_not_configured", 503);
         var now = clock.GetUtcNow().ToUniversalTime();
         var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);

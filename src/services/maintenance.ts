@@ -3,6 +3,30 @@ import { api, form, json, pages, withPhoto } from "./http";
 
 export type MaintenanceStatus =
   "submitted" | "review" | "repair" | "resolved" | "rejected" | "cancelled";
+type Translate = (arabic: string, english: string) => string;
+
+const maintenanceValueLabels: Record<string, [string, string]> = {
+  plumbing: ["سباكة", "Plumbing"],
+  water: ["تسرب مياه", "Water leak"],
+  electrical: ["كهرباء", "Electrical"],
+  hvac: ["تكييف وتهوية", "HVAC"],
+  lighting: ["إضاءة", "Lighting"],
+  furniture: ["أثاث", "Furniture"],
+  doors: ["أبواب", "Doors"],
+  safety: ["سلامة", "Safety"],
+  other: ["أخرى", "Other"],
+  low: ["منخفضة", "Low"],
+  medium: ["متوسطة", "Medium"],
+  high: ["مرتفعة", "High"],
+};
+
+export function maintenanceValueLabel(value: string | null | undefined, t: Translate): string {
+  const normalized = value?.trim();
+  if (!normalized) return "—";
+  const label = maintenanceValueLabels[normalized.toLowerCase()];
+  return label ? t(...label) : normalized;
+}
+
 export interface MaintenanceInput {
   description: string;
   faculty: string;
@@ -92,8 +116,6 @@ interface MaintenanceService {
     },
   ): Promise<MaintenanceReport>;
   reviewAi(id: string, version: number, confirmedNonSensitive: boolean, includeImage: boolean): Promise<MaintenanceReport>;
-  syntheticAiStatus(): Promise<{ enabled: boolean }>;
-  syntheticAiTest(): Promise<{ status: "validated"; provider: string; model: string }>;
 }
 export const maintenance: MaintenanceService = {
   locations: () => api<LocationOption[]>("/directory/locations"),
@@ -104,8 +126,6 @@ export const maintenance: MaintenanceService = {
   cancel: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/cancel`, json("POST", { version: request.version }))),
   update: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/updates`, json("POST", request))),
   reviewAi: async (id, version, confirmedNonSensitive, includeImage) => normalize(await api<MaintenanceReport>(`/maintenance/${id}/ai-review`, json("POST", { version, confirmedNonSensitive, includeImage }))),
-  syntheticAiStatus: () => api<{ enabled: boolean }>("/ai/smoke"),
-  syntheticAiTest: () => api<{ status: "validated"; provider: string; model: string }>("/ai/smoke", json("POST", {})),
 };
 async function normalize(report: MaintenanceReport) {
   return withPhoto({ ...report, status: report.cancelledAt ? "cancelled" as const : report.status, assignee: report.assignee ?? "" });

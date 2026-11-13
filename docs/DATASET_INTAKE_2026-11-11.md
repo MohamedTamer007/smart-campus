@@ -36,7 +36,7 @@ The verifier checks complete per-file size and SHA-256 integrity; it exits nonze
 1. Obtain a **separate** worker host with sufficient memory/disk, acceptable terms and persistent model assets. The production ASP.NET container cannot host the CPU SigLIP worker on its existing 512 MB quota. Current `RetrievalService` requires a loopback worker; a separate host also needs an explicitly reviewed authenticated transport architecture and code changes (not an unrestricted public embedding endpoint).
 2. Keep the existing pretrained pinned SigLIP model first. Do not claim fine-tuning was completed. Benchmark on group-separated test items, with one photo for the gallery and a distinct photo for the query; check the same item cannot occur in train and test or as a byte-identical query/gallery image.
 3. Build an *independently checked* Arabic/English campus-like evaluation set spanning watches, wallets, keys, phones, bags, glasses etc. Include same-category distractors, mismatched descriptions, and known-absent items. Respect source licenses and privacy.
-4. Measure recall@1, recall@5, precision and error rates of absent-item decisions. Freeze the test split and a human-reviewed acceptance/calibration policy **before** configuring `Search__MinimumScore` and `Search__CalibrationApproval`.
+4. Measure recall@1, recall@5, precision and error rates of absent-item decisions separately for text-only and text-plus-image queries. Freeze the test split and a human-reviewed acceptance/calibration policy **before** configuring `Search__TextMinimumScore`, `Search__MultimodalMinimumScore` and `Search__CalibrationApproval`.
 5. Index **only** genuine, permitted campus found-item records with the exact production model revision. Assert `Jobs` index completion and non-empty `Embeddings`; test access controls, media download, recovery grants and distinct actors end-to-end.
 6. Keep reporting and physical staff decisions independent of the model. Don't treat similarity or a listing/product identity as proof of personal ownership.
 
@@ -57,4 +57,4 @@ To re-check the actual saved ZIP, without extracting image archives:
 python scripts/review_saved_retrieval.py /path/to/Smart_Campus_AI_Experiments_2026-10-30.zip
 ```
 
-Never copy these exploratory cutoffs directly into the live app's `Search__MinimumScore`. A different domain, gallery size and independent positive/absent samples require a new frozen calibration set.
+Never copy these exploratory cutoffs directly into either live modality threshold. A different domain, gallery size and independent positive/absent samples require a new frozen calibration set.

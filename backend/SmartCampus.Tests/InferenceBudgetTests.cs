@@ -57,13 +57,13 @@ public sealed class InferenceBudgetTests(CampusFixture campus) : IClassFixture<C
     }
 
     [DatabaseFact]
-    public async Task Unconfigured_nvidia_budget_blocks_inference_without_counter_rows()
+    public async Task Non_openrouter_provider_is_rejected_without_counter_rows()
     {
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
         var budget = new InferenceBudget(db, Config(50, 20), TimeProvider.System);
         var failure = await Assert.ThrowsAsync<RuleException>(() => budget.Reserve("nvidia", CancellationToken.None));
-        Assert.Equal("ai_quota_not_configured", failure.Code);
+        Assert.Equal("ai_not_configured", failure.Code);
         Assert.False(await db.InferenceUsage.AnyAsync(u => u.Provider == "nvidia"));
     }
 
@@ -81,5 +81,24 @@ public sealed class InferenceBudgetTests(CampusFixture campus) : IClassFixture<C
         await budget.Reserve("openrouter", CancellationToken.None);
         Assert.Equal(2, await db.InferenceUsage.CountAsync(u => u.Provider == "openrouter" && u.Window == "day" &&
             u.WindowStart >= DateTimeOffset.Parse("2026-11-13T00:00:00Z") && u.WindowStart <= clock.Instant && u.Count == 1));
+    }
+
+    [DatabaseFact]
+    public async Task Gemini_daily_and_minute_budgets_are_independent_from_OpenRouter()
+    {
+        var clock = new TestClock(DateTimeOffset.Parse("2040-11-13T12:34:00Z"));
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+            ["AI:GeminiDailyRequestLimit"] = "2", ["AI:GeminiRequestsPerMinute"] = "1"
+        }).Build();
+        var budget = new InferenceBudget(db, config, clock);
+        await budget.Reserve("gemini", CancellationToken.None);
+        var failure = await Assert.ThrowsAsync<RuleException>(() => budget.Reserve("gemini", CancellationToken.None));
+        Assert.Equal("ai_quota_exhausted", failure.Code);
+        Assert.Equal(clock.Instant.AddMinutes(1), failure.RetryAt);
+        var day = new DateTimeOffset(clock.Instant.UtcDateTime.Date, TimeSpan.Zero);
+        Assert.Equal(1, await db.InferenceUsage.Where(row => row.Provider == "gemini" && row.Window == "day" && row.WindowStart == day).Select(row => row.Count).SingleAsync());
+        Assert.False(await db.InferenceUsage.AnyAsync(row => row.Provider == "openrouter" && row.Window == "day" && row.WindowStart == day));
     }
 }

@@ -1,121 +1,104 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-using SkiaSharp;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
 
 /// <summary>
-/// Server-only hosted multimodal embeddings. No remote URL or model can be
-/// supplied by an API caller. Never log image bytes, API tokens, or responses.
-/// Nemotron 3.5 Embed 8B requires "passage" for indexing and "query"
-/// for text queries. This free service is NOT authorized for student images by
-/// default. Real external image processing requires separate privacy approval.
+/// Server-only Gemini Embedding 2 integration for Lost &amp; Found retrieval.
+/// The model, endpoint, and 768-dimensional output are pinned here. This class
+/// never logs request bodies, image data, provider responses, or API keys.
 /// </summary>
-public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget)
+public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget, IMemoryCache? cache = null)
 {
-    public const string Model = "nvidia/nemotron-3.5-embed-8b";
-    public const int Dimension = 1024;
-    private const string OpenRouterEndpoint = "https://openrouter.ai/api/v1/embeddings";
-    public const string OpenRouterModel = Model + ":free";
+    public const string Model = "gemini-embedding-2";
+    public const int Dimension = 768;
+    public const string Endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent";
+    private const int MaximumImageBytes = 1_900_000;
+    private const int MaximumResponseBytes = 131_073;
+    private readonly IMemoryCache embeddingCache = cache ?? new MemoryCache(new MemoryCacheOptions { SizeLimit = 2_000 });
 
-    public static string Revision(IConfiguration configuration) => "nemotron35-8b-openrouter-1024-v1";
+    public static string Revision(IConfiguration _) => "gemini-embedding-2-google-768-v1";
 
-    public static bool Configured(IConfiguration configuration)
-    {
-        if (configuration["Search:Provider"] != "hosted" || !configuration.GetValue<bool>("Search:ExternalProcessingApproved"))
-            return false;
-        return !string.IsNullOrWhiteSpace(configuration["AI:OpenRouterKey"]) &&
-            configuration.GetValue("AI:OpenRouterDailyRequestLimit", 50) > 0 &&
-            configuration.GetValue("AI:OpenRouterRequestsPerMinute", 20) > 0;
-    }
+    public static bool Configured(IConfiguration configuration) =>
+        configuration["Search:Provider"] == "hosted" &&
+        configuration.GetValue<bool>("Search:ExternalProcessingApproved") &&
+        configuration.GetValue<bool>("Search:GeminiExternalProcessingApproved") &&
+        string.Equals(configuration["Search:GeminiProviderDataCollection"], "allow", StringComparison.OrdinalIgnoreCase) &&
+        configuration.GetValue<bool>("AI:GeminiFreeTierOnly") &&
+        !string.IsNullOrWhiteSpace(configuration["AI:GeminiKey"]) &&
+        configuration.GetValue("AI:GeminiDailyRequestLimit", 50) > 0 &&
+        configuration.GetValue("AI:GeminiRequestsPerMinute", 10) > 0;
 
     public Task<EmbeddingResponse> Passage(string description, CancellationToken cancellation = default) =>
-        Embed(Rules.Required(description, 4000), "text", "passage", cancellation);
+        EmbedText("title: none | text: " + Rules.Required(description, 4000), cancellation);
 
     public Task<EmbeddingResponse> Query(string description, CancellationToken cancellation = default) =>
-        Embed(Rules.Required(description, 4000), "text", "query", cancellation);
+        EmbedText("task: search result | query: " + Rules.Required(description, 4000), cancellation);
 
-    public Task<EmbeddingResponse> Image(byte[] image, CancellationToken cancellation = default)
+    public async Task<EmbeddingResponse> Image(byte[] image, CancellationToken cancellation = default)
     {
-        if (!config.GetValue<bool>("Search:ExternalImagesApproved"))
+        if (!config.GetValue<bool>("Search:ExternalImagesApproved") ||
+            !config.GetValue<bool>("Search:GeminiExternalImagesApproved"))
             throw new RuleException("search_external_images_not_approved", 503);
-        if (image.Length is <= 0 or > 5242880) throw new RuleException("invalid_upload");
-        using var data = SKData.CreateCopy(image);
-        using var codec = SKCodec.Create(data);
-        if (codec is null || codec.EncodedFormat is not (SKEncodedImageFormat.Jpeg or SKEncodedImageFormat.Png or SKEncodedImageFormat.Webp) ||
-            codec.Info.Width <= 0 || codec.Info.Height <= 0 || (long)codec.Info.Width * codec.Info.Height > 16_000_000)
-            throw new RuleException("invalid_upload");
-        using var bitmap = SKBitmap.Decode(data) ?? throw new RuleException("invalid_upload");
-        // Keep the codec-decoded pixels, dropping original file metadata.
-        // Reject oversized outgoing JPEGs instead of silently sending large files.
-        using var imageObject = SKImage.FromBitmap(bitmap);
-        using var encoded = imageObject.Encode(SKEncodedImageFormat.Jpeg, 80);
-        if (encoded is null || encoded.Size > 2_000_000) throw new RuleException("invalid_upload");
-        return Embed("data:image/jpeg;base64," + Convert.ToBase64String(encoded.ToArray()), "image", "passage", cancellation);
+        var normalized = CampusImageNormalizer.ToJpeg(image, MaximumImageBytes);
+        return await EmbedContent(
+            new object[] { new { inline_data = new { mime_type = "image/jpeg", data = Convert.ToBase64String(normalized) } } },
+            "image:" + Convert.ToHexString(SHA256.HashData(normalized)), cancellation);
     }
 
-    private async Task<EmbeddingResponse> Embed(string input, string modality, string inputType, CancellationToken cancellation)
+    private Task<EmbeddingResponse> EmbedText(string text, CancellationToken cancellation) =>
+        EmbedContent(new object[] { new { text } }, "text:" + text, cancellation);
+
+    private async Task<EmbeddingResponse> EmbedContent(object[] parts, string cacheMaterial, CancellationToken cancellation)
     {
         if (!Configured(config)) throw new RuleException("search_provider_not_configured", 503);
-        var key = config["AI:OpenRouterKey"]!;
-        // OpenRouter's multimodal embeddings API accepts content arrays for images.
-        // Do not send private Storage URLs: embed the resized pixels directly.
-        var suppliedInput = modality == "image"
-            ? (object)new object[] { new { content = new object[] {
-                new { type = "image_url", image_url = new { url = input } }
-            } } }
-            : input;
-        var payload = new Dictionary<string, object> {
-            ["model"] = OpenRouterModel,
-            ["input"] = suppliedInput,
-            ["input_type"] = inputType,
-            ["encoding_format"] = "float",
-            ["dimensions"] = Dimension
-        };
-        payload["provider"] = new {
-            allow_fallbacks = false,
-            data_collection = config["Search:ProviderDataCollection"] ?? "deny",
-            max_price = new { prompt = 0, completion = 0 }
-        };
+        var revision = Revision(config);
+        var cacheKey = "gemini-embedding-v1:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(revision + "\n" + cacheMaterial)));
+        if (embeddingCache.TryGetValue<EmbeddingResponse>(cacheKey, out var cached) && cached is not null)
+        {
+            Validate(cached, config);
+            return cached;
+        }
 
-        await budget.Reserve("openrouter", cancellation);
+        await budget.Reserve("gemini", cancellation);
         using var client = clients.CreateClient("retrieval");
-        using var request = new HttpRequestMessage(HttpMethod.Post, OpenRouterEndpoint);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
-        request.Content = JsonContent.Create(payload);
+        using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint);
+        request.Headers.Add("x-goog-api-key", config["AI:GeminiKey"]);
+        request.Content = JsonContent.Create(new {
+            content = new { parts },
+            outputDimensionality = Dimension
+        });
         try
         {
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation);
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
                 throw new RuleException("ai_rate_limited", 503);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                throw new RuleException("ai_key_rejected", 503);
+            if (response.StatusCode == HttpStatusCode.Forbidden)
+                throw new RuleException("ai_access_denied", 503);
             if (!response.IsSuccessStatusCode)
                 throw new RuleException("search_provider_unavailable", 503);
 
-            using var stream = await response.Content.ReadAsStreamAsync(cancellation);
-            var bytes = new byte[131073];
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellation);
+            var bytes = new byte[MaximumResponseBytes];
             var count = await stream.ReadAtLeastAsync(bytes.AsMemory(), bytes.Length, throwOnEndOfStream: false, cancellationToken: cancellation);
             if (count == bytes.Length) throw new RuleException("invalid_embedding", 503);
             using var json = JsonDocument.Parse(bytes.AsMemory(0, count));
-            var root = json.RootElement;
-            var actualModel = root.GetProperty("model").GetString();
-            // OpenRouter may normalize the response model to the canonical
-            // model slug and omit the :free routing suffix. The request itself
-            // remains pinned to :free with provider fallbacks disabled and a
-            // zero max price, so accept only that canonical alias or the exact
-            // requested variant; reject every other model ID.
-            if (actualModel is not (OpenRouterModel or Model))
-                throw new RuleException("invalid_embedding", 503);
-            var data = root.GetProperty("data");
-            if (data.ValueKind != JsonValueKind.Array || data.GetArrayLength() != 1 ||
-                data[0].GetProperty("index").GetInt32() != 0)
-                throw new RuleException("invalid_embedding", 503);
-            var vector = data[0].GetProperty("embedding").EnumerateArray().Select(number => number.GetSingle()).ToArray();
-            var result = new EmbeddingResponse(Model, Revision(config), vector.Length, vector);
+            var values = json.RootElement.GetProperty("embedding").GetProperty("values");
+            if (values.ValueKind != JsonValueKind.Array) throw new RuleException("invalid_embedding", 503);
+            var vector = values.EnumerateArray().Select(value => value.GetSingle()).ToArray();
+            var result = new EmbeddingResponse(Model, revision, vector.Length, vector);
             Validate(result, config);
+            embeddingCache.Set(cacheKey, result, new MemoryCacheEntryOptions {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15), Size = 1
+            });
             return result;
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException or IndexOutOfRangeException or FormatException)
@@ -136,8 +119,8 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
     {
         if (embedding.Model != Model || embedding.Revision != Revision(config) || embedding.Dimension != Dimension ||
             embedding.Vector is null || embedding.Vector.Length != Dimension ||
-            embedding.Vector.Any(v => !float.IsFinite(v)) ||
-            Math.Abs(embedding.Vector.Sum(v => (double)v * v) - 1d) > .01d)
+            embedding.Vector.Any(value => !float.IsFinite(value)) ||
+            Math.Abs(embedding.Vector.Sum(value => (double)value * value) - 1d) > .01d)
             throw new RuleException("invalid_embedding", 503);
     }
 }

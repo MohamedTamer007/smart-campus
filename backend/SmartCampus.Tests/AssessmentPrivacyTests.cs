@@ -29,6 +29,7 @@ public sealed class AssessmentPrivacyTests(CampusFixture campus) : IClassFixture
     private WebApplicationFactory<Program> Configured() => campus.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, config) =>
         config.AddInMemoryCollection(new Dictionary<string, string?> {
             ["AI:Provider"] = "openrouter", ["AI:AllowNonSensitiveInference"] = "true", ["AI:AllowNonSensitiveImages"] = "true",
+            ["AI:ProviderDataCollection"] = "allow", // synthetic test inputs only; production defaults to deny
             ["AI:OpenRouterKey"] = "synthetic-not-a-provider-key", ["AI:FaultTypes:0"] = "plumbing",
             ["AI:Priorities:0"] = "urgent", ["AI:Risks:0"] = "high"
         })));

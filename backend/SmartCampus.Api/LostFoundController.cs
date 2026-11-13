@@ -16,7 +16,7 @@ public sealed class FoundForm
     public IFormFile? Photo { get; set; }
 }
 public sealed record ClaimInput(string? Message);
-public sealed class SearchForm { public string Description { get; set; } = ""; public IFormFile? Photo { get; set; } }
+public sealed class SearchForm { public string? Description { get; set; } public IFormFile? Photo { get; set; } }
 
 [ApiController, Authorize, Route("api/v1/found")]
 public sealed class LostFoundController(LostFoundService service, RetrievalService retrieval) : ControllerBase

@@ -9,16 +9,24 @@
   "AI": {
     "AllowNonSensitiveInference": false,
     "AllowNonSensitiveImages": false,
-    "SyntheticSmokeTestsEnabled": false,
-    "SyntheticUserSmokeTestsEnabled": false,
-    "AdminSyntheticDiagnosticEnabled": true,
+    "GeminiFreeTierOnly": false,
+    "GeminiDailyRequestLimit": 50,
+    "GeminiRequestsPerMinute": 10,
+    "ProviderDataCollection": "deny",
     "FaultTypes": [ "plumbing", "water", "electrical", "hvac", "lighting", "furniture", "doors", "safety", "other" ],
     "Priorities": [ "low", "medium", "high" ],
     "Risks": [ "low", "medium", "high" ]
   },
   "Search": {
+    "ProviderDataCollection": "deny",
     "ExternalProcessingApproved": false,
     "ExternalImagesApproved": false,
+    "GeminiExternalProcessingApproved": false,
+    "GeminiExternalImagesApproved": false,
+    "GeminiProviderDataCollection": "deny",
+    "GeminiReindexApproved": false,
+    "GeminiReindexBatchSize": 25,
+    "GeminiReindexGeneration": 0,
     "CalibrationApproval": ""
   },
   "RateLimits": {

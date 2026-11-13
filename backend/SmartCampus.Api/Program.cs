@@ -51,6 +51,7 @@ builder.Services.ConfigureApplicationCookie(options => {
 builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero);
 HostingSecurity.ConfigureKeys(builder.Services, builder.Configuration, builder.Environment.IsDevelopment() || administrativeCommand);
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache(options => options.SizeLimit = 2_000);
 builder.Services.AddScoped<Access>();
 builder.Services.AddSingleton<ReleasePolicy>();
 builder.Services.AddScoped<Events>();
@@ -67,14 +68,14 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IInferenceBudget, InferenceBudget>();
 builder.Services.AddScoped<RemoteEmbeddings>();
 builder.Services.AddScoped<RetrievalService>();
-builder.Services.AddScoped<DemoPreparationService>();
 builder.Services.AddHttpClient("storage", c => c.Timeout = TimeSpan.FromSeconds(30));
-// Hosted NVIDIA inference may need a longer cold-start window; retain a finite timeout.
+// Hosted Nemotron inference may need a longer cold-start window; retain a finite timeout.
 builder.Services.AddHttpClient("inference", c => c.Timeout = TimeSpan.FromSeconds(90));
 builder.Services.AddHttpClient("worker", c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddHttpClient("retrieval", c => c.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddHttpClient("email", c => c.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddHostedService<JobWorker>();
+builder.Services.AddHostedService<GeminiEmbeddingReindexer>();
 builder.Services.AddControllers();
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context =>
     new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(new Microsoft.AspNetCore.Mvc.ValidationProblemDetails(context.ModelState) {
@@ -169,10 +170,24 @@ app.Use(async (context, next) => {
         await context.RequestServices.GetRequiredService<IAntiforgery>().ValidateRequestAsync(context);
     await next();
 });
+if (!app.Environment.IsDevelopment())
+{
+    // Historical evaluation tables remain intact, while test-run controls and
+    // stored evaluation endpoints are available only to local development.
+    app.Use(async (context, next) => {
+        if (context.Request.Path.StartsWithSegments("/api/v1/admin/ai-evaluations"))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        await next();
+    });
+}
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.MapControllers();
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
 app.MapGet("/health/ready", async (CampusDb db) => await db.Database.CanConnectAsync() ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503));
+app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapFallbackToFile("index.html");

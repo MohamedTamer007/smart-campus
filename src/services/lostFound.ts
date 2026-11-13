@@ -1,5 +1,5 @@
 import type { Account, Role } from "./contracts";
-import { ServiceError } from "./contracts";
+import { hasRole, ServiceError } from "./contracts";
 import { api, departmentId, form, json, pages, withPhoto } from "./http";
 
 export type Department = string;
@@ -17,7 +17,8 @@ export interface Handover {
   office: string;
   status: "pending" | "not-received" | "confirmed" | "cancelled";
 }
-export interface FoundItem extends FoundInput {
+export interface FoundItem extends Omit<FoundInput, "storage"> {
+  storage: string | null;
   id: string;
   uploaderId: string;
   custodianId: string | null;
@@ -66,7 +67,7 @@ export interface CollectionDetails {
 }
 export function currentCustodian(item: FoundItem, actor: Account) {
   return item.custodianDepartment
-    ? (actor.roles?.includes("department") ?? ["department", "secretariat"].includes(actor.role)) &&
+    ? (hasRole(actor, "department") || hasRole(actor, "secretariat")) &&
         (actor.departments?.some(scope => scope.code === item.custodianDepartment) ?? actor.department === item.custodianDepartment)
     : item.custodianId === actor.id;
 }
@@ -74,7 +75,7 @@ export function receiving(item: FoundItem, actor: Account) {
   return (
     !!item.handover &&
     ["pending", "not-received"].includes(item.handover.status) &&
-    (actor.roles?.includes("department") ?? ["department", "secretariat"].includes(actor.role)) &&
+    (hasRole(actor, "department") || hasRole(actor, "secretariat")) &&
     (actor.departments?.some(scope => scope.code === item.handover?.department) ?? actor.department === item.handover.department)
   );
 }
@@ -130,7 +131,7 @@ export const lostFound: LostFoundService = {
     return Promise.all(response.itemIds.map(id => lostFound.detail(actor, id)));
   },
   detail: async (_actor, id) => withPhoto(await api<FoundItem & { canClaim: boolean }>(`/found/${id}`)),
-  itemsFor: async () => Promise.all((await pages<FoundItem>("/found")).map(withPhoto)),
+  itemsFor: () => pages<FoundItem>("/found"),
   requestHandover: async (_actor, request) => withPhoto(await api<FoundItem>(`/found/${request.id}/handovers`, json("POST", {
     version: request.expectedVersion, department: await departmentId(request.department), office: request.office }))),
   cancelHandover: (_actor, id, version) => handover(id, version, "cancel"),

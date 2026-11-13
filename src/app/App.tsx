@@ -25,17 +25,17 @@ import {
 import { Settings, Notifications } from "../features/account/Account";
 import { Access } from "./access";
 import { AdminCampusDirectory } from "../features/admin/CampusDirectory";
-import { AiEvaluation } from "../features/admin/AiEvaluation";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
 import { AppProvider, useApp } from "./context";
+import { hasRole } from "../services/contracts";
 import { BrandMark, Icon } from "../components/Icon";
 import { Home } from "./Home";
 import { Feedback, Page } from "../components/ui";
 import { useState } from "react";
 function StaffQueues() {
   const { account, t } = useApp();
-  const maintenanceAccess = account.role === "admin" || account.role === "maintenance" || account.roles?.includes("maintenance");
-  const custodyAccess = account.role === "department" || account.roles?.includes("department");
+  const maintenanceAccess = hasRole(account, "admin") || hasRole(account, "maintenance");
+  const custodyAccess = hasRole(account, "department") || hasRole(account, "secretariat");
   const [view, setView] = useState(maintenanceAccess ? "maintenance" : "custody");
   return <><div className="actions">
     {maintenanceAccess && <button className="button" onClick={() => setView("maintenance")}>{t("الصيانة", "Maintenance")}</button>}
@@ -49,8 +49,11 @@ function Shell() {
     changeLanguage,
     account,
     sessionExpired,
+    sessionUnavailable,
   } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const workQueueAccess = (["maintenance", "department", "secretariat", "admin"] as const)
+    .some(role => hasRole(account, role));
   return (
     <>
       <a className="skip-link" href="#main">
@@ -69,10 +72,8 @@ function Shell() {
             {t("الرئيسية", "Home")}
           </NavLink>
           <NavLink to="/requests" onClick={() => setMobileMenuOpen(false)}>{t("طلباتي", "My requests")}</NavLink>
-          {["maintenance", "department", "secretariat", "admin"].includes(
-            account.role,
-          ) && <NavLink to="/staff" onClick={() => setMobileMenuOpen(false)}>{t("لوحة العمل", "Work queue")}</NavLink>}
-          {account.role === "admin" && (
+          {workQueueAccess && <NavLink to="/staff" onClick={() => setMobileMenuOpen(false)}>{t("لوحة العمل", "Work queue")}</NavLink>}
+          {hasRole(account, "admin") && (
             <NavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>{t("الإدارة", "Admin")}</NavLink>
           )}
         </nav>
@@ -98,6 +99,9 @@ function Shell() {
         </div>
       </header>
       <main id="main">
+        {sessionUnavailable && <div className="feedback error" role="status">
+          {t("تعذر الاتصال بالخدمة، لذلك لم نتمكن من التحقق من حالة تسجيل الدخول. أعد تحميل الصفحة بعد عودة الخدمة.", "The service is unavailable, so we could not check your sign-in status. Reload after the service is available.")}
+        </div>}
         {account.isDemo && <div className="demo-account-banner" role="status">
           {t("حساب عرض ببيانات خيالية — لا تُدخل معلومات حقيقية.", "Demo account with fictional data — do not enter real information.")}
         </div>}
@@ -158,14 +162,6 @@ function Shell() {
             element={
               <Access roles={["admin"]}>
                 <AdminOverview />
-              </Access>
-            }
-          />
-          <Route
-            path="/admin/ai-evaluation"
-            element={
-              <Access roles={["admin"]}>
-                <AiEvaluation />
               </Access>
             }
           />

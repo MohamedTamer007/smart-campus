@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "./context";
 import { Feedback, Page } from "../components/ui";
-import { verified, type Role } from "../services/contracts";
+import { hasRole, verified, type Role } from "../services/contracts";
 export function Access({
   children,
   roles,
@@ -37,7 +37,7 @@ export function Access({
         </div>
       </Page>
     );
-  if (roles && !roles.some(role => account.roles?.includes(role) || account.role === role))
+  if (roles && !roles.some(role => hasRole(account, role)))
     return (
       <Page title={t("غير مصرح", "Access denied")}>
         <Feedback kind="error">

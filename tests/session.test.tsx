@@ -5,13 +5,15 @@ import { Link, MemoryRouter } from "react-router-dom";
 import { AppProvider, useApp } from "../src/app/context";
 import { auth } from "../src/services/auth";
 import type { Account } from "../src/services/contracts";
+import { ServiceError } from "../src/services/contracts";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 const current: Account = { id: "current", name: "Current account", email: "", role: "user" };
 const previous: Account = { id: "previous", name: "Previous account", email: "", role: "user" };
 function Session() {
-  const { account, updateAccount, sessionExpired } = useApp();
-  return <><p>{account.name}</p><p>{sessionExpired ? "Expired session" : "Active session"}</p>
+  const { account, updateAccount, sessionExpired, sessionUnavailable } = useApp();
+  return <><p>{account.name}</p><p>{account.role}</p><p>{sessionExpired ? "Expired session" : "Active session"}</p>
+    {sessionUnavailable && <p>Session status unavailable</p>}
     <Link to="/next">Next screen</Link><button onClick={() => updateAccount(current)}>Complete sign-in</button></>;
 }
 function show() { render(<MemoryRouter><AppProvider><Session /></AppProvider></MemoryRouter>); }
@@ -43,4 +45,11 @@ it("late session restoration cannot revive an expired session", async () => {
   await act(async () => { complete(previous); });
   expect(screen.getByText("Expired session")).toBeTruthy();
   expect(screen.queryByText("Previous account")).toBeNull();
+});
+
+it("distinguishes a failed session check from a guest session", async () => {
+  vi.spyOn(auth, "me").mockRejectedValue(new ServiceError("internal"));
+  show();
+  expect(await screen.findByText("Session status unavailable")).toBeTruthy();
+  expect(screen.getByText("guest")).toBeTruthy();
 });

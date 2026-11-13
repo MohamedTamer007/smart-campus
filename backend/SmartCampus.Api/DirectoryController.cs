@@ -15,9 +15,21 @@ public sealed class DirectoryController(CampusDb db, Access access) : Controller
     {
         await access.Current();
         var locations = await db.Locations.AsNoTracking().ToArrayAsync();
-        return locations.Where(l => l.Kind == "faculty").Select(f => new { id = f.Id, f.Ar, f.En,
-            buildings = locations.Where(b => b.ParentId == f.Id && b.Kind == "building").Select(b => new { id = b.Id, b.Ar, b.En,
-                floors = locations.Where(fl => fl.ParentId == b.Id && fl.Kind == "floor").Select(fl => new { id = fl.Id, fl.Ar, fl.En }) }) });
+        return BuildLocationTree(locations);
+    }
+
+    public static IReadOnlyList<FacultyLocationEntry> BuildLocationTree(IReadOnlyCollection<CampusLocation> locations)
+    {
+        var childrenByParent = locations.Where(location => location.ParentId.HasValue)
+            .GroupBy(location => location.ParentId!.Value)
+            .ToDictionary(group => group.Key, group => group.ToArray());
+        CampusLocation[] Children(Guid parentId, string kind) => childrenByParent.TryGetValue(parentId, out var children)
+            ? children.Where(child => child.Kind == kind).ToArray()
+            : [];
+
+        return locations.Where(location => location.Kind == "faculty").Select(faculty => new FacultyLocationEntry(faculty.Id, faculty.Ar, faculty.En,
+            Children(faculty.Id, "building").Select(building => new BuildingLocationEntry(building.Id, building.Ar, building.En,
+                Children(building.Id, "floor").Select(floor => new FloorLocationEntry(floor.Id, floor.Ar, floor.En)).ToArray())).ToArray())).ToArray();
     }
 
     [HttpGet("departments")]
@@ -37,6 +49,10 @@ public sealed class DirectoryController(CampusDb db, Access access) : Controller
             .Select(u => new { u.Id, name = u.DisplayName }).ToArrayAsync();
     }
 }
+
+public sealed record FacultyLocationEntry(Guid Id, string Ar, string En, IReadOnlyList<BuildingLocationEntry> Buildings);
+public sealed record BuildingLocationEntry(Guid Id, string Ar, string En, IReadOnlyList<FloorLocationEntry> Floors);
+public sealed record FloorLocationEntry(Guid Id, string Ar, string En);
 
 [ApiController, Authorize, Route("api/v1/media")]
 public sealed class MediaController(CampusDb db, Access access, PrivateMedia media) : ControllerBase
@@ -63,8 +79,9 @@ public sealed class NotificationsController(CampusDb db, Access access) : Contro
     public async Task<object> List(int page = 1, int pageSize = 50)
     {
         var actor = await access.Current();
-        return new { items = await db.Notifications.Where(n => n.RecipientId == actor.Id).OrderByDescending(n => n.CreatedAt)
-            .Skip((Math.Max(1, page) - 1) * Math.Clamp(pageSize, 1, 100)).Take(Math.Clamp(pageSize, 1, 100))
+        var (offset, size) = Rules.PageWindow(page, pageSize);
+        return new { items = await db.Notifications.Where(n => n.RecipientId == actor.Id).OrderByDescending(n => n.CreatedAt).ThenBy(n => n.Id)
+            .Skip(offset).Take(size)
             .Select(n => new { n.Id, accountId = n.RecipientId, kind = n.Kind, n.EntityType, n.EntityId, read = n.ReadAt.HasValue,
                 to = n.EntityType == "maintenance" ? "/maintenance/" + n.EntityId : n.EntityType == "claim" ? "/claims/" + n.EntityId : "/found/" + n.EntityId }).ToArrayAsync() };
     }
@@ -87,42 +104,40 @@ public sealed record LocationPositionInput(double? X, double? Y, int Version);
 
 [ApiController, Authorize, Route("api/v1/admin")]
 public sealed class AdministrationController(CampusDb db, Access access, UserManager<CampusUser> users,
-    RoleManager<IdentityRole<Guid>> roles, Events events, IConfiguration config, DemoPreparationService demoPreparation) : ControllerBase
+    RoleManager<IdentityRole<Guid>> roles, Events events) : ControllerBase
 {
-    [HttpGet("demo/status")]
-    public async Task<DemoPreparationStatus> DemoStatus(CancellationToken cancellationToken)
-    {
-        var actor = await access.Current();
-        Access.Require(actor.Admin);
-        return new(config.GetValue<bool>("Demo:PreparationEnabled"),
-            await demoPreparation.IsPrepared(cancellationToken));
-    }
-
-    [HttpPost("demo/prepare")]
-    public async Task<object> PrepareDemo(CancellationToken cancellationToken)
-    {
-        var actor = await access.Current();
-        Access.Require(actor.Admin);
-        if (!config.GetValue<bool>("Demo:PreparationEnabled")) throw new RuleException("not_found", 404);
-        return await demoPreparation.Prepare(actor, cancellationToken);
-    }
-
     [HttpGet("accounts")]
     public async Task<object> Accounts(int page = 1, int pageSize = 50)
     {
         Access.Require((await access.Current()).Admin);
-        var accounts = await db.Users.Where(u => u.Active).OrderBy(u => u.Email).Skip((Math.Max(page, 1) - 1) * Math.Clamp(pageSize, 1, 100)).Take(Math.Clamp(pageSize, 1, 100)).ToArrayAsync();
-        var entries = new List<object>();
-        foreach (var user in accounts)
+        var (offset, size) = Rules.PageWindow(page, pageSize);
+        var accounts = await db.Users.AsNoTracking().Where(u => u.Active).OrderBy(u => u.Email)
+            .Skip(offset).Take(size).ToArrayAsync();
+        if (accounts.Length == 0) return new { items = Array.Empty<object>() };
+        var userIds = accounts.Select(user => user.Id).ToArray();
+        var roleRows = await (from membership in db.UserRoles
+            join role in db.Roles on membership.RoleId equals role.Id
+            where userIds.Contains(membership.UserId) && role.Name != null
+            select new { membership.UserId, Role = role.Name! }).ToArrayAsync();
+        var rolesByUser = roleRows.GroupBy(row => row.UserId)
+            .ToDictionary(group => group.Key, group => group.Select(row => row.Role).OrderBy(role => role, StringComparer.Ordinal).ToArray());
+        var scopeRows = await db.Scopes.Where(scope => userIds.Contains(scope.UserId))
+            .Join(db.Departments, scope => scope.DepartmentId, department => department.Id,
+                (scope, department) => new { scope.UserId, Department = new { department.Id, department.Code } })
+            .ToArrayAsync();
+        var scopesByUser = scopeRows.GroupBy(row => row.UserId)
+            .ToDictionary(group => group.Key, group => group.Select(row => row.Department).OrderBy(department => department.Code, StringComparer.Ordinal).ToArray());
+        var demoUsers = await db.UserClaims.AsNoTracking().Where(claim => userIds.Contains(claim.UserId) &&
+                claim.ClaimType == DemoPreparationService.DemoMarkerClaimType && claim.ClaimValue == "true")
+            .Select(claim => claim.UserId).Distinct().ToHashSetAsync();
+        var entries = accounts.Select(user =>
         {
-            var grants = (await users.GetRolesAsync(user)).ToArray();
-            var scopes = await db.Scopes.Where(s => s.UserId == user.Id).Join(db.Departments, s => s.DepartmentId, d => d.Id, (s, d) => new { d.Id, d.Code }).ToArrayAsync();
-            entries.Add(new { key = user.Id, version = user.ConcurrencyStamp, account = new { id = user.Id, name = user.DisplayName, user.Email,
+            var grants = rolesByUser.GetValueOrDefault(user.Id) ?? [];
+            var scopes = scopesByUser.GetValueOrDefault(user.Id) ?? [];
+            return (object)new { key = user.Id, version = user.ConcurrencyStamp, account = new { id = user.Id, name = user.DisplayName, user.Email,
                 role = !user.EmailConfirmed ? "unverified" : grants.Contains("admin") ? "admin" : grants.Contains("maintenance") ? "maintenance" : grants.Contains("department") ? "department" : "user",
-                roles = grants, departments = scopes, department = scopes.FirstOrDefault()?.Code,
-                isDemo = await db.UserClaims.AnyAsync(c => c.UserId == user.Id &&
-                    c.ClaimType == DemoPreparationService.DemoMarkerClaimType && c.ClaimValue == "true") } });
-        }
+                roles = grants, departments = scopes, department = scopes.FirstOrDefault()?.Code, isDemo = demoUsers.Contains(user.Id) } };
+        }).ToArray();
         return new { items = entries };
     }
 

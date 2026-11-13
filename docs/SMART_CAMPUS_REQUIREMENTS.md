@@ -116,6 +116,8 @@ The place-found field is required. Unlike the maintenance-location rule, the dis
 
 **SEARCH-01 - Agreed:** a verified user searches using a required distinguishing description. A previous image of the lost item is optional. Search is limited to records uploaded to this site, not Google or external inventories.
 
+**Approved user amendment — Gemini migration request:** support description-only, image-only, and description-plus-image queries. At least one input is required. The original description-required rule above is superseded for image-only queries; privacy, eligible inventory and independently calibrated matching remain mandatory. Implemented locally on 14 November 2026; this is not production activation or retrieval-quality evidence.
+
 **SEARCH-02 - Agreed:** matching considers the owner's description and optional image, the found-item image, and the description submitted by the finder. The backend owns retrieval, analysis and matching thresholds.
 
 **SEARCH-03 - Agreed:** there is no public inventory gallery. Before a search, do not expose all found-item thumbnails. After the backend returns a qualifying potential match, the user can see the matching item's photo, description, place/date found and custody details, then open a recovery request.
