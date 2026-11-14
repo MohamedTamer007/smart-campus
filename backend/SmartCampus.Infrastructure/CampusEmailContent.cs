@@ -10,7 +10,10 @@ public static class CampusEmailContent
 {
     public sealed record Message(string Html, string Text);
 
-    public static Message Create(string subject, string link)
+    /// <summary>The bilingual wording and logo address shared by the SMTP/Brevo/Resend HTML and the EmailJS template.</summary>
+    public sealed record Parts(string Title, string EnglishTitle, string Message, string English, string Button, string ButtonEnglish, string LogoUrl);
+
+    public static Parts Describe(string subject, string link)
     {
         if (!Uri.TryCreate(link, UriKind.Absolute, out var target) || target.Scheme is not ("https" or "http") || !string.IsNullOrEmpty(target.UserInfo))
             throw new ArgumentException("The email action link must be an absolute HTTP(S) URL without user info.", nameof(link));
@@ -25,8 +28,14 @@ public static class CampusEmailContent
             : "Welcome to Smart Campus! Verify your email to activate your account.";
         var button = reset ? "تغيير كلمة المرور" : "تأكيد البريد الإلكتروني";
         var buttonEnglish = reset ? "Reset password" : "Verify email";
+        return new Parts(title, englishTitle, message, english, button, buttonEnglish, target.GetLeftPart(UriPartial.Authority) + "/o6u-mark.png");
+    }
+
+    public static Message Create(string subject, string link)
+    {
+        var (title, englishTitle, message, english, button, buttonEnglish, logoUrl) = Describe(subject, link);
         var safeLink = WebUtility.HtmlEncode(link);
-        var safeLogoUrl = WebUtility.HtmlEncode(target.GetLeftPart(UriPartial.Authority) + "/o6u-mark.png");
+        var safeLogoUrl = WebUtility.HtmlEncode(logoUrl);
         const string template = """
 <!doctype html>
 <html lang="ar" dir="rtl">

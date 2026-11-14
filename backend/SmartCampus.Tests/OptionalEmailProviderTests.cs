@@ -52,6 +52,22 @@ public sealed class OptionalEmailProviderTests
         Assert.Equal("student@o6u.edu.eg", variables.GetProperty("to_email").GetString());
         Assert.Equal("Verify Smart Campus", variables.GetProperty("subject").GetString());
         Assert.Equal(link, variables.GetProperty("link").GetString());
+        Assert.Equal("Verify your email", variables.GetProperty("title_en").GetString());
+        Assert.Equal("Verify email", variables.GetProperty("button_en").GetString());
+        Assert.Equal("https://campus.example.test/o6u-mark.png", variables.GetProperty("logo_url").GetString());
+    }
+
+    [Fact]
+    public async Task EmailJS_password_reset_sends_reset_wording()
+    {
+        using var boundary = new Boundary(HttpStatusCode.OK, "OK");
+        await new EmailJsEmailTransport(boundary, EmailJsConfig())
+            .Send("student@o6u.edu.eg", "Smart Campus password reset", "https://campus.example.test/reset?token=synthetic");
+        using var data = JsonDocument.Parse(Assert.Single(boundary.Calls).Body);
+        var variables = data.RootElement.GetProperty("template_params");
+        Assert.Equal("Reset your password", variables.GetProperty("title_en").GetString());
+        Assert.Equal("Reset password", variables.GetProperty("button_en").GetString());
+        Assert.Equal("إعادة تعيين كلمة المرور", variables.GetProperty("title_ar").GetString());
     }
 
     [Fact]
