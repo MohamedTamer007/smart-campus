@@ -243,6 +243,7 @@ it("submits a private text and image search and only renders returned matches", 
   await screen.findByRole("button", { name: "Remove photo" });
   await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
   expect((await screen.findByRole("link", { name: /Blue thermos with a star sticker/ })).getAttribute("href")).toBe("/found/match-1");
+  expect(screen.queryByText("match-1")).toBeNull();
   expect(screen.getByRole("heading", { name: "Similar suggestions" })).toBeTruthy();
   expect(screen.getByText(/without approved calibration; unrelated items may appear/)).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Potential matches" })).toBeNull();
