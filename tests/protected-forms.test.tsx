@@ -249,21 +249,19 @@ it("submits a private text and image search and only renders returned matches", 
   expect(search).toHaveBeenCalledWith(actor, "Blue thermos, star sticker", image);
 });
 
-it("submits an image-only search without requiring or inventing a description", async () => {
+it("rejects a photo-only search and keeps the description required", async () => {
   const actor: Account = { id: "image-only-search", name: "Member", email: "", role: "user" };
-  const search = vi.spyOn(lostFound, "search").mockResolvedValue({ items: [], calibrated: true });
+  const search = vi.spyOn(lostFound, "search");
   renderForActor(actor, <SearchItems />);
   const description = await screen.findByLabelText(/^Description of the lost item/) as HTMLTextAreaElement;
-  expect(description.required).toBe(true);
   const image = new File([new Uint8Array([0xff, 0xd8, 0xff])], "bottle.jpg", { type: "image/jpeg" });
   await userEvent.upload(screen.getByLabelText(/^Previous photo of the item/), image);
   await screen.findByRole("button", { name: "Remove photo" });
-  expect(description.required).toBe(false);
-  await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
-  await screen.findByText(/No qualifying results appeared/);
-  expect(search).toHaveBeenCalledExactlyOnceWith(actor, "", image);
-  await userEvent.click(screen.getByRole("button", { name: "Remove photo" }));
   expect(description.required).toBe(true);
+  await userEvent.type(description, "   ");
+  await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
+  expect((await screen.findByRole("alert")).textContent).toContain("A photo alone is not enough.");
+  expect(search).not.toHaveBeenCalled();
 });
 
 it("rejects a blank search before sending an API request", async () => {
@@ -272,7 +270,7 @@ it("rejects a blank search before sending an API request", async () => {
   renderForActor(actor, <SearchItems />);
   await userEvent.type(await screen.findByLabelText(/^Description of the lost item/), "   ");
   await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
-  expect((await screen.findByRole("alert")).textContent).toContain("Enter a description or choose an item photo.");
+  expect((await screen.findByRole("alert")).textContent).toContain("Enter a description of the lost item.");
   expect(search).not.toHaveBeenCalled();
 });
 

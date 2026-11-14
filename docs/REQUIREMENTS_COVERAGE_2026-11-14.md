@@ -2,7 +2,7 @@
 
 This is an implementation and evidence index for all 55 source IDs, not a completion certificate. Local results prove only the named tested scenarios. Full visual, hosted, provider-quality and real-email acceptance remains open. Existing source approvals are preserved; proposed diagram integration decisions are not automatically additional requirements.
 
-Source: supplied `Smart_Campus_Diagrams_5.0/TRACEABILITY_MATRIX.md`, referencing the merged requirements pages shown below; normative text is `docs/SMART_CAMPUS_REQUIREMENTS.md`. The explicit later Gemini request adds image-only search and supersedes the old description-required rule for that mode.
+Source: supplied `Smart_Campus_Diagrams_5.0/TRACEABILITY_MATRIX.md`, referencing the merged requirements pages shown below; normative text is `docs/SMART_CAMPUS_REQUIREMENTS.md`. The earlier Gemini request for image-only search was reversed on 14 November 2026; the description-required rule applies again.
 
 ## Implementation map
 
@@ -53,7 +53,7 @@ Operational list endpoints use stable secondary UUID ordering for equal creation
 | CUST-02 | 8 | Receiving department retains pending handovers until its staff confirms actual receipt. | CUST | E12,E13 | Local pending/received reservation gates verified |
 | CUST-03 | 8 | Source custodian retains authority until actual receipt; authorized receiver confirms or reports non-receipt. | CUST | E12 | Local current authority/scoped receipt verified |
 | CUST-04 | 8 | Pending handover can be cancelled before receipt; cancellation does not delete the item. | CUST | E14 | Local cancellation keeps original custody |
-| SEARCH-01 | 9 | Verified user searches with a distinguishing description and optional prior image; the later Gemini amendment also permits image-only search. | SEARCH | E15,E25,F02 | Search returns ranked suggestions before calibration; real-model retrieval quality remains uncalibrated |
+| SEARCH-01 | 9 | Verified user searches with a distinguishing description and optional prior image; the earlier Gemini amendment that permitted image-only search was reversed on 14 November 2026 (a description is required). | SEARCH | E15,E25,F02 | Search returns ranked suggestions before calibration; real-model retrieval quality remains uncalibrated |
 | SEARCH-02 | 9 | Matching considers requester description/image, found-item image and finder description. | SEARCH | E15,E25 | External: synthetic SQL ranking verified; independent Gemini ranking acceptance missing |
 | SEARCH-03 | 9 | No public gallery; search returns only backend-authorized eligible candidates. | SEARCH | E11,E15 | Local access/grant rules verified; owner-authorized uncalibrated mode can show unrelated eligible candidates |
 | SEARCH-04 | 9 | Similarity is not ownership proof; no invented confidence percentage or private finder phone disclosure. | SEARCH | E11,F02 | UI labels uncalibrated suggestions and warns they may be unrelated; visual acceptance open |
@@ -116,7 +116,7 @@ Backend E references were checked against passed results in their named test run
 | E24 | `ProviderTests.OpenRouter_resizes_and_compresses_legacy_large_image_before_reserving_and_sending` |
 | E25 | Owner-supplied run output for `GeminiLiveTests.Gemini_embedding_2_returns_768_dimensional_text_and_image_vectors_for_synthetic_inputs`: one real synthetic Arabic text and one generated image request passed; both asserted as 768 dimensions. Not present in the checked-in TRX, and not a retrieval-accuracy result. |
 | F01 | `directory-options.test.tsx: explains why the handover department dropdown has no options; shows a directory load failure rather than an empty list` |
-| F02 | `protected-forms.test.tsx: submits an image-only search without requiring or inventing a description; shows service failure separately from an empty search result` |
+| F02 | `protected-forms.test.tsx: rejects a photo-only search and keeps the description required; shows service failure separately from an empty search result` |
 | F03 | `protected-forms.test.tsx: marks an owned notification read and refreshes its state` |
 | F04 | `foundation.test.tsx: starts Arabic, hides the demo disclaimer and gates service actions behind login; keeps English when navigating and places maintenance before lost and found` |
 | F05 | `admin-map-accessibility.test.tsx: lets an administrator place a building with arrow keys and saves the selected coordinates; no whole-site visual claim` |

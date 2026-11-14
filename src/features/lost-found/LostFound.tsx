@@ -288,7 +288,7 @@ export function SearchItems() {
   const [failure, setFailure] = useState<string | null>(null);
   const { pending, run } = useAction();
   const failureText: Record<string, [string, string]> = {
-    search_input_required: ["اكتب وصفًا أو اختر صورة للغرض.", "Enter a description or choose an item photo."],
+    search_input_required: ["اكتب وصفًا للغرض المفقود. الصورة وحدها لا تكفي.", "Enter a description of the lost item. A photo alone is not enough."],
     search_provider_not_configured: [
       "خدمة المطابقة متوقفة بسبب إعدادات الخادم. لم يُرسل هذا البحث إلى مزود خارجي. تواصل مع مسؤول الموقع لتفعيلها بعد استكمال الموافقات.",
       "Matching is paused by the server configuration. This search was not sent to an external provider. Ask the site administrator to enable matching after required approvals are complete.",
@@ -304,8 +304,8 @@ export function SearchItems() {
     <Page
       title={t("البحث عن مفقوداتك", "Search for a lost item")}
       subtitle={t(
-        "ابحث بوصف مميز أو بصورة سابقة للغرض، أو استخدمهما معًا.",
-        "Search with a distinguishing description, a previous item photo, or both.",
+        "ابحث بوصف مميز للغرض، مع صورة سابقة اختيارية.",
+        "Search with a distinguishing description, optionally with a previous item photo.",
       )}
     >
       <div className="panel narrow">
@@ -313,7 +313,7 @@ export function SearchItems() {
           event.preventDefault();
           setMatches(null);
           setFailure(null);
-          if (!description.trim() && !photo) { setFailure("search_input_required"); return; }
+          if (!description.trim()) { setFailure("search_input_required"); return; }
           void run(async () => {
             try {
               setMatches(await lostFound.search(account, description.trim(), photo));
@@ -323,8 +323,8 @@ export function SearchItems() {
             }
           });
         }}>
-          <Field label={t("وصف الغرض المفقود", "Description of the lost item")} required={!photo} hint={t("اذكر اللون أو العلامة أو النوع. لا تكتب بيانات شخصية. يمكنك ترك الوصف فارغًا عند اختيار صورة.", "Include its color, mark, or type. Do not enter personal information. You can leave this blank when choosing a photo.")}>
-            <textarea name="description" required={!photo} maxLength={2000} rows={4} value={description} onChange={(event) => { setDescription(event.target.value); setMatches(null); setFailure(null); }} />
+          <Field label={t("وصف الغرض المفقود", "Description of the lost item")} required hint={t("اذكر اللون أو العلامة أو النوع. لا تكتب بيانات شخصية.", "Include its color, mark, or type. Do not enter personal information.")}>
+            <textarea name="description" required maxLength={2000} rows={4} value={description} onChange={(event) => { setDescription(event.target.value); setMatches(null); setFailure(null); }} />
           </Field>
           <ImageField photo={photo} onChange={(file) => { setPhoto(file); setMatches(null); setFailure(null); }} label={t("صورة سابقة للغرض — اختيارية", "Previous photo of the item — optional")} />
           <Feedback>{t("لا تكشف المطابقة المحتملة ملكية الغرض. لا تعرض الخدمة إلا النتائج المؤهلة التي يسمح لك النظام برؤيتها.", "A potential match does not prove ownership. The service only shows qualifying results you are authorized to view.")}</Feedback>

@@ -46,12 +46,12 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
     public async Task<object> Search(string? description, IFormFile? photo)
     {
         var actor = await access.Current();
-        var hasText = !string.IsNullOrWhiteSpace(description);
-        if (hasText) description = Rules.Required(description, 2000);
-        else if (photo is null) throw new RuleException("search_input_required");
+        // A description is mandatory; a photo only refines it and is never sufficient on its own.
+        if (string.IsNullOrWhiteSpace(description)) throw new RuleException("search_input_required");
+        description = Rules.Required(description, 2000);
         if (Hosted && !RemoteEmbeddings.Configured(config))
             throw new RuleException("search_provider_not_configured", 503);
-        var threshold = ApprovedThreshold(config, photo is not null, hasText);
+        var threshold = ApprovedThreshold(config, photo is not null);
         // The site owner may explicitly offer ranked suggestions before calibration.
         // This does not approve a threshold or establish a match/ownership probability.
         if (threshold is null && !(Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates")))
@@ -66,7 +66,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             await photo.CopyToAsync(bytes);
             image = await EmbedImage(bytes.ToArray());
         }
-        var text = hasText ? await EmbedText(description!) : null;
+        var text = await EmbedText(description);
         if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
         var candidates = await Candidates(actor, text, image, threshold);
         if (candidates.Length > 0)

@@ -150,13 +150,13 @@ export function Verification() {
           </Feedback>
         ) : (
           <Feedback>
-            {t("افتح رابط التأكيد من بريدك الجامعي ثم أكد أدناه.", "Open the link from your university inbox, then confirm below.")}
+            {t("افتح رابط التأكيد من بريدك الجامعي ثم أكد أدناه. إذا لم تجد الرسالة، افحص مجلد الرسائل غير المرغوب فيها (Junk/Spam).", "Open the link from your university inbox, then confirm below. If you do not see the message, check your Junk or Spam folder.")}
           </Feedback>
         )}
         {verified && <Feedback kind="success">{alreadyVerified
           ? t("بريدك مؤكّد بالفعل، مش محتاج تأكيده تاني.", "Your email is already verified. No need to verify again.")
           : t("تم تأكيد البريد. يمكنك تسجيل الدخول.", "Email verified. You can now sign in.")}</Feedback>}
-        {resent && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً.", "Check your inbox if the address is eligible.")}</Feedback>}
+        {resent && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً. إذا لم تجد الرسالة، افحص مجلد الرسائل غير المرغوب فيها (Junk/Spam).", "Check your inbox if the address is eligible. If you do not see the message, check your Junk or Spam folder.")}</Feedback>}
         {!alreadySignedIn && !verified && params.get("token") && <ActionForm label={t("تأكيد البريد", "Confirm email")} onSubmit={async () => {
           const result = await auth.verify(params.get("userId") ?? "", params.get("token") ?? "");
           setAlreadyVerified(Boolean(result.alreadyVerified));
@@ -185,7 +185,7 @@ export function Recovery() {
   return (
     <Page title={t("نسيت كلمة المرور؟", "Forgot password?")}>
       <div className="panel narrow">
-        {requested && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً.", "Check your inbox if the address is eligible.")}</Feedback>}
+        {requested && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً. إذا لم تجد الرسالة، افحص مجلد الرسائل غير المرغوب فيها (Junk/Spam).", "Check your inbox if the address is eligible. If you do not see the message, check your Junk or Spam folder.")}</Feedback>}
         <ActionForm
           label={t("طلب رابط الاستعادة", "Request recovery link")}
           onSubmit={async data => { await auth.recover(String(data.get("email"))); setRequested(true); }}
