@@ -56,7 +56,8 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         // This does not approve a threshold or establish a match/ownership probability.
         if (threshold is null && !(Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates")))
             throw new RuleException("search_calibration_required", 503);
-        if (Hosted && await HasVisibleUnindexedItems(actor, photo is not null))
+        var demoUploaderIds = await DemoUploaderIds();
+        if (Hosted && await HasVisibleUnindexedItems(actor, photo is not null, demoUploaderIds))
             throw new RuleException("search_index_pending", 503);
         EmbeddingResponse? image = null;
         if (photo is not null)
@@ -68,7 +69,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         }
         var text = await EmbedText(description);
         if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
-        var candidates = await Candidates(actor, text, image, threshold);
+        var candidates = await Candidates(actor, text, image, threshold, demoUploaderIds);
         if (candidates.Length > 0)
         {
             // Repeated searches should not grow an unbounded set of identical
@@ -127,7 +128,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         return (bool)(await command.ExecuteScalarAsync() ?? false);
     }
 
-    private async Task<bool> HasVisibleUnindexedItems(Actor actor, bool requireImage)
+    private async Task<bool> HasVisibleUnindexedItems(Actor actor, bool requireImage, Guid[] demoUploaderIds)
     {
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
         await db.Database.OpenConnectionAsync();
@@ -136,6 +137,9 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             SELECT EXISTS (
               SELECT 1 FROM smart_campus."Items" f
               WHERE f."State"='available' AND f."UploaderId"<>@user AND f."CustodianId" IS DISTINCT FROM @user
+                AND NOT (f."UploaderId"=ANY(@demousers))
+                AND f."Description" NOT ILIKE 'DEMO ONLY%'
+                AND f."Description" NOT ILIKE 'DOCUMENTATION TEST ONLY%'
                 AND (NOT @isdepartment OR f."CustodianDepartmentId" IS NULL OR NOT (f."CustodianDepartmentId"=ANY(@scopes)))
                 AND (NOT EXISTS (
                   SELECT 1 FROM smart_campus."Embeddings" e
@@ -150,6 +154,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             )
             """;
         command.Parameters.AddWithValue("user", actor.Id);
+        command.Parameters.AddWithValue("demousers", demoUploaderIds);
         command.Parameters.AddWithValue("isdepartment", actor.Roles.Contains("department"));
         command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
         command.Parameters.AddWithValue("model", RemoteEmbeddings.Model);
@@ -209,7 +214,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         await command.ExecuteNonQueryAsync();
     }
 
-    private async Task<Guid[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, double? threshold)
+    private async Task<Guid[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, double? threshold, Guid[] demoUploaderIds)
     {
         var query = text ?? image ?? throw new RuleException("search_input_required");
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
@@ -226,6 +231,9 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
               FROM smart_campus."Embeddings" e JOIN smart_campus."Items" f ON f."Id"=e."ItemId"
               WHERE e."Model"=@model AND e."Revision"=@revision AND e."Dimension"=@dimension AND f."State"='available'
                 AND f."CustodianId" IS DISTINCT FROM @user AND f."UploaderId"<>@user
+                AND NOT (f."UploaderId"=ANY(@demousers))
+                AND f."Description" NOT ILIKE 'DEMO ONLY%'
+                AND f."Description" NOT ILIKE 'DOCUMENTATION TEST ONLY%'
                 AND (f."CustodianDepartmentId" IS NULL OR NOT (f."CustodianDepartmentId"=ANY(@scopes)))
               GROUP BY e."ItemId"
             ), scored AS (SELECT "ItemId", CASE WHEN NOT @hastext THEN image_image WHEN @hasimage THEN
@@ -243,6 +251,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         command.Parameters.AddWithValue("revision", Hosted ? RemoteEmbeddings.Revision(config) : Revision);
         command.Parameters.AddWithValue("dimension", query.Dimension);
         command.Parameters.AddWithValue("user", actor.Id);
+        command.Parameters.AddWithValue("demousers", demoUploaderIds);
         command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
         command.Parameters.AddWithValue("threshold", NpgsqlTypes.NpgsqlDbType.Double, (object?)threshold ?? DBNull.Value);
         var candidates = new List<Guid>();
@@ -250,6 +259,12 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         while (await reader.ReadAsync()) candidates.Add(reader.GetGuid(0));
         return candidates.ToArray();
     }
+
+    private Task<Guid[]> DemoUploaderIds() => db.UserClaims.AsNoTracking()
+        .Where(claim => claim.ClaimType == DemoPreparationService.DemoMarkerClaimType && claim.ClaimValue == "true")
+        .Select(claim => claim.UserId)
+        .Distinct()
+        .ToArrayAsync();
 
     private static async Task<string> VectorSchema(NpgsqlConnection connection)
     {
