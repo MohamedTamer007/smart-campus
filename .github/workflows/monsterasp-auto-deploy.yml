@@ -3,7 +3,7 @@ name: MonsterASP.NET automatic SmartCampus deployment
 on:
   push:
     branches:
-      - codex/release-readiness-20261111
+      - main
     paths:
       - '.github/workflows/monsterasp-auto-deploy.yml'
       - 'scripts/deploy-monsterasp.ps1'
@@ -20,6 +20,12 @@ on:
       - 'global.json'
       - 'NuGet.Config'
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Actually deploy to MonsterASP after synthetic-data and security gates are verified'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -32,7 +38,10 @@ concurrency:
 
 jobs:
   build-test-and-deploy:
-    if: ${{ vars.MONSTERASP_AUTO_DEPLOY_DISABLED != 'true' }}
+    # Fail closed: main may auto-deploy only after the owner has attested
+    # synthetic-only data, verified runtime configuration and approved security.
+    # Manual runs additionally require the explicit publish=true input.
+    if: ${{ vars.MONSTERASP_AUTO_DEPLOY_DISABLED != 'true' && vars.MONSTERASP_MAIN_DEPLOYMENT_ENABLED == 'true' && vars.MONSTERASP_TEST_DATA_ONLY == 'true' && vars.MONSTERASP_PUBLICATION_APPROVED == 'true' && vars.MONSTERASP_RUNTIME_CONFIG_VERIFIED == 'true' && vars.MONSTERASP_SECURITY_REVIEW_APPROVED == 'true' && (github.event_name == 'push' || inputs.publish == true) }}
     runs-on: windows-2022
     timeout-minutes: 45
     env:
@@ -40,8 +49,12 @@ jobs:
       SERVER_COMPUTER_NAME: ${{ secrets.SERVER_COMPUTER_NAME }}
       SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
       SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+      TEST_DATA_ONLY: ${{ vars.MONSTERASP_TEST_DATA_ONLY }}
+      APPROVED_PUBLICATION: ${{ vars.MONSTERASP_PUBLICATION_APPROVED }}
+      VERIFIED_RUNTIME: ${{ vars.MONSTERASP_RUNTIME_CONFIG_VERIFIED }}
+      APPROVED_SECURITY: ${{ vars.MONSTERASP_SECURITY_REVIEW_APPROVED }}
     steps:
-      - name: Checkout full-stack release branch
+      - name: Checkout main
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
