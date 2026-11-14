@@ -1,11 +1,31 @@
-# Owner-authorized similarity suggestions
+# Lost & Found search candidate mode
 
-On 14 November 2026 the project owner requested that hosted search operate before retrieval calibration is approved. The deployed non-secret defaults therefore set `Search:AllowUncalibratedCandidates` to `true`.
+## Default behavior — 15 November 2026
 
-If the current query mode has no approved threshold, hosted search returns at most five eligible items ranked by the existing Gemini similarity calculation, without applying a score cutoff. Unrelated items can appear. The API returns `calibrated: false` and `calibration: null`; the Arabic and English search page labels these results as uncalibrated suggestions. This mode does not meet the previously specified calibrated No-Match acceptance criterion and does not establish retrieval accuracy or ownership.
+Hosted Lost & Found search is fail-closed when the active query mode has no independently reviewed threshold for the current Gemini embedding revision. The checked-in non-secret default is:
 
-Provider configuration, separate text/image transfer approvals, free-tier assertion, quotas, current model/revision/dimension checks, indexing readiness, item visibility filters, expiring result grants and custodian claim review remain enforced. No API key is committed and no new provider or paid fallback is introduced.
+`Search:AllowUncalibratedCandidates=false`
 
-When a valid threshold exists for the current mode/revision, it is still applied and the API returns `calibrated: true`. The administrator's calibration indicator continues to report actual threshold approval, independently of whether suggestion mode is enabled.
+Without an approved current-revision threshold, the API returns `search_calibration_required` before requesting query embeddings. The page explains that matching quality has not yet been approved instead of presenting the top five candidates as if they were useful matches.
 
-Set the hosting variable `Search__AllowUncalibratedCandidates=false` to restore mandatory calibration. Missing approval then returns `search_calibration_required` before any query embedding is requested. This setting does not resolve `search_provider_not_configured`, `search_index_pending` or provider/quota errors.
+This change does not invent or hard-code a cosine-similarity threshold. Gemini embedding similarities are ranking signals, not calibrated probabilities; text-only, image-only, and combined queries need separate evaluation before thresholds can be approved.
+
+## Explicit uncalibrated testing
+
+The previous owner-authorized suggestion mode can still be enabled explicitly with `Search:AllowUncalibratedCandidates=true`, but it returns up to five candidates without a score cutoff and may include unrelated items. Use that only with synthetic test data in a controlled evaluation, not as a production-quality match signal. Responses remain marked `calibrated: false`.
+
+A valid reviewed threshold for the active query mode and exact model revision always takes precedence. Calibration approval for an older model/revision does not authorize the current Gemini vector space.
+
+## Search result eligibility
+
+User-facing search excludes:
+- Items uploaded by accounts carrying the `smartcampus:demo-only` marker.
+- Explicit documentation fixtures whose description begins with `DEMO ONLY` or `DOCUMENTATION TEST ONLY`.
+
+These records are not deleted or changed; they are simply ineligible for Lost & Found search and do not block search while their embeddings are pending.
+
+## Hosting precedence
+
+The application reads `smartcampus.defaults.json` before environment variables. Hosting environment variables have higher priority, so an existing `Search__AllowUncalibratedCandidates=true` override would supersede the checked-in default. Keep that override absent or set it to `false` to retain the fail-closed behavior.
+
+Provider configuration, privacy approvals, free-tier assertion, quotas, model/revision/dimension checks, indexing readiness, item visibility, private media access, temporary result grants, and custodian claim review remain enforced. No API key, production record, or user data is included in this change.
