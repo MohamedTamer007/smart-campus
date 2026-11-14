@@ -161,13 +161,18 @@ export function ActionForm({
 export function Password({
   label,
   name = "password",
+  autoComplete,
 }: {
   label: string;
   name?: string;
+  autoComplete?: "current-password" | "new-password";
 }) {
   const [visible, setVisible] = useState(false);
   const { t } = useApp();
   const id = useId();
+  const completion = autoComplete ?? (name === "currentPassword" ? "current-password" : "new-password");
+  const creatingPassword = completion === "new-password";
+  const hintId = `${id}-hint`;
   return (
     <div className="field">
       <label htmlFor={id}>
@@ -180,18 +185,22 @@ export function Password({
           required
           name={name}
           type={visible ? "text" : "password"}
-          autoComplete={
-            name === "currentPassword" ? "current-password" : "new-password"
-          }
+          autoComplete={completion}
+          minLength={creatingPassword ? 12 : undefined}
+          maxLength={creatingPassword ? 128 : undefined}
+          aria-describedby={creatingPassword ? hintId : undefined}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
           aria-pressed={visible}
+          aria-controls={id}
+          aria-label={`${visible ? t("إخفاء", "Hide") : t("إظهار", "Show")} ${label}`}
         >
           {visible ? t("إخفاء", "Hide") : t("إظهار", "Show")}
         </button>
       </div>
+      {creatingPassword && <small id={hintId}>{t("من 12 إلى 128 حرفًا.", "Use 12 to 128 characters.")}</small>}
     </div>
   );
 }

@@ -31,7 +31,7 @@ Operational list endpoints use stable secondary UUID ordering for equal creation
 | AUTH-01 | 6 | University email, site password and email-link verification. | AUTH | E01 | External: real mailbox receipt unverified |
 | AUTH-02 | 6 | Normalize and validate the exact o6u.edu.eg domain. | AUTH | E02 | Local validation verified |
 | AUTH-03 | 6 | Registration, login, verification, resend and recovery have dedicated flows. | AUTH | E01 | External: real links/mail delivery unverified |
-| AUTH-04 | 6 | Accessible fields, show/hide password and clear validation errors. | AUTH | E03 | Partial: API token cases verified; full accessible error UI acceptance open |
+| AUTH-04 | 6 | Accessible fields, show/hide password and clear validation errors. | AUTH | E03 | Partial: API token cases verified; password-manager purposes and new-password length guidance aligned with the server; full accessible error UI acceptance open |
 | AUTH-05 | 6 | Backend-owned sessions, expiry and logout behavior. | AUTH | E04 | Local session scenarios verified |
 | LOC-01 | 7 | Maintenance location requires faculty, building, floor and precise location. | LOC | E05 | Local synthetic hierarchy verified |
 | LOC-02 | 7 | Use verified supplied location records; do not fabricate the directory. | LOC | E06 | External: verified institutional directory still required |
@@ -53,10 +53,10 @@ Operational list endpoints use stable secondary UUID ordering for equal creation
 | CUST-02 | 8 | Receiving department retains pending handovers until its staff confirms actual receipt. | CUST | E12,E13 | Local pending/received reservation gates verified |
 | CUST-03 | 8 | Source custodian retains authority until actual receipt; authorized receiver confirms or reports non-receipt. | CUST | E12 | Local current authority/scoped receipt verified |
 | CUST-04 | 8 | Pending handover can be cancelled before receipt; cancellation does not delete the item. | CUST | E14 | Local cancellation keeps original custody |
-| SEARCH-01 | 9 | Verified user searches with a required distinguishing description and optional prior image. | SEARCH | E15,E25,F02 | Partial: all query modes wired; real-model retrieval quality uncalibrated |
+| SEARCH-01 | 9 | Verified user searches with a distinguishing description and optional prior image; the later Gemini amendment also permits image-only search. | SEARCH | E15,E25,F02 | Search returns ranked suggestions before calibration; real-model retrieval quality remains uncalibrated |
 | SEARCH-02 | 9 | Matching considers requester description/image, found-item image and finder description. | SEARCH | E15,E25 | External: synthetic SQL ranking verified; independent Gemini ranking acceptance missing |
-| SEARCH-03 | 9 | No public gallery; only qualifying potential matches return permitted details. | SEARCH | E11,E15 | Local private results/grants verified; quality gate remains closed |
-| SEARCH-04 | 9 | Similarity is not ownership proof; no invented confidence percentage or private finder phone disclosure. | SEARCH | E11,F02 | Local private response and ownership wording verified; visual acceptance open |
+| SEARCH-03 | 9 | No public gallery; search returns only backend-authorized eligible candidates. | SEARCH | E11,E15 | Local access/grant rules verified; owner-authorized uncalibrated mode can show unrelated eligible candidates |
+| SEARCH-04 | 9 | Similarity is not ownership proof; no invented confidence percentage or private finder phone disclosure. | SEARCH | E11,F02 | UI labels uncalibrated suggestions and warns they may be unrelated; visual acceptance open |
 | SEARCH-05 | 9 | Loading, no-suitable-match, invalid-input and service-failure outcomes are distinct. | SEARCH | F02 | DOM service-error/empty/input distinctions verified |
 | SEARCH-06 | 9 | Search/result access is authenticated and backend-authorized; delivered items are not eligible. | SEARCH | E11,E15 | Local server authorization and candidate eligibility verified |
 | CLAIM-01 | 9 | A verified user selects a potential result and submits a request with optional message. | CLAIM | E16 | Local claim submission/review workflow verified |
@@ -104,7 +104,7 @@ Backend E references were checked against passed results in their named test run
 | E12 | `Custody_changes_only_on_scoped_receipt_and_former_custodian_loses_authority` |
 | E13 | `Reservation_blocks_transfer_and_cancellation_releases_existing_claims` |
 | E14 | `Pending_handover_cancellation_keeps_item_and_original_custody` |
-| E15 | `Image_only_and_combined_queries_rank_current_vectors_without_empty_text_requests; Pgvector_ranking_filters_candidates_and_persists_user_specific_result_grants` |
+| E15 | `Hosted_description_only_indexing_and_search_work_without_worker_or_photo_disclosure` (also verifies explicit uncalibrated opt-in, response labeling, no request on the disabled path, and retained filtering when calibrated); `Image_only_and_combined_queries_rank_current_vectors_without_empty_text_requests; Pgvector_ranking_filters_candidates_and_persists_user_specific_result_grants` |
 | E16 | `Concurrent_approvals_create_one_reservation_and_both_confirmations_close_it` |
 | E17 | `Delivery_first_still_requires_independent_requester_receipt` |
 | E18 | `Notifications_are_recipient_owned_and_dashboard_counts_use_real_records` |
@@ -124,14 +124,24 @@ Backend E references were checked against passed results in their named test run
 
 ## Remaining acceptance gates
 
-- Independent Gemini retrieval calibration: current-revision text, image and combined queries; Arabic/English, confusable objects and no-match cases. Search remains closed until reviewed mode thresholds and privacy approvals exist.
+- Independent Gemini retrieval calibration: current-revision text, image and combined queries; Arabic/English, confusable objects and no-match cases. Owner-authorized uncalibrated suggestions are enabled; the independent accuracy and No-Match acceptance criteria remain unproven.
 - Real university directory/routing data. Synthetic fixtures do not fulfill LOC-02 for production.
 - Real verification/recovery mail receipt and token action, provider correlation, DKIM/DMARC and delivery inspection. Local sinks/HTTP boundaries do not prove inbox placement.
 - Interactive visual/accessibility and end-to-end acceptance at 390/768/1440 in Arabic/English is deferred under the user instruction to avoid device/browser testing now.
-- Hosted acceptance of the eventual approved commit, storage persistence and runtime behavior occurs only after separate publication approval. No commit/push/deploy was performed for this report.
+- Authenticated search against the production inventory and actual production Gemini calls were not exercised in this verification. Health and deployed client assets were checked separately.
 
 Verdict: local implementation and scenario evidence exist across the 55 IDs, but all requirements have not achieved full end-to-end production acceptance. No 100% completion or deployment-readiness certification is claimed.
 
 ## Verification update — 14 November 2026
 
-This update supersedes the earlier publication-pending statements above. The application files at commit `8ee4ce9cc5e4bf581e80c83713722d6b2222ffca` were deployed successfully (MonsterASP workflow run [43528071136](https://github.com/MohamedTamer007/smart-campus/actions/runs/43528071136)); live JavaScript and CSS matched the local production bundle byte-for-byte. Commits `e19c901` and `87fc080` contain only browser/unit-test corrections, not runtime application changes. The full cross-browser CI suite, Windows package, and worker workflow passed on `87fc080` (runs [43530959872](https://github.com/MohamedTamer007/smart-campus/actions/runs/43530959872), [43530960021](https://github.com/MohamedTamer007/smart-campus/actions/runs/43530960021), and [43530959873](https://github.com/MohamedTamer007/smart-campus/actions/runs/43530959873)). Public unauthenticated checks confirmed 401 for protected APIs. These checks do not resolve the remaining acceptance gates listed above or establish 100% completion.
+The base app at `8ee4ce9cc5e4bf581e80c83713722d6b2222ffca` had previously deployed successfully (MonsterASP workflow [43528071136](https://github.com/MohamedTamer007/smart-campus/actions/runs/43528071136)); the hosted retrieval migration still awaited calibration then. Commits `e19c901` and `87fc080` contain browser/test corrections. This history does not supersede the later release record below.
+
+## Uncalibrated suggestion release — 14 November 2026
+
+At the owner's request, commit `082fe18530af59678420e591e8628fdbd052846a` enables the owner-authorized similarity suggestion mode before retrieval calibration. When the active query mode lacks an approved threshold, the backend may return up to five similarity-ranked, eligible candidates and identifies the response as `calibrated: false`; it does not report a confidence or claim ownership. The client labels these as suggestions and warns that unrelated items may appear. A valid mode-specific calibrated threshold continues to take precedence. The separate privacy, provider, quota, revision, indexing, and access gates remain enforced. See [SEARCH_CANDIDATES_MODE.md](SEARCH_CANDIDATES_MODE.md) for the behavior and rollback setting.
+
+MonsterASP deploy run [43536273569](https://github.com/MohamedTamer007/smart-campus/actions/runs/43536273569) and CI run [43536281786](https://github.com/MohamedTamer007/smart-campus/actions/runs/43536281786) both passed for this commit. Local Release integration tests against isolated PostgreSQL passed 226 with four explicit external/evidence tests skipped; Vitest passed 96, and typecheck, ESLint and production build passed. Public checks returned HTTP 200 for `/` and `/health`, 401 for `/api/v1/found`, and confirmed the downloaded live JavaScript bundle matched the local build byte-for-byte. No real Gemini API request or authenticated search against production data was made. Retrieval accuracy and the independent No-Match acceptance target remain unverified; overall completion is not claimed.
+
+## Password-field follow-up — 14 November 2026
+
+Source inspection found that the shared password field advertised `new-password` even on login. The login panel now explicitly uses `current-password`; registration, reset and new-password inputs use `new-password` with the server's 12–128 character limits and bilingual guidance. Current-password fields remain free of new-password length restrictions. Each show/hide control names and references its own input. Typecheck, ESLint and the 96-test frontend suite passed; these automated checks do not prove password-manager behavior or visual/accessibility acceptance in a real browser.

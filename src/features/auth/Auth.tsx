@@ -90,7 +90,7 @@ function AuthPanel({ registration, onSubmit, showDeleted = false }: {
               )}
             </Feedback>
           )}
-          <Password label={t("كلمة المرور", "Password")} />
+          <Password label={t("كلمة المرور", "Password")} autoComplete={registration ? "new-password" : "current-password"} />
           {registration && (
             <Password
               label={t("تأكيد كلمة المرور", "Confirm password")}
