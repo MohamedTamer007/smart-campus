@@ -52,7 +52,7 @@ Custodian is an item-specific responsibility. The person who originally uploaded
 
 **AUTH-05 - Baseline:** session expiry returns the user to login with an explanation. Preserve non-sensitive form text where feasible; do not preserve passwords. Logout removes authenticated access. Session transport, expiry and password rules are API-owned integration decisions, not fixed numbers in a mockup.
 
-Account settings show the verified email, allow display-name and language changes, provide password change and logout. Email changes and account deletion are outside this version's agreed scope. A phone number is not required at registration; it is requested when a student custodian approves a claim.
+Account settings show the verified email, allow display-name and language changes, provide password change and logout. Email changes are outside this version's agreed scope. Account deletion is offered in Settings (the user confirms with the current password): approved by the project owner on 14 November 2026, which supersedes the earlier exclusion. A phone number is not required at registration; it is requested when a student custodian approves a claim.
 
 ## 5. Locations and form conventions
 
