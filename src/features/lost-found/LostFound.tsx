@@ -19,6 +19,7 @@ import {
   receiving,
   type Department,
   type FoundItem,
+  type SearchResult,
   type Claim,
   type ClaimStatus,
 } from "../../services/lostFound";
@@ -283,12 +284,15 @@ export function SearchItems() {
   const { t, account } = useApp();
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<File>();
-  const [matches, setMatches] = useState<FoundItem[] | null>(null);
+  const [matches, setMatches] = useState<SearchResult | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const { pending, run } = useAction();
   const failureText: Record<string, [string, string]> = {
     search_input_required: ["اكتب وصفًا أو اختر صورة للغرض.", "Enter a description or choose an item photo."],
-    search_provider_not_configured: ["خدمة المطابقة غير مهيأة حاليًا.", "The matching service is not configured."],
+    search_provider_not_configured: [
+      "خدمة المطابقة متوقفة بسبب إعدادات الخادم. لم يُرسل هذا البحث إلى مزود خارجي. تواصل مع مسؤول الموقع لتفعيلها بعد استكمال الموافقات.",
+      "Matching is paused by the server configuration. This search was not sent to an external provider. Ask the site administrator to enable matching after required approvals are complete.",
+    ],
     search_calibration_required: ["البحث متوقف حتى اعتماد جودة المطابقة بأمان.", "Search is unavailable until matching quality is safely approved."],
     search_index_pending: ["تجري فهرسة بعض الأغراض. حاول مرة أخرى بعد اكتمالها.", "Some items are still being indexed. Try again after indexing completes."],
     search_external_images_not_approved: ["البحث بالصورة غير متاح حاليًا.", "Image search is currently unavailable."],
@@ -324,14 +328,15 @@ export function SearchItems() {
           </Field>
           <ImageField photo={photo} onChange={(file) => { setPhoto(file); setMatches(null); setFailure(null); }} label={t("صورة سابقة للغرض — اختيارية", "Previous photo of the item — optional")} />
           <Feedback>{t("لا تكشف المطابقة المحتملة ملكية الغرض. لا تعرض الخدمة إلا النتائج المؤهلة التي يسمح لك النظام برؤيتها.", "A potential match does not prove ownership. The service only shows qualifying results you are authorized to view.")}</Feedback>
-          <button className="button primary" disabled={pending}>{pending ? t("جارٍ البحث…", "Searching…") : t("ابحث", "Search")}</button>
+          <button className="button primary" disabled={pending || failure === "search_provider_not_configured" || failure === "search_calibration_required"}>{pending ? t("جارٍ البحث…", "Searching…") : t("ابحث", "Search")}</button>
         </form>
         {failure && <Feedback kind="error">{failureText[failure] ? t(...failureText[failure]) : t("تعذر إكمال البحث. حاول لاحقًا.", "Search could not be completed. Try again later.")}</Feedback>}
-        {matches !== null && (matches.length === 0
+        {matches !== null && !matches.calibrated && <Feedback>{t("هذه اقتراحات مرتبة بالتشابه دون معايرة معتمدة؛ قد تتضمن أغراضًا غير مرتبطة ببحثك. لا تثبت المطابقة أو الملكية، ويظل الاسترداد خاضعًا لمراجعة الحائز.", "These are similarity-ranked suggestions without approved calibration; unrelated items may appear. They do not establish a match or ownership. Recovery still requires the custodian’s review.")}</Feedback>}
+        {matches !== null && (matches.items.length === 0
           ? <Feedback>{t("لم تظهر نتائج مؤهلة لهذا البحث. هذا لا يثبت أن الغرض غير موجود؛ يمكنك تعديل الوصف أو الصورة والمحاولة مرة أخرى.", "No qualifying results appeared for this search. This does not prove the item is absent; revise the description or photo and try again.")}</Feedback>
           : <section className="search-results" aria-live="polite" aria-labelledby="search-results-heading">
-            <h2 id="search-results-heading">{t("مطابقات محتملة", "Potential matches")}</h2>
-            <div className="record-list">{matches.map((item) => <FoundCard key={item.id} item={item} />)}</div>
+            <h2 id="search-results-heading">{matches.calibrated ? t("مطابقات محتملة", "Potential matches") : t("اقتراحات مشابهة", "Similar suggestions")}</h2>
+            <div className="record-list">{matches.items.map((item) => <FoundCard key={item.id} item={item} />)}</div>
           </section>)}
       </div>
     </Page>

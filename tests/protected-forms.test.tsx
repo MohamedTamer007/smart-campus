@@ -34,8 +34,8 @@ function TestSession({ actor, children }: { actor: Account; children: ReactNode 
   }, [account.id, actor, updateAccount]);
   return account.id === actor.id ? children : null;
 }
-function renderForActor(actor: Account, children: ReactNode) {
-  localStorage.setItem("smart-campus-language", "en");
+function renderForActor(actor: Account, children: ReactNode, language: "ar" | "en" = "en") {
+  localStorage.setItem("smart-campus-language", language);
   return render(<MemoryRouter><AppProvider><TestSession actor={actor}>{children}</TestSession></AppProvider></MemoryRouter>);
 }
 
@@ -234,7 +234,7 @@ it("requires a photo and nonfuture date and keeps a found-item draft on failure"
 it("submits a private text and image search and only renders returned matches", async () => {
   const actor: Account = { id: "search-form-test", name: "Member", email: "", role: "user" };
   const item: FoundItem = { id: "match-1", description: "Blue thermos with a star sticker", place: "Library", date: "2026-11-01", storage: "", uploaderId: "finder", custodianId: "finder", state: "available", createdAt: "2026-11-01T00:00:00Z", version: 1 };
-  const search = vi.spyOn(lostFound, "search").mockResolvedValue([item]);
+  const search = vi.spyOn(lostFound, "search").mockResolvedValue({ items: [item], calibrated: false });
   renderForActor(actor, <SearchItems />);
   expect(screen.queryByText(/Blue thermos with a star sticker/)).toBeNull();
   await userEvent.type(await screen.findByLabelText(/^Description of the lost item/), "Blue thermos, star sticker");
@@ -243,12 +243,15 @@ it("submits a private text and image search and only renders returned matches", 
   await screen.findByRole("button", { name: "Remove photo" });
   await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
   expect((await screen.findByRole("link", { name: /Blue thermos with a star sticker/ })).getAttribute("href")).toBe("/found/match-1");
+  expect(screen.getByRole("heading", { name: "Similar suggestions" })).toBeTruthy();
+  expect(screen.getByText(/without approved calibration; unrelated items may appear/)).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Potential matches" })).toBeNull();
   expect(search).toHaveBeenCalledWith(actor, "Blue thermos, star sticker", image);
 });
 
 it("submits an image-only search without requiring or inventing a description", async () => {
   const actor: Account = { id: "image-only-search", name: "Member", email: "", role: "user" };
-  const search = vi.spyOn(lostFound, "search").mockResolvedValue([]);
+  const search = vi.spyOn(lostFound, "search").mockResolvedValue({ items: [], calibrated: true });
   renderForActor(actor, <SearchItems />);
   const description = await screen.findByLabelText(/^Description of the lost item/) as HTMLTextAreaElement;
   expect(description.required).toBe(true);
@@ -282,6 +285,40 @@ it("shows service failure separately from an empty search result", async () => {
   expect((await screen.findByRole("alert")).textContent).toMatch(/quality is safely approved/i);
   expect(screen.queryByText(/No qualifying results appeared/i)).toBeNull();
   expect(search).toHaveBeenCalledOnce();
+});
+
+it("explains that a provider-disabled search was not sent externally and prevents pointless retries", async () => {
+  const actor: Account = { id: "search-provider-blocked-test", name: "Member", email: "", role: "user" };
+  const search = vi.spyOn(lostFound, "search").mockRejectedValue(
+    new ServiceError("unavailable", "search_provider_not_configured"),
+  );
+  renderForActor(actor, <SearchItems />);
+  await userEvent.type(await screen.findByLabelText(/^Description of the lost item/), "Green watch with a silver band");
+  const image = new File(
+    [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+    "synthetic-watch.png",
+    { type: "image/png" },
+  );
+  await userEvent.upload(screen.getByLabelText(/^Previous photo of the item/), image);
+  await screen.findByRole("button", { name: "Remove photo" });
+  await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
+
+  expect((await screen.findByRole("alert")).textContent).toMatch(/not sent to an external provider/i);
+  expect(screen.queryByText(/No qualifying results appeared/i)).toBeNull();
+  expect(screen.getByRole("button", { name: /^Search$/ })).toHaveProperty("disabled", true);
+  expect(search).toHaveBeenCalledExactlyOnceWith(actor, "Green watch with a silver band", image);
+});
+
+it("explains provider-disabled search in Arabic", async () => {
+  const actor: Account = { id: "search-provider-blocked-arabic-test", name: "Member", email: "", role: "user" };
+  vi.spyOn(lostFound, "search").mockRejectedValue(
+    new ServiceError("unavailable", "search_provider_not_configured"),
+  );
+  renderForActor(actor, <SearchItems />, "ar");
+  await userEvent.type(await screen.findByLabelText(/^وصف الغرض المفقود/), "ساعة خضراء بسوار فضي");
+  await userEvent.click(screen.getByRole("button", { name: "ابحث" }));
+  expect(screen.getByRole("alert").textContent).toMatch(/لم يُرسل هذا البحث إلى مزود خارجي/);
+  expect(screen.getByRole("button", { name: "ابحث" })).toHaveProperty("disabled", true);
 });
 
 it("requires explicit text approval before staff can enqueue AI analysis", async () => {

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using SmartCampus.Domain;
 using SmartCampus.Infrastructure;
 using Xunit;
 
@@ -125,8 +126,12 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         var response = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null));
         Assert.Equal(blue, Assert.Single(response.GetProperty("itemIds").EnumerateArray()).GetGuid());
         Assert.Equal(RemoteEmbeddings.Revision(config), response.GetProperty("rankingVersion").GetString());
-        Assert.Empty(JsonSerializer.SerializeToElement(await retrieval.Search("Green unrelated object", null))
-            .GetProperty("itemIds").EnumerateArray());
+        Assert.True(response.GetProperty("calibrated").GetBoolean());
+        Assert.Equal("TEST ONLY — not a real score approval", response.GetProperty("calibration").GetString());
+        var noMatch = JsonSerializer.SerializeToElement(await retrieval.Search("Green unrelated object", null));
+        Assert.Empty(noMatch.GetProperty("itemIds").EnumerateArray());
+        Assert.True(noMatch.GetProperty("calibrated").GetBoolean());
+        Assert.Equal("TEST ONLY — not a real score approval", noMatch.GetProperty("calibration").GetString());
         Assert.Equal(4, boundary.Calls); // two passages and two distinct text queries; no image request
         Assert.True(await db.SearchGrants.AnyAsync(g => g.ItemId == blue && g.UserId == campus.Other));
         Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == red && g.UserId == campus.Other));
@@ -140,5 +145,35 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         Assert.Equal(1, await db.SearchGrants.CountAsync(g => g.ItemId == blue && g.UserId == campus.Other));
         Assert.True(grant.ExpiresAt > DateTimeOffset.UtcNow);
         Assert.Equal(4, boundary.Calls); // cached query embeddings reuse the provider result; grants are still refreshed in place
+
+        // Missing opt-in must preserve the default closed state and must stop before provider use.
+        config["Search:CalibrationApproval"] = null;
+        config["Search:AllowUncalibratedCandidates"] = null;
+        var missingOptIn = await Assert.ThrowsAsync<RuleException>(() => retrieval.Search("Blue distinctive bottle", null));
+        Assert.Equal("search_calibration_required", missingOptIn.Code);
+        Assert.Equal(4, boundary.Calls);
+
+        config["Search:AllowUncalibratedCandidates"] = "false";
+        var disabledOptIn = await Assert.ThrowsAsync<RuleException>(() => retrieval.Search("Blue distinctive bottle", null));
+        Assert.Equal("search_calibration_required", disabledOptIn.Code);
+        Assert.Equal(4, boundary.Calls); // both disabled forms block before provider use
+
+        // The synthetic vectors rank Blue above Red; exposing both here tests candidate ordering,
+        // not retrieval precision or a production-quality threshold.
+        config["Search:AllowUncalibratedCandidates"] = "true";
+        var candidates = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null));
+        Assert.Equal(new[] { blue, red }, candidates.GetProperty("itemIds").EnumerateArray()
+            .Select(value => value.GetGuid()).ToArray());
+        Assert.False(candidates.GetProperty("calibrated").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, candidates.GetProperty("calibration").ValueKind);
+        Assert.Equal(4, boundary.Calls); // the query embedding is cached; no automatic resend occurs
+
+        // A valid reviewed threshold continues to filter candidates even while opt-in is enabled.
+        config["Search:CalibrationApproval"] = "TEST ONLY — not a real score approval";
+        var calibratedAgain = JsonSerializer.SerializeToElement(await retrieval.Search("Green unrelated object", null));
+        Assert.Empty(calibratedAgain.GetProperty("itemIds").EnumerateArray());
+        Assert.True(calibratedAgain.GetProperty("calibrated").GetBoolean());
+        Assert.Equal("TEST ONLY — not a real score approval", calibratedAgain.GetProperty("calibration").GetString());
+        Assert.Equal(4, boundary.Calls);
     }
 }

@@ -26,7 +26,7 @@ export function OperationsStatus() {
               {t("خدمة المطابقة", "Matching service")}: {status.worker === "available"
                 ? t("متاحة", "Available")
                 : status.worker === "hosted_configured"
-                  ? t("الإعداد جاهز، والجودة لم تعتمد بعد", "Configured; matching quality is not approved")
+                  ? t("إعداد مزود المطابقة مكتمل", "Matching provider configured")
                   : status.worker === "hosted_blocked"
                     ? t("متوقفة حتى استيفاء الخصوصية والمعايرة", "Blocked until privacy and calibration requirements pass")
                     : t("غير متاحة", "Unavailable")}

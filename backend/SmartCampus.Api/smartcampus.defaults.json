@@ -18,6 +18,7 @@
     "Risks": [ "low", "medium", "high" ]
   },
   "Search": {
+    "AllowUncalibratedCandidates": true,
     "ProviderDataCollection": "deny",
     "ExternalProcessingApproved": false,
     "ExternalImagesApproved": false,

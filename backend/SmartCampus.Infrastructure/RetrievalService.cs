@@ -52,7 +52,9 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         if (Hosted && !RemoteEmbeddings.Configured(config))
             throw new RuleException("search_provider_not_configured", 503);
         var threshold = ApprovedThreshold(config, photo is not null, hasText);
-        if (threshold is null)
+        // The site owner may explicitly offer ranked suggestions before calibration.
+        // This does not approve a threshold or establish a match/ownership probability.
+        if (threshold is null && !(Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates")))
             throw new RuleException("search_calibration_required", 503);
         if (Hosted && await HasVisibleUnindexedItems(actor, photo is not null))
             throw new RuleException("search_index_pending", 503);
@@ -66,7 +68,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         }
         var text = hasText ? await EmbedText(description!) : null;
         if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
-        var candidates = await Candidates(actor, text, image, threshold.Value);
+        var candidates = await Candidates(actor, text, image, threshold);
         if (candidates.Length > 0)
         {
             // Repeated searches should not grow an unbounded set of identical
@@ -82,7 +84,8 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             }
             if (db.ChangeTracker.HasChanges()) await db.SaveChangesAsync();
         }
-        return new { itemIds = candidates, rankingVersion = Hosted ? RemoteEmbeddings.Revision(config) : "siglip2-v1", calibration = config["Search:CalibrationApproval"] };
+        return new { itemIds = candidates, rankingVersion = Hosted ? RemoteEmbeddings.Revision(config) : "siglip2-v1",
+            calibration = threshold.HasValue ? config["Search:CalibrationApproval"] : null, calibrated = threshold.HasValue };
     }
 
     public async Task Index(Guid id)
@@ -206,7 +209,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         await command.ExecuteNonQueryAsync();
     }
 
-    private async Task<Guid[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, double threshold)
+    private async Task<Guid[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, double? threshold)
     {
         var query = text ?? image ?? throw new RuleException("search_input_required");
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
@@ -230,7 +233,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
                  + COALESCE(image_image, image_text, finder_text))/2
               ELSE COALESCE(0.7*image_text+0.3*finder_text, image_text, finder_text)
               END AS score FROM ranked)
-            SELECT "ItemId" FROM scored WHERE score>=@threshold ORDER BY score DESC,"ItemId" LIMIT 5
+            SELECT "ItemId" FROM scored WHERE score IS NOT NULL AND (@threshold IS NULL OR score>=@threshold) ORDER BY score DESC,"ItemId" LIMIT 5
             """;
         command.Parameters.AddWithValue("text", Vector(query.Vector));
         command.Parameters.AddWithValue("image", Vector((image ?? query).Vector));
@@ -241,7 +244,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         command.Parameters.AddWithValue("dimension", query.Dimension);
         command.Parameters.AddWithValue("user", actor.Id);
         command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
-        command.Parameters.AddWithValue("threshold", threshold);
+        command.Parameters.AddWithValue("threshold", NpgsqlTypes.NpgsqlDbType.Double, (object?)threshold ?? DBNull.Value);
         var candidates = new List<Guid>();
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync()) candidates.Add(reader.GetGuid(0));

@@ -34,6 +34,10 @@ export interface FoundItem extends Omit<FoundInput, "storage"> {
   canReceive?: boolean;
   canCancelHandover?: boolean;
 }
+export interface SearchResult {
+  items: FoundItem[];
+  calibrated: boolean;
+}
 export type ClaimStatus =
   "pending" | "approved" | "rejected" | "delivered" | "closed" | "cancelled";
 export interface Claim {
@@ -100,7 +104,7 @@ export function departmentStats(
 }
 interface LostFoundService {
   register(actor: Account, input: FoundInput): Promise<FoundItem>;
-  search(actor: Account, description: string, photo?: File): Promise<FoundItem[]>;
+  search(actor: Account, description: string, photo?: File): Promise<SearchResult>;
   detail(actor: Account, id: string): Promise<FoundItem & { canClaim: boolean }>;
   itemsFor(actor: Account): Promise<FoundItem[]>;
   requestHandover(
@@ -127,8 +131,11 @@ export const lostFound: LostFoundService = {
   register: async (_actor, input) => withPhoto(await api<FoundItem>("/found", { method: "POST", body: form({ ...input,
     destination: input.destination ? await departmentId(input.destination) : undefined }) })),
   search: async (actor, description, photo) => {
-    const response = await api<{ itemIds: string[] }>("/found/search", { method: "POST", body: form({ description, photo }) });
-    return Promise.all(response.itemIds.map(id => lostFound.detail(actor, id)));
+    const response = await api<{ itemIds: string[]; calibrated?: boolean }>("/found/search", { method: "POST", body: form({ description, photo }) });
+    return {
+      items: await Promise.all(response.itemIds.map(id => lostFound.detail(actor, id))),
+      calibrated: response.calibrated === true,
+    };
   },
   detail: async (_actor, id) => withPhoto(await api<FoundItem & { canClaim: boolean }>(`/found/${id}`)),
   itemsFor: () => pages<FoundItem>("/found"),
