@@ -66,6 +66,34 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         (await db.Items.FindAsync(red))!.Description = "Red bag";
         await db.SaveChangesAsync();
 
+        // Demo accounts and explicitly marked documentation fixtures must never
+        // become user-facing search candidates or block search while unindexed.
+        var demo = new FoundItem {
+            UploaderId = campus.Staff, CustodianId = campus.Staff,
+            Description = "DEMO ONLY · Blue fictional watch", Place = "Synthetic courtyard",
+            Date = new DateOnly(2026, 1, 1), Storage = "Synthetic cabinet"
+        };
+        var documentation = new FoundItem {
+            UploaderId = campus.Student, CustodianId = campus.Student,
+            Description = "DOCUMENTATION TEST ONLY · Blue fictional navy rectangle",
+            Place = "Synthetic courtyard", Date = new DateOnly(2026, 1, 1), Storage = "Synthetic cabinet"
+        };
+        var unindexedDemo = new FoundItem {
+            UploaderId = campus.Staff, CustodianId = campus.Staff,
+            Description = "DEMO ONLY · Unindexed green fixture", Place = "Synthetic courtyard",
+            Date = new DateOnly(2026, 1, 1), Storage = "Synthetic cabinet"
+        };
+        var unindexedDocumentation = new FoundItem {
+            UploaderId = campus.Student, CustodianId = campus.Student,
+            Description = "DOCUMENTATION TEST ONLY · Unindexed green fixture",
+            Place = "Synthetic courtyard", Date = new DateOnly(2026, 1, 1), Storage = "Synthetic cabinet"
+        };
+        db.UserClaims.Add(new IdentityUserClaim<Guid> {
+            UserId = campus.Staff, ClaimType = DemoPreparationService.DemoMarkerClaimType, ClaimValue = "true"
+        });
+        db.Items.AddRange(demo, documentation, unindexedDemo, unindexedDocumentation);
+        await db.SaveChangesAsync();
+
         var principal = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, campus.Other.ToString())], "synthetic-test"));
         var access = new Access(db, new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = principal } },
@@ -94,6 +122,8 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
             scope.ServiceProvider.GetRequiredService<PrivateMedia>(), remote);
         await retrieval.Index(blue);
         await retrieval.Index(red);
+        await retrieval.Index(demo.Id);
+        await retrieval.Index(documentation.Id);
         // A worker restart/requeue must reuse the persisted model revision.
         await retrieval.Index(blue);
         Assert.Equal(2, boundary.Calls);
@@ -135,6 +165,8 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         Assert.Equal(4, boundary.Calls); // two passages and two distinct text queries; no image request
         Assert.True(await db.SearchGrants.AnyAsync(g => g.ItemId == blue && g.UserId == campus.Other));
         Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == red && g.UserId == campus.Other));
+        Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == demo.Id && g.UserId == campus.Other));
+        Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == documentation.Id && g.UserId == campus.Other));
 
         await retrieval.Search("Blue distinctive bottle", null);
         Assert.Equal(1, await db.SearchGrants.CountAsync(g => g.ItemId == blue && g.UserId == campus.Other));
