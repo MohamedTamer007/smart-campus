@@ -24,6 +24,9 @@ public sealed class EmailJsEmailTransport(IHttpClientFactory clients, IConfigura
             string.IsNullOrWhiteSpace(publicKey) || string.IsNullOrWhiteSpace(privateKey))
             throw new RuleException("email_not_configured", 503);
 
+        // The wording is computed here (same source as the other providers) so the stored EmailJS
+        // template stays static: see deployment/emailjs/smart-campus-account-email.html.
+        var parts = CampusEmailContent.Describe(subject, link);
         // EmailJS templates are configured by the operator. The recipient must
         // be a fixed {{to_email}} variable rather than a hardcoded test inbox.
         // Registration and password-reset tokens are minted by the API only.
@@ -34,7 +37,12 @@ public sealed class EmailJsEmailTransport(IHttpClientFactory clients, IConfigura
             template_id = templateId,
             user_id = publicKey,
             accessToken = privateKey,
-            template_params = new { to_email = recipient, subject, link }
+            template_params = new
+            {
+                to_email = recipient, subject, link,
+                title_ar = parts.Title, title_en = parts.EnglishTitle, message_ar = parts.Message, message_en = parts.English,
+                button_ar = parts.Button, button_en = parts.ButtonEnglish, logo_url = parts.LogoUrl
+            }
         }, cancellation);
 
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
