@@ -95,29 +95,6 @@ export function Settings() {
           />
         </ActionForm>
       </div>
-      <div className="panel narrow">
-        <h2>{t("حذف الحساب", "Delete account")}</h2>
-        <p>{t(
-          "هيتم مسح بيانات تسجيل الدخول واسمك وإيميلك وتعطيل حسابك. السجلات القديمة للبلاغات والمعثورات بتفضل محفوظة باسم مجهول عشان ما يتأثرش سجل النظام.",
-          "Your sign-in credentials, name, and email will be erased and your account disabled. Historical maintenance and lost-property records remain anonymously to preserve the records.",
-        )}</p>
-        <ActionForm
-          label={t("حذف حسابي", "Delete my account")}
-          danger
-          onSubmit={async data => {
-            if (data.get("confirmDelete") !== "yes") throw new ServiceError("invalid");
-            await auth.deleteAccount(String(data.get("currentPassword") ?? ""));
-            updateAccount(guestAccount);
-            navigate("/login?deleted=1");
-          }}
-        >
-          <Password name="currentPassword" label={t("كلمة المرور الحالية للتأكيد", "Current password to confirm")} />
-          <label className="field">
-            <input type="checkbox" required name="confirmDelete" value="yes" />
-            {" "}{t("فاهم إن حذف الحساب مش ممكن أتراجع عنه.", "I understand that this account deletion cannot be undone.")}
-          </label>
-        </ActionForm>
-      </div>
       <div className="narrow">
         <button
           type="button"

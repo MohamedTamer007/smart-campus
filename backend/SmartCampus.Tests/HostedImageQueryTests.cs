@@ -49,7 +49,7 @@ public sealed class HostedImageQueryTests(CampusFixture campus) : IClassFixture<
     }
 
     [DatabaseFact]
-    public async Task Image_only_and_combined_queries_rank_current_vectors_without_empty_text_requests()
+    public async Task Photo_only_is_rejected_and_description_with_photo_ranks_current_vectors()
     {
         using var uploader = await campus.Login(campus.Student);
         async Task<Guid> Register(string description, SKColor color)
@@ -87,23 +87,18 @@ public sealed class HostedImageQueryTests(CampusFixture campus) : IClassFixture<
 
         using var bluePhoto = new MemoryStream(Picture(SKColors.Blue, 9));
         var blueFile = new FormFile(bluePhoto, 0, bluePhoto.Length, "photo", "blue.png");
-        var result = JsonSerializer.SerializeToElement(await retrieval.Search(null, blueFile));
-        Assert.Equal(blue, Assert.Single(result.GetProperty("itemIds").EnumerateArray()).GetGuid());
-        Assert.Equal(2, encoder.TextCalls); // image-only query must not spend a text request
-        Assert.Equal(3, encoder.ImageCalls);
-        Assert.True(await db.SearchGrants.AnyAsync(g => g.UserId == campus.Other && g.ItemId == blue));
-        Assert.False(await db.SearchGrants.AnyAsync(g => g.UserId == campus.Other && g.ItemId == red));
+        // A photo alone is rejected before any provider request or search grant.
+        Assert.Equal("search_input_required", (await Assert.ThrowsAsync<RuleException>(() => retrieval.Search(null, blueFile))).Code);
+        Assert.Equal("search_input_required", (await Assert.ThrowsAsync<RuleException>(() => retrieval.Search("  ", blueFile))).Code);
+        Assert.Equal(2, encoder.TextCalls);
+        Assert.Equal(2, encoder.ImageCalls);
+        Assert.False(await db.SearchGrants.AnyAsync(g => g.UserId == campus.Other));
 
         using var redPhoto = new MemoryStream(Picture(SKColors.Red, 9));
         var combined = JsonSerializer.SerializeToElement(await retrieval.Search("Red bag query", new FormFile(redPhoto, 0, redPhoto.Length, "photo", "red.png")));
         Assert.Equal(red, Assert.Single(combined.GetProperty("itemIds").EnumerateArray()).GetGuid());
         Assert.Equal(3, encoder.TextCalls);
-        Assert.Equal(4, encoder.ImageCalls);
-
-        using var greenPhoto = new MemoryStream(Picture(SKColors.Green, 9));
-        var noMatch = JsonSerializer.SerializeToElement(await retrieval.Search("", new FormFile(greenPhoto, 0, greenPhoto.Length, "photo", "green.png")));
-        Assert.Empty(noMatch.GetProperty("itemIds").EnumerateArray());
-        Assert.Equal(3, encoder.TextCalls);
+        Assert.Equal(3, encoder.ImageCalls);
 
         Assert.Equal("search_input_required", (await Assert.ThrowsAsync<RuleException>(() => retrieval.Search(" ", null))).Code);
         var callsBeforeInvalid = encoder.ImageCalls + encoder.TextCalls;
@@ -112,7 +107,7 @@ public sealed class HostedImageQueryTests(CampusFixture campus) : IClassFixture<
         Assert.Equal(callsBeforeInvalid, encoder.ImageCalls + encoder.TextCalls);
 
         await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM smart_campus.\"Embeddings\" WHERE \"ItemId\"={blue} AND \"Kind\"='image'");
-        Assert.Equal("search_index_pending", (await Assert.ThrowsAsync<RuleException>(() => retrieval.Search(null, blueFile))).Code);
+        Assert.Equal("search_index_pending", (await Assert.ThrowsAsync<RuleException>(() => retrieval.Search("Blue bottle", blueFile))).Code);
         Assert.Equal(callsBeforeInvalid, encoder.ImageCalls + encoder.TextCalls);
     }
 

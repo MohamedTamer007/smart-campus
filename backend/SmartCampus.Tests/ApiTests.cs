@@ -166,9 +166,9 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal(HttpStatusCode.ServiceUnavailable, unavailable.StatusCode);
         Assert.Contains("search_calibration_required", await unavailable.Content.ReadAsStringAsync());
         using var imageOnly = new MultipartFormDataContent { { new ByteArrayContent(await uploader.GetByteArrayAsync(own.GetProperty("mediaUrl").GetString())), "photo", "synthetic.png" } };
-        var imageUnavailable = await other.PostAsync("/api/v1/found/search", imageOnly);
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, imageUnavailable.StatusCode);
-        Assert.Contains("search_calibration_required", await imageUnavailable.Content.ReadAsStringAsync());
+        var imageRejected = await other.PostAsync("/api/v1/found/search", imageOnly);
+        Assert.Equal(HttpStatusCode.BadRequest, imageRejected.StatusCode);
+        Assert.Contains("search_input_required", await imageRejected.Content.ReadAsStringAsync());
         using var blank = new MultipartFormDataContent { { new StringContent(" "), "description" } };
         var missingInput = await other.PostAsync("/api/v1/found/search", blank);
         Assert.Equal(HttpStatusCode.BadRequest, missingInput.StatusCode);
