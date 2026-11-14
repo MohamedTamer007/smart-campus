@@ -41,7 +41,7 @@ jobs:
     # Fail closed: main may auto-deploy only after the owner has attested
     # synthetic-only data, verified runtime configuration and approved security.
     # Manual runs additionally require the explicit publish=true input.
-    if: ${{ vars.MONSTERASP_AUTO_DEPLOY_DISABLED != 'true' && vars.MONSTERASP_MAIN_DEPLOYMENT_ENABLED == 'true' && vars.MONSTERASP_TEST_DATA_ONLY == 'true' && vars.MONSTERASP_PUBLICATION_APPROVED == 'true' && vars.MONSTERASP_RUNTIME_CONFIG_VERIFIED == 'true' && vars.MONSTERASP_SECURITY_REVIEW_APPROVED == 'true' && (github.event_name == 'push' || inputs.publish == true) }}
+    if: ${{ vars.MONSTERASP_AUTO_DEPLOY_DISABLED != 'true' && vars.MONSTERASP_TEST_DATA_ONLY == 'true' && vars.MONSTERASP_PUBLICATION_APPROVED == 'true' && vars.MONSTERASP_RUNTIME_CONFIG_VERIFIED == 'true' && vars.MONSTERASP_SECURITY_REVIEW_APPROVED == 'true' && (github.event_name == 'push' || inputs.publish == true) }}
     runs-on: windows-2022
     timeout-minutes: 45
     env:
