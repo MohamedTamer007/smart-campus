@@ -97,14 +97,14 @@ function departmentName(id: Department, t: (ar: string, en: string) => string) {
     ? t("الأمن", "Security")
     : id === "secretariat" ? t("السكرتارية", "Secretariat") : id;
 }
-function FoundCard({ item }: { item: FoundItem }) {
+function FoundCard({ item, showId = true }: { item: FoundItem; showId?: boolean }) {
   const { t } = useApp();
   return (
     <Link className="record-card found-card" to={`/found/${item.id}`}>
       <Photo file={item.photo} src={item.mediaUrl} />
       <div>
         <div className="record-top">
-          <bdi>{item.id}</bdi>
+          {showId && <bdi>{item.id}</bdi>}
           <span className="tag">
             {item.state === "available"
               ? t("متاح", "Available")
@@ -336,7 +336,7 @@ export function SearchItems() {
           ? <Feedback>{t("لم تظهر نتائج مؤهلة لهذا البحث. هذا لا يثبت أن الغرض غير موجود؛ يمكنك تعديل الوصف أو الصورة والمحاولة مرة أخرى.", "No qualifying results appeared for this search. This does not prove the item is absent; revise the description or photo and try again.")}</Feedback>
           : <section className="search-results" aria-live="polite" aria-labelledby="search-results-heading">
             <h2 id="search-results-heading">{matches.calibrated ? t("مطابقات محتملة", "Potential matches") : t("اقتراحات مشابهة", "Similar suggestions")}</h2>
-            <div className="record-list">{matches.items.map((item) => <FoundCard key={item.id} item={item} />)}</div>
+            <div className="record-list">{matches.items.map((item) => <FoundCard key={item.id} item={item} showId={false} />)}</div>
           </section>)}
       </div>
     </Page>
