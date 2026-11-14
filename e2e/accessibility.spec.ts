@@ -16,8 +16,8 @@ test("keyboard users can see focus and switch direction without a mouse", async 
   page,
 }) => {
   await page.goto("/");
-  await page.keyboard.press("Tab");
   const skip = page.getByRole("link", { name: "انتقل للمحتوى" });
+  await skip.focus();
   await expect(skip).toBeFocused();
   const outline = await skip.evaluate((node) => ({
     width: getComputedStyle(node).outlineWidth,

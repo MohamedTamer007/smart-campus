@@ -10,7 +10,8 @@ import {
   useAction,
 } from "../../components/ui";
 import { ImageField } from "../maintenance/Maintenance";
-import { ServiceError } from "../../services/contracts";
+import { DirectoryOptions } from "../../components/DirectoryOptions";
+import { hasRole, ServiceError } from "../../services/contracts";
 import {
   lostFound,
   currentCustodian,
@@ -18,6 +19,7 @@ import {
   receiving,
   type Department,
   type FoundItem,
+  type SearchResult,
   type Claim,
   type ClaimStatus,
 } from "../../services/lostFound";
@@ -45,17 +47,16 @@ const claimLabels: Record<ClaimStatus, [string, string]> = {
   rejected: ["مرفوض", "Rejected"],
   delivered: ["تم التسليم", "Delivered"],
   closed: ["أُغلق", "Closed"],
+  cancelled: ["ملغى", "Cancelled"],
 };
 function isCustodian(
   item: FoundItem,
-  actor: { id: string; role: string; department?: string },
+  actor: import("../../services/contracts").Account,
 ) {
-  return item.custodianDepartment
-    ? ["department", "secretariat"].includes(actor.role) &&
-        actor.department === item.custodianDepartment
-    : item.custodianId === actor.id;
+  return currentCustodian(item, actor);
 }
-function Photo({ file }: { file?: File }) {
+
+function Photo({ file, src }: { file?: File; src?: string }) {
   const [preview, setPreview] = useState<{ file: File; url: string }>();
   const { t } = useApp();
   useEffect(() => {
@@ -77,6 +78,14 @@ function Photo({ file }: { file?: File }) {
       src={preview.url}
       alt={t("صورة توضيحية للغرض المُسجّل", "Photo of the registered item")}
     />
+  ) : src ? (
+    <img
+      className="item-photo"
+      src={src}
+      alt={t("صورة توضيحية للغرض المُسجّل", "Photo of the registered item")}
+      loading="lazy"
+      decoding="async"
+    />
   ) : null;
 }
 function ClaimStatusBadge({ status }: { status: ClaimStatus }) {
@@ -86,13 +95,13 @@ function ClaimStatusBadge({ status }: { status: ClaimStatus }) {
 function departmentName(id: Department, t: (ar: string, en: string) => string) {
   return id === "security"
     ? t("الأمن", "Security")
-    : t("السكرتارية", "Secretariat");
+    : id === "secretariat" ? t("السكرتارية", "Secretariat") : id;
 }
 function FoundCard({ item }: { item: FoundItem }) {
   const { t } = useApp();
   return (
     <Link className="record-card found-card" to={`/found/${item.id}`}>
-      <Photo file={item.photo} />
+      <Photo file={item.photo} src={item.mediaUrl} />
       <div>
         <div className="record-top">
           <bdi>{item.id}</bdi>
@@ -148,7 +157,6 @@ export function RegisterFound() {
               !draft.description.trim() ||
               !draft.place.trim() ||
               !draft.storage.trim() ||
-              draft.destination === "other" ||
               (draft.destination !== "" && !draft.office.trim())
             )
               throw new ServiceError("invalid");
@@ -175,6 +183,7 @@ export function RegisterFound() {
             <textarea
               required
               name="description"
+              maxLength={4000}
               value={draft.description}
               onChange={(e) => change({ description: e.target.value })}
             />
@@ -190,6 +199,7 @@ export function RegisterFound() {
             <input
               required
               name="place"
+              maxLength={1000}
               value={draft.place}
               onChange={(e) => change({ place: e.target.value })}
             />
@@ -208,6 +218,7 @@ export function RegisterFound() {
             <input
               required
               name="storage"
+              maxLength={1000}
               value={draft.storage}
               onChange={(e) => change({ storage: e.target.value })}
             />
@@ -222,13 +233,7 @@ export function RegisterFound() {
               }
             >
               <option value="">{t("معي حالياً", "With me for now")}</option>
-              <option value="security">{t("الأمن", "Security")}</option>
-              <option value="secretariat">
-                {t("السكرتارية", "Secretariat")}
-              </option>
-              <option value="other">
-                {t("جهة مسجلة أخرى", "Other registered department")}
-              </option>
+              <DirectoryOptions />
             </select>
           </Field>
           {draft.destination === "other" && (
@@ -251,6 +256,7 @@ export function RegisterFound() {
                 <input
                   required
                   name="office"
+                  maxLength={1000}
                   value={draft.office}
                   onChange={(e) => change({ office: e.target.value })}
                 />
@@ -276,71 +282,67 @@ export function RegisterFound() {
 }
 export function SearchItems() {
   const { t, account } = useApp();
-  const [items, setItems] = useState<FoundItem[] | null>(null);
+  const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<File>();
+  const [matches, setMatches] = useState<SearchResult | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const { pending, run } = useAction();
+  const failureText: Record<string, [string, string]> = {
+    search_input_required: ["اكتب وصفًا أو اختر صورة للغرض.", "Enter a description or choose an item photo."],
+    search_provider_not_configured: [
+      "خدمة المطابقة متوقفة بسبب إعدادات الخادم. لم يُرسل هذا البحث إلى مزود خارجي. تواصل مع مسؤول الموقع لتفعيلها بعد استكمال الموافقات.",
+      "Matching is paused by the server configuration. This search was not sent to an external provider. Ask the site administrator to enable matching after required approvals are complete.",
+    ],
+    search_calibration_required: ["البحث متوقف حتى اعتماد جودة المطابقة بأمان.", "Search is unavailable until matching quality is safely approved."],
+    search_index_pending: ["تجري فهرسة بعض الأغراض. حاول مرة أخرى بعد اكتمالها.", "Some items are still being indexed. Try again after indexing completes."],
+    search_external_images_not_approved: ["البحث بالصورة غير متاح حاليًا.", "Image search is currently unavailable."],
+    search_provider_unavailable: ["تعذرت خدمة المطابقة. لم يُعتبر ذلك عدم وجود غرض مطابق.", "Matching service failed. This does not mean there is no matching item."],
+    ai_quota_exhausted: ["وصلت خدمة المطابقة إلى حد الاستخدام الحالي. حاول لاحقًا.", "The matching service reached its current usage limit. Try again later."],
+    ai_rate_limited: ["طلبات كثيرة لخدمة المطابقة. انتظر قليلًا ثم حاول.", "The matching service is rate limited. Wait briefly and try again."],
+  };
   return (
     <Page
       title={t("البحث عن مفقوداتك", "Search for a lost item")}
       subtitle={t(
-        "اكتب وصفاً يميز غرضك. نتائج البحث خاصة بك.",
-        "Describe your item. Search results are private.",
+        "ابحث بوصف مميز أو بصورة سابقة للغرض، أو استخدمهما معًا.",
+        "Search with a distinguishing description, a previous item photo, or both.",
       )}
     >
       <div className="panel narrow">
-        <ActionForm
-          label={t("البحث عن تطابق", "Search for matches")}
-          onSubmit={async (data) => {
-            setItems(null);
-            if (!String(data.get("description") ?? "").trim())
-              throw new ServiceError("invalid");
-            const result = await lostFound.search(
-              account,
-              String(data.get("description")),
-              photo,
-            );
-            setItems(result);
-          }}
-        >
-          <Field
-            label={t("وصف الغرض المفقود", "Lost item description")}
-            required
-          >
-            <textarea required name="description" />
+        <form className="form-stack" onSubmit={(event) => {
+          event.preventDefault();
+          setMatches(null);
+          setFailure(null);
+          if (!description.trim() && !photo) { setFailure("search_input_required"); return; }
+          void run(async () => {
+            try {
+              setMatches(await lostFound.search(account, description.trim(), photo));
+            } catch (error) {
+              const code = error instanceof ServiceError ? error.detail ?? error.code : "unavailable";
+              setFailure(code);
+            }
+          });
+        }}>
+          <Field label={t("وصف الغرض المفقود", "Description of the lost item")} required={!photo} hint={t("اذكر اللون أو العلامة أو النوع. لا تكتب بيانات شخصية. يمكنك ترك الوصف فارغًا عند اختيار صورة.", "Include its color, mark, or type. Do not enter personal information. You can leave this blank when choosing a photo.")}>
+            <textarea name="description" required={!photo} maxLength={2000} rows={4} value={description} onChange={(event) => { setDescription(event.target.value); setMatches(null); setFailure(null); }} />
           </Field>
-          <ImageField
-            photo={photo}
-            onChange={setPhoto}
-            label={t("صورة سابقة — اختيارية", "Previous photo — optional")}
-          />
-          <Feedback>
-            {t(
-              "النتائج المحتملة لا تثبت الملكية.",
-              "A potential match does not prove ownership.",
-            )}
-          </Feedback>
-        </ActionForm>
+          <ImageField photo={photo} onChange={(file) => { setPhoto(file); setMatches(null); setFailure(null); }} label={t("صورة سابقة للغرض — اختيارية", "Previous photo of the item — optional")} />
+          <Feedback>{t("لا تكشف المطابقة المحتملة ملكية الغرض. لا تعرض الخدمة إلا النتائج المؤهلة التي يسمح لك النظام برؤيتها.", "A potential match does not prove ownership. The service only shows qualifying results you are authorized to view.")}</Feedback>
+          <button className="button primary" disabled={pending || failure === "search_provider_not_configured" || failure === "search_calibration_required"}>{pending ? t("جارٍ البحث…", "Searching…") : t("ابحث", "Search")}</button>
+        </form>
+        {failure && <Feedback kind="error">{failureText[failure] ? t(...failureText[failure]) : t("تعذر إكمال البحث. حاول لاحقًا.", "Search could not be completed. Try again later.")}</Feedback>}
+        {matches !== null && !matches.calibrated && <Feedback>{t("هذه اقتراحات مرتبة بالتشابه دون معايرة معتمدة؛ قد تتضمن أغراضًا غير مرتبطة ببحثك. لا تثبت المطابقة أو الملكية، ويظل الاسترداد خاضعًا لمراجعة الحائز.", "These are similarity-ranked suggestions without approved calibration; unrelated items may appear. They do not establish a match or ownership. Recovery still requires the custodian’s review.")}</Feedback>}
+        {matches !== null && (matches.items.length === 0
+          ? <Feedback>{t("لم تظهر نتائج مؤهلة لهذا البحث. هذا لا يثبت أن الغرض غير موجود؛ يمكنك تعديل الوصف أو الصورة والمحاولة مرة أخرى.", "No qualifying results appeared for this search. This does not prove the item is absent; revise the description or photo and try again.")}</Feedback>
+          : <section className="search-results" aria-live="polite" aria-labelledby="search-results-heading">
+            <h2 id="search-results-heading">{matches.calibrated ? t("مطابقات محتملة", "Potential matches") : t("اقتراحات مشابهة", "Similar suggestions")}</h2>
+            <div className="record-list">{matches.items.map((item) => <FoundCard key={item.id} item={item} />)}</div>
+          </section>)}
       </div>
-      {items !== null &&
-        (items.length ? (
-          <section>
-            <h2>{t("تطابقات محتملة", "Potential matches")}</h2>
-            <div className="list">
-              {items.map((item) => (
-                <FoundCard key={item.id} item={item} />
-              ))}
-            </div>
-          </section>
-        ) : (
-          <Feedback>
-            {t(
-              "لم نجد تطابقاً مناسباً. عدّل الوصف وحاول مجدداً.",
-              "No suitable matches. Revise the description and try again.",
-            )}
-          </Feedback>
-        ))}
     </Page>
   );
 }
+
 export function FoundList({
   department = false,
   all = false,
@@ -447,10 +449,8 @@ function HandoverPanel({
 }) {
   const { t, account } = useApp();
   const owner = isCustodian(item, account);
-  const recipient =
-    ["department", "secretariat"].includes(account.role) &&
-    account.department === item.handover?.department;
-  const pending = item.handover?.status === "pending";
+  const recipient = item.canReceive ?? receiving(item, account);
+  const pending = item.handover?.status === "pending" || item.handover?.status === "not-received";
   return (
     <div className="panel">
       <h2>{t("عهدة الغرض", "Item custody")}</h2>
@@ -482,7 +482,7 @@ function HandoverPanel({
           {item.handover.office}
         </Feedback>
       )}
-      {owner && pending && (
+      {(item.canCancelHandover ?? (owner && pending)) && (
         <ActionForm
           label={t("إلغاء طلب التسليم", "Cancel handover")}
           onSubmit={async () => {
@@ -539,7 +539,7 @@ function HandoverPanel({
           </ActionForm>
         </div>
       )}
-      {owner && !pending && item.state === "available" && (
+      {(item.canHandover ?? (owner && !pending && item.state === "available")) && (
         <ActionForm
           label={t("طلب تسليم لجهة", "Request departmental handover")}
           onSubmit={async (data) => {
@@ -559,14 +559,12 @@ function HandoverPanel({
         >
           <Field label={t("الجهة المستلمة", "Receiving department")} required>
             <select name="department" required>
-              <option value="security">{t("الأمن", "Security")}</option>
-              <option value="secretariat">
-                {t("السكرتارية", "Secretariat")}
-              </option>
+              <option value="">{t("اختر الجهة", "Choose department")}</option>
+              <DirectoryOptions />
             </select>
           </Field>
           <Field label={t("المكتب أو الموقع", "Office or location")} required>
-            <input required name="office" />
+            <input required name="office" maxLength={1000} />
           </Field>
         </ActionForm>
       )}
@@ -609,26 +607,17 @@ function ItemDetail({
               <bdi>{item.date}</bdi>
             </dd>
           </div>
-          <div>
-            <dt>
-              {item.state === "delivered"
-                ? t("الحائز السابق", "Previous custodian")
-                : t("الحائز الحالي", "Current custodian")}
-            </dt>
-            <dd>
-              {item.custodianDepartment
-                ? `${item.state === "delivered" ? t("الحائز السابق", "Previous custodian") : t("الحائز الحالي", "Current custodian")}: ${departmentName(item.custodianDepartment, t)}`
-                : item.storage}
-            </dd>
-            {item.custodianDepartment && item.custodianOffice && (
-              <dd>{item.custodianOffice}</dd>
-            )}
-          </div>
+          {(owner || hasRole(account, "admin")) && <div>
+            <dt>{item.state === "delivered" ? t("الحائز السابق", "Previous custodian") : t("الحائز الحالي", "Current custodian")}</dt>
+            {item.custodianDepartment && <dd>{departmentName(item.custodianDepartment, t)}</dd>}
+            {item.storage && <dd>{item.storage}</dd>}
+            {item.custodianDepartment && item.custodianOffice && <dd>{item.custodianOffice}</dd>}
+          </div>}
         </dl>
       </div>
       {(owner ||
         item.uploaderId === account.id ||
-        item.handover?.department === account.department) && (
+        (item.canReceive ?? receiving(item, account))) && (
         <HandoverPanel item={item} changed={changed} />
       )}
       {item.canClaim && (
@@ -657,7 +646,7 @@ function ItemDetail({
                 "Additional message — optional",
               )}
             >
-              <textarea name="message" />
+              <textarea name="message" maxLength={4000} />
             </Field>
           </ActionForm>
         </div>
@@ -793,6 +782,7 @@ function ClaimView({
                   account,
                   claim.id,
                   {
+                    version: claim.version,
                     phone,
                     place,
                     instructions,
@@ -807,18 +797,18 @@ function ClaimView({
                     label={t("مكان الاستلام", "Collection place")}
                     required
                   >
-                    <input name="place" required />
+                    <input name="place" required maxLength={1000} />
                   </Field>
                   <Field
                     label={t("تعليمات الاستلام", "Collection instructions")}
                     required
                   >
-                    <textarea name="instructions" required />
+                    <textarea name="instructions" required maxLength={4000} />
                   </Field>
                 </>
               ) : (
                 <Field label={t("هاتف للتواصل", "Contact phone")} required>
-                  <input dir="ltr" type="tel" name="phone" required />
+                  <input dir="ltr" type="tel" name="phone" required maxLength={30} />
                 </Field>
               )}
             </ActionForm>
@@ -826,18 +816,19 @@ function ClaimView({
           {claim.canReject && (
             <ActionForm
               label={t("رفض الطلب", "Reject request")}
-              onSubmit={async () => {
-                await lostFound.reject(account, claim.id);
+              onSubmit={async data => {
+                await lostFound.reject(account, claim.id, String(data.get("reason")), claim.version);
                 changed();
               }}
             >
-              <span className="sr-only">
-                {t("رفض الطلب", "Reject request")}
-              </span>
+              <Field label={t("سبب الرفض", "Rejection reason")} required><textarea name="reason" required maxLength={4000} /></Field>
             </ActionForm>
           )}
         </div>
       )}
+      {claim.canCancel && <ActionForm label={t("إلغاء الموافقة", "Cancel approval")} onSubmit={async data => {
+        await lostFound.cancelApproval(account, claim.id, String(data.get("reason")), claim.version); changed();
+      }}><Field label={t("سبب الإلغاء", "Cancellation reason")} required><textarea name="reason" required /></Field></ActionForm>}
       {(claim.status === "approved" || claim.status === "delivered") &&
         (custodian || claimant) && (
           <div className="panel">
@@ -883,6 +874,7 @@ function ClaimView({
                               await lostFound.confirmDelivery(
                                 account,
                                 claim.id,
+                                claim.version,
                               );
                               setConfirm(false);
                               changed();

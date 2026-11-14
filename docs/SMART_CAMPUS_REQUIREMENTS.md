@@ -20,9 +20,9 @@ No application code, API contract or model accuracy is certified by this documen
 
 **Agreed:** provide maintenance reports, private lost-item search, found-item registration, custody transfer, recovery requests, bilateral delivery confirmation, request tracking, in-site notifications and simple role-specific dashboards.
 
-There are no academic services, campus news, events, payments, refunds, live chat or public gallery of found items. There are no request-update emails. Email is used for account verification and password recovery. Campus maps are not part of the current frontend scope; use simple location-based statistics instead. Custom model training, provider quotas and AI infrastructure are backend concerns, not new frontend services.
+There are no academic services, campus news, events, payments, refunds, live chat or public gallery of found items. There are no request-update emails. Email is used for account verification and password recovery. The current delivery adds an admin-only schematic demo map with manually saved building positions, clearly distinguished from a geographic campus map. Custom model training, provider quotas and AI infrastructure are backend concerns, not new frontend services.
 
-The source proposal mentions spatial maps and broader decision support. The later team discussion narrowed this version to simple dashboards and issue distribution. A map is a future scope decision, not a missing current screen.
+The source proposal mentions spatial maps and broader decision support. The approved 12 November 2026 release plan expands the dashboard to include an explicitly schematic demo map, selectable date/departments, named building counts, unplaced locations, weekly trend, open-work and resolution metrics, and printable reporting. It does not claim geographic accuracy or use AI outputs as staff decisions.
 
 ## 3. Users and permissions
 
@@ -116,6 +116,8 @@ The place-found field is required. Unlike the maintenance-location rule, the dis
 
 **SEARCH-01 - Agreed:** a verified user searches using a required distinguishing description. A previous image of the lost item is optional. Search is limited to records uploaded to this site, not Google or external inventories.
 
+**Approved user amendment — Gemini migration request:** support description-only, image-only, and description-plus-image queries. At least one input is required. The original description-required rule above is superseded for image-only queries; privacy, eligible inventory and independently calibrated matching remain mandatory. Implemented locally on 14 November 2026; this is not production activation or retrieval-quality evidence.
+
 **SEARCH-02 - Agreed:** matching considers the owner's description and optional image, the found-item image, and the description submitted by the finder. The backend owns retrieval, analysis and matching thresholds.
 
 **SEARCH-03 - Agreed:** there is no public inventory gallery. Before a search, do not expose all found-item thumbnails. After the backend returns a qualifying potential match, the user can see the matching item's photo, description, place/date found and custody details, then open a recovery request.
@@ -164,7 +166,7 @@ If the parties disagree or one does not confirm, show the truthful pending state
 
 **DASH-02 - Agreed:** staff see their authorized departmental/assigned queue, applicable custody handovers, recovery requests and modest statistics for their scope. Maintenance staff may review AI suggestions only where permitted.
 
-**DASH-03 - Agreed:** Admin sees systemwide totals, maintenance status distribution, recurring fault types, issue distribution by recorded location, found-item availability and pending recovery work. No campus map is required in this version.
+**DASH-03 - Agreed:** Admin sees systemwide totals, maintenance status distribution, recurring fault types, issue distribution by recorded location, found-item availability and pending recovery work. The expanded admin view also has a schematic demo map, open-report count, resolved share, average and oldest-open durations, weekly trend and print view. Map positions are administrator-maintained display coordinates and do not establish geographic locations.
 
 **DASH-04 - Baseline:** statistics are derived from real authorized records and respect applied date/scope filters. Define each count to avoid treating 'Under review' and all open work as the same metric. All numbers in design images are sample data, not measured project results.
 
@@ -312,3 +314,4 @@ The team can send changes using the design PDF page number, element and requeste
 | Version | Date | Summary |
 | --- | --- | --- |
 | 1.0 | 2 November 2026 | Consolidated the agreed frontend scope, backend handoff, 18-board visual index, normal engineering baselines and implementation coordination points. |
+| 1.1 | 12 November 2026 | Expanded Admin analytics per approved release plan; added schematic, manually positioned demo map and print view. |

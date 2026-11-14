@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { guestAccount, type Account } from "../src/services/contracts";
 import { currentCustodian, departmentStats, lostFound, receiving, type FoundItem, type Claim } from "../src/services/lostFound";
 
@@ -16,12 +16,30 @@ describe("lost-and-found frontend boundary", () => {
       () => lostFound.claim(guestAccount, "item", ""),
       () => lostFound.claims(guestAccount),
       () => lostFound.claimDetail(guestAccount, "claim"),
-      () => lostFound.approve(guestAccount, "claim", { phone: "01000000000" }),
-      () => lostFound.reject(guestAccount, "claim"),
-      () => lostFound.confirmDelivery(guestAccount, "claim"),
+      () => lostFound.approve(guestAccount, "claim", { phone: "01000000000", version: 1 }),
+      () => lostFound.reject(guestAccount, "claim", "Reason", 1),
+      () => lostFound.confirmDelivery(guestAccount, "claim", 1),
     ];
     for (const operation of operations)
       await expect(operation()).rejects.toMatchObject({ code: "unavailable" });
+  });
+  it("loads the authorized found-item page without prefetching every private image", async () => {
+    const item: FoundItem = { id: "item-1", description: "Blue bottle", place: "Hall", date: "2026-11-13", storage: "Desk",
+      uploaderId: "owner", custodianId: "owner", state: "available", createdAt: "2026-11-13T00:00:00Z", version: 1,
+      mediaUrl: "/api/v1/media/photo-1" };
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ items: [item] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const results = await lostFound.itemsFor(guestAccount);
+      expect(results).toEqual([item]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0][0]).toContain("/api/v1/found?page=1&pageSize=100");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("distinguishes incoming custody from held items in displayed statistics", () => {
     const actor: Account = { id: "staff", name: "", email: "", role: "department", department: "security" };
@@ -31,5 +49,17 @@ describe("lost-and-found frontend boundary", () => {
     expect(receiving(incoming, actor)).toBe(true);
     expect(currentCustodian(incoming, actor)).toBe(false);
     expect(departmentStats([incoming, held], [claim], actor)).toEqual({ held: 1, incoming: 1, pendingClaims: 1 });
+  });
+  it("counts custody for an account with a granted secretariat role and a primary user role", () => {
+    const actor: Account = { id: "staff", name: "", email: "", role: "user", roles: ["secretariat"],
+      departments: [{ id: "scope-1", code: "secretariat" }] };
+    const incoming: FoundItem = { id: "1", description: "Item", place: "", date: "2025-01-01", storage: "", uploaderId: "owner",
+      custodianId: "owner", state: "available", createdAt: "2025-01-01", version: 1,
+      handover: { department: "secretariat", office: "Desk", status: "pending" } };
+    const held: FoundItem = { ...incoming, id: "2", custodianDepartment: "secretariat", handover: undefined };
+
+    expect(receiving(incoming, actor)).toBe(true);
+    expect(currentCustodian(held, actor)).toBe(true);
+    expect(departmentStats([incoming, held], [], actor)).toEqual({ held: 1, incoming: 1, pendingClaims: 0 });
   });
 });

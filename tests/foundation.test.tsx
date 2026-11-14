@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { App } from "../src/app/App";
@@ -24,21 +24,22 @@ describe("bilingual guest shell", () => {
   it("keeps sign-in inputs and reports unavailable without granting a session", async () => {
     render(<MemoryRouter><App /></MemoryRouter>);
     await userEvent.click(screen.getByRole("link", { name: "تسجيل الدخول" }));
-    await userEvent.type(screen.getByLabelText(/البريد الجامعي/), "student@o6u.edu.eg");
-    await userEvent.type(screen.getByLabelText(/^كلمة المرور/), "example-password");
-    await userEvent.click(screen.getByRole("button", { name: "تسجيل الدخول" }));
+    const loginPanel = within(document.querySelector(".auth-login")!);
+    await userEvent.type(loginPanel.getByLabelText(/البريد الجامعي/), "student@o6u.edu.eg");
+    await userEvent.type(loginPanel.getByLabelText(/^كلمة المرور/), "example-password");
+    await userEvent.click(loginPanel.getByRole("button", { name: "تسجيل الدخول" }));
     expect((await screen.findByRole("alert")).textContent).toContain("غير متاحة");
-    expect((screen.getByLabelText(/البريد الجامعي/) as HTMLInputElement).value).toBe("student@o6u.edu.eg");
+    expect((loginPanel.getByLabelText(/البريد الجامعي/) as HTMLInputElement).value).toBe("student@o6u.edu.eg");
     expect(screen.getByRole("heading", { name: "تسجيل الدخول" })).toBeTruthy();
   });
-  it("offers guests an account creation path", () => {
+  it("offers guests a university account creation path", () => {
     render(
       <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
     expect(
-      screen.getByRole("link", { name: "إنشاء حساب" }).getAttribute("href"),
+      screen.getByRole("link", { name: "إنشاء حساب جامعي" }).getAttribute("href"),
     ).toBe("/register");
   });
   it("keeps English when navigating and places maintenance before lost and found", async () => {

@@ -1,0 +1,37 @@
+{
+  "Email": {
+    "LocalSink": false
+  },
+  "Storage": {
+    "Local": false,
+    "Url": "https://mninpcrhqsaafoshjqpn.supabase.co"
+  },
+  "AI": {
+    "AllowNonSensitiveInference": false,
+    "AllowNonSensitiveImages": false,
+    "GeminiFreeTierOnly": false,
+    "GeminiDailyRequestLimit": 50,
+    "GeminiRequestsPerMinute": 10,
+    "ProviderDataCollection": "deny",
+    "FaultTypes": [ "plumbing", "water", "electrical", "hvac", "lighting", "furniture", "doors", "safety", "other" ],
+    "Priorities": [ "low", "medium", "high" ],
+    "Risks": [ "low", "medium", "high" ]
+  },
+  "Search": {
+    "AllowUncalibratedCandidates": true,
+    "ProviderDataCollection": "deny",
+    "ExternalProcessingApproved": false,
+    "ExternalImagesApproved": false,
+    "GeminiExternalProcessingApproved": false,
+    "GeminiExternalImagesApproved": false,
+    "GeminiProviderDataCollection": "deny",
+    "GeminiReindexApproved": false,
+    "GeminiReindexBatchSize": 25,
+    "GeminiReindexGeneration": 0,
+    "CalibrationApproval": ""
+  },
+  "RateLimits": {
+    "PerMinute": 120,
+    "AuthPerMinute": 15
+  }
+}

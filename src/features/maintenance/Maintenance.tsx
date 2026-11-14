@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   useNavigate,
@@ -9,9 +9,11 @@ import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
 import { ActionForm, Feedback, Field, Page } from "../../components/ui";
 import { ServiceError } from "../../services/contracts";
+import { validateCampusImage, type ImageUploadError } from "../../services/imageUpload";
 import {
   maintenance,
   maintenanceInput,
+  maintenanceValueLabel,
   type LocationOption,
   type MaintenanceInput,
   type MaintenanceReport,
@@ -82,8 +84,30 @@ export function ImageField({
 }) {
   const { t } = useApp();
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const selection = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  useEffect(() => () => { selection.current++; }, []);
+  function removePhoto() {
+    selection.current++;
+    fileInput.current?.setCustomValidity("");
+    setChecking(false);
+    setError("");
+    onChange();
+  }
+  function errorMessage(reason: ImageUploadError) {
+    switch (reason) {
+      case "too_large":
+        return t("حجم الصورة يتجاوز 5 ميجابايت.", "Image exceeds 5 MiB.");
+      case "type_mismatch":
+      case "invalid_image":
+        return t("الملف ليس صورة JPEG أو PNG أو WebP صالحة.", "The file is not a valid JPEG, PNG or WebP image.");
+      default:
+        return t("ملف الصورة فارغ.", "The image file is empty.");
+    }
+  }
   return (
-    <div className="upload">
+    <div className="upload" aria-busy={checking}>
       <Field
         label={
           label ??
@@ -98,29 +122,39 @@ export function ImageField({
         )}
       >
         <input
+          ref={fileInput}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           required={required && !photo}
-          onChange={(event) => {
+          onChange={async (event) => {
             const file = event.target.files?.[0];
-            if (file && !file.type.startsWith("image/")) {
-              setError(
-                t("اختر ملف صورة مدعوماً.", "Choose a supported image file."),
-              );
+            const input = event.currentTarget;
+            input.value = "";
+            if (!file) return;
+            const currentSelection = ++selection.current;
+            setChecking(true);
+            setError("");
+            input.setCustomValidity(t("جارٍ فحص الصورة.", "Checking image."));
+            const reason = await validateCampusImage(file);
+            if (currentSelection !== selection.current) return;
+            setChecking(false);
+            input.setCustomValidity("");
+            if (reason) {
+              setError(errorMessage(reason));
               onChange();
             } else {
               setError("");
               onChange(file);
             }
-            event.currentTarget.value = "";
           }}
         />
       </Field>
+      {checking && <p role="status">{t("جارٍ فحص الصورة…", "Checking image…")}</p>}
       {error && <Feedback kind="error">{error}</Feedback>}
       <PhotoPreview photo={photo} />
-      {photo && (
-        <button type="button" className="button" onClick={() => onChange()}>
-          {t("إزالة الصورة", "Remove photo")}
+      {(photo || checking) && (
+        <button type="button" className="button" onClick={removePhoto}>
+          {photo ? t("إزالة الصورة", "Remove photo") : t("إلغاء اختيار الصورة", "Cancel photo selection")}
         </button>
       )}
     </div>
@@ -178,6 +212,7 @@ function ReportForm({
     >
       <Field label={t("وصف العطل", "Fault description")} required>
         <textarea
+          maxLength={4000}
           value={values.description}
           required
           onChange={(e) => change({ description: e.target.value })}
@@ -231,6 +266,7 @@ function ReportForm({
       </Field>
       <Field label={t("تفاصيل الموقع", "Precise location")} required>
         <input
+          maxLength={1000}
           required
           value={values.details}
           onChange={(e) => change({ details: e.target.value })}
@@ -273,6 +309,14 @@ export function NewMaintenance() {
     </Page>
   );
 }
+function SyntheticAiCheck() {
+  const { t } = useApp();
+  return <Feedback>{t(
+    "اقتراحات AI لا يراها إلا موظفو الصيانة المخولون بعد مراجعة البلاغ والموافقة على المحتوى.",
+    "AI suggestions are visible only to authorized maintenance staff after they review and approve the report content.",
+  )}</Feedback>;
+}
+
 export function MaintenanceList({ staff = false }: { staff?: boolean }) {
   const { t, account } = useApp();
   const load = useCallback(
@@ -295,6 +339,7 @@ export function MaintenanceList({ staff = false }: { staff?: boolean }) {
           {t("كل طلباتي", "All my requests")}
         </Link>
       </div>
+      {!staff && <SyntheticAiCheck key={account.id} />}
       <div className="spacer" />
       <AsyncView key={`${account.id}-${staff}`} load={load}>
         {(records) =>
@@ -345,9 +390,9 @@ function StaffActions({
 }) {
   const { t, account } = useApp();
   const options: Partial<Record<MaintenanceStatus, MaintenanceStatus[]>> = {
-    submitted: ["review", "rejected"],
+    submitted: ["review"],
     review: ["review", "repair", "rejected"],
-    repair: ["repair", "resolved", "rejected"],
+    repair: ["repair", "resolved"],
   };
   const allowed = options[report.status] ?? [];
   const [status, setStatus] = useState<MaintenanceStatus>(
@@ -363,6 +408,10 @@ function StaffActions({
           const note = String(data.get("note") ?? "");
           if (status === "rejected" && !note.trim())
             throw new ServiceError("invalid");
+          const type = String(data.get("type") ?? "").trim();
+          const priority = String(data.get("priority") ?? "").trim();
+          const risk = String(data.get("risk") ?? "").trim();
+          if ((type || priority || risk) && !(type && priority && risk)) throw new ServiceError("invalid");
           await maintenance.update(
             account,
             {
@@ -371,11 +420,7 @@ function StaffActions({
               status,
               assignee: String(data.get("assignee")),
               note,
-              decision: {
-                type: String(data.get("type")),
-                priority: String(data.get("priority")),
-                risk: String(data.get("risk")),
-              },
+              decision: type && priority && risk ? { type, priority, risk } : undefined,
             },
           );
           onChanged();
@@ -394,7 +439,10 @@ function StaffActions({
           </select>
         </Field>
         <Field label={t("إسناد إلى", "Assign to")}>
-          <input name="assignee" value={report.assignee} readOnly />
+          <select name="assignee" defaultValue={report.assignee}>
+            <option value="">{t("غير مسند", "Unassigned")}</option>
+            {report.allowedAssignees?.map(person => <option key={person.id} value={person.id}>{person.name}</option>)}
+          </select>
         </Field>
         <p>
           {t(
@@ -424,7 +472,7 @@ function StaffActions({
           }
           required={status === "rejected"}
         >
-          <textarea name="note" required={status === "rejected"} />
+          <textarea name="note" maxLength={4000} required={status === "rejected"} />
         </Field>
       </ActionForm>
     </div>
@@ -442,7 +490,7 @@ function Detail({
   const [params] = useSearchParams();
   const loadLocations = useCallback(() => maintenance.locations(account), [account]);
   const owner = report.ownerId === account.id;
-  const staff = !!report.assessment;
+  const staff = !!report.canViewAssessment || !!report.canUpdate;
   if (editing)
     return (
       <div className="panel">
@@ -470,7 +518,7 @@ function Detail({
       )}
       <div className="panel">
         <div className="record-top">
-          <bdi>{report.id}</bdi>
+          <bdi>{report.reference ?? report.id}</bdi>
           <Status value={report.status} />
         </div>
         <h2>{t("تفاصيل البلاغ", "Report details")}</h2>
@@ -479,7 +527,7 @@ function Detail({
           <div>
             <dt>{t("الموقع", "Location")}</dt>
             <dd>
-              {report.faculty} · {report.building} · {report.floor}
+              {report.locationNames ? `${t(report.locationNames.faculty.ar, report.locationNames.faculty.en)} · ${t(report.locationNames.building.ar, report.locationNames.building.en)} · ${t(report.locationNames.floor.ar, report.locationNames.floor.en)}` : `${report.faculty} · ${report.building} · ${report.floor}`}
             </dd>
             <dd>{report.details}</dd>
           </div>
@@ -492,7 +540,7 @@ function Detail({
         {!report.photo && (
           <p>{t("لا توجد صورة مرفقة.", "No photo attached.")}</p>
         )}
-        {owner && report.status === "submitted" && (
+        {owner && report.canEdit && (
           <div className="actions">
             <button className="button" onClick={() => setEditing(true)}>
               {t("تعديل البلاغ", "Edit report")}
@@ -536,24 +584,57 @@ function Detail({
       {staff && (
         <>
           <div className="panel">
-            <h2>
-              {t(
-                "اقتراحات التحليل — للموظفين فقط",
-                "Analysis suggestions — staff only",
-              )}
-            </h2>
-            <Feedback>
-              {t(
-                "التحليل غير متاح حالياً.",
-                "Analysis is currently unavailable.",
-              )}
-            </Feedback>
+            <h2>{t("اقتراح تحليل الصيانة", "Maintenance analysis suggestion")}</h2>
+            <p>{t(
+              "التحليل اختياري. عند موافقتك، يُرسل وصف البلاغ إلى مزود AI خارجي. لا ترسل بيانات شخصية أو سرية. النتيجة اقتراح للموظف ولا تغيّر القرار التشغيلي.",
+              "Analysis is optional. With your approval, the report description is sent to an external AI provider. Do not send personal or confidential data. The result is a staff suggestion and never changes the operational decision.",
+            )}</p>
+            {report.assessment?.state === "completed" && (
+              <div className="feedback">
+                <b>{t("اقتراح AI — يحتاج مراجعة الموظف", "AI suggestion — staff review required")}</b>
+                <dl className="details-grid">
+                  <div><dt>{t("نوع العطل المقترح", "Suggested fault type")}</dt><dd>{maintenanceValueLabel(report.assessment.type, t)}</dd></div>
+                  <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{maintenanceValueLabel(report.assessment.priority, t)}</dd></div>
+                  <div><dt>{t("الخطورة المقترحة", "Suggested risk")}</dt><dd>{maintenanceValueLabel(report.assessment.risk, t)}</dd></div>
+                </dl>
+                {report.assessment.explanation && <p>{report.assessment.explanation}</p>}
+              </div>
+            )}
+            {report.assessment?.state === "pending" && <Feedback>{t("التحليل قيد التنفيذ. حدّث بيانات البلاغ بعد قليل.", "Analysis is queued. Refresh the report shortly.")}</Feedback>}
+            {report.assessment?.state === "unavailable" && <Feedback>{t("التحليل غير متاح حاليًا. راجع البلاغ يدويًا؛ لم يُسجّل اقتراح.", "Analysis is currently unavailable. Review the report manually; no suggestion was recorded.")}</Feedback>}
+            {report.canReviewAiInput && (
+              <ActionForm
+                label={t("إرسال المحتوى الموافق عليه للتحليل", "Send approved content for analysis")}
+                onSubmit={async (data) => {
+                  await maintenance.reviewAi(
+                    report.id,
+                    report.version,
+                    data.get("confirmedNonSensitive") === "on",
+                    data.get("includeImage") === "on",
+                  );
+                  onChanged();
+                }}
+              >
+                <label className="field">
+                  <span>{t("أؤكد أن الوصف لا يحتوي على بيانات شخصية أو سرية، وأن إرساله إلى مزود خارجي مسموح.", "I confirm the description contains no personal or confidential data and is approved for transfer to an external provider.")}</span>
+                  <input type="checkbox" name="confirmedNonSensitive" required />
+                </label>
+                {report.canReviewAiImage && <label className="field">
+                  <span>{t("أرسل صورة البلاغ أيضًا؛ أؤكد أنها لا تحتوي على بيانات شخصية أو سرية وأن إرسالها مسموح.", "Include the report photo; I confirm it contains no personal or confidential data and is approved for transfer.")}</span>
+                  <input type="checkbox" name="includeImage" />
+                </label>}
+              </ActionForm>
+            )}
+            {!report.canReviewAiInput && report.assessment?.state !== "completed" && report.assessment?.state !== "pending" && report.assessment?.state !== "unavailable" && <Feedback>{t(
+              "المعالجة الخارجية غير مفعّلة لهذا البلاغ أو لم تسمح بها إعدادات الخصوصية والميزانية.",
+              "External processing is not enabled for this report or is blocked by privacy and budget settings.",
+            )}</Feedback>}
           </div>
-          <StaffActions
+          {report.canUpdate && <StaffActions
             key={`${report.id}-${report.version}`}
             report={report}
             onChanged={onChanged}
-          />
+          />}
         </>
       )}
     </>

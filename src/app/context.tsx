@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
+import { auth } from "../services/auth";
+import { ServiceError } from "../services/contracts";
 import {
   createContext,
   useContext,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -21,6 +24,7 @@ interface AppContext {
   updateAccount: (account: Account) => void;
   expireSession: () => void;
   sessionExpired: boolean;
+  sessionUnavailable: boolean;
 }
 const Context = createContext<AppContext | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -29,12 +33,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [account, setAccount] = useState(guestAccount);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [sessionUnavailable, setSessionUnavailable] = useState(false);
+  const sessionGeneration = useRef(0);
   const navigate = useNavigate();
   const expireSession = useCallback(() => {
+    sessionGeneration.current++;
     setAccount(guestAccount);
     setSessionExpired(true);
     navigate("/login");
   }, [navigate]);
+  useEffect(() => {
+    let active = true;
+    const generation = sessionGeneration.current;
+    auth.me().then(current => {
+      if (active && sessionGeneration.current === generation) {
+        setAccount(current);
+        setSessionUnavailable(false);
+      }
+    }).catch(error => {
+      if (active && sessionGeneration.current === generation && error instanceof ServiceError && (error.code === "internal" || error.code === "unavailable"))
+        setSessionUnavailable(true);
+      if (!(error instanceof ServiceError)) console.error("Session restoration failed");
+    });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    window.addEventListener("smart-campus-session-expired", expireSession);
+    return () => window.removeEventListener("smart-campus-session-expired", expireSession);
+  }, [expireSession]);
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
@@ -52,10 +78,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         changeLanguage,
         account,
         updateAccount: (nextAccount) => {
+          sessionGeneration.current++;
           setAccount(nextAccount);
           setSessionExpired(false);
+          setSessionUnavailable(false);
         },
         sessionExpired,
+        sessionUnavailable,
         expireSession,
       }}
     >

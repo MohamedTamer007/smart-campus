@@ -1,5 +1,7 @@
 # Frontend handoff
 
+Historical frontend-only snapshot, retained for provenance. Current integration and observed results are documented in README.md, docs/API_HANDOFF.md and docs/ACCEPTANCE.md. The statements below describe the original base commit, not the current backend branch.
+
 - Scope: Arabic-first frontend screens and validation for maintenance, lost and found, account and administration workflows.
 - Current integration: no backend, sample accounts, simulated records, or test controls are shipped. Backend-dependent actions report that the service is unavailable; private routes require sign-in.
 - Security: client-side route gates do not provide authorization. The backend must enforce access, ownership, privacy and state transitions.

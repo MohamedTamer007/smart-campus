@@ -1,0 +1,231 @@
+name: MonsterASP.NET WebDeploy connection check
+
+# This checks read-only access. It never uploads or changes production files.
+on:
+  push:
+    branches: [codex/backend-integration]
+    paths:
+      - '.github/workflows/monsterasp-webdeploy-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: monsterasp-webdeploy-check
+  cancel-in-progress: true
+
+jobs:
+  verify-connection:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      WEBSITE_NAME: ${{ secrets.WEBSITE_NAME }}
+      SERVER_COMPUTER_NAME: ${{ secrets.SERVER_COMPUTER_NAME }}
+      SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
+      SERVER_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+    steps:
+      - name: Validate credential presence and server format
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($key in @('WEBSITE_NAME','SERVER_COMPUTER_NAME','SERVER_USERNAME','SERVER_PASSWORD')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($key))) {
+              throw "Required repository secret missing: $key"
+            }
+          }
+          if ($env:WEBSITE_NAME -notmatch '^site[A-Za-z0-9-]+$') {
+            throw 'WEBSITE_NAME must be the MonsterASP.NET site ID (siteXXXX).'
+          }
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $uri = $null
+          if (-not [Uri]::TryCreate($rawServer, [UriKind]::Absolute, [ref]$uri)) {
+            throw 'SERVER_COMPUTER_NAME must be the publishing hostname or URL.'
+          }
+          if ($uri.Scheme -ne 'https' -or $uri.Host -notmatch '^[A-Za-z0-9-]+\.siteasp\.net$' -or $uri.Port -notin @(443,8172)) {
+            throw 'SERVER_COMPUTER_NAME must point to the HTTPS siteXXXX.siteasp.net publisher on port 8172.'
+          }
+          Write-Output 'Four deployment secrets present; WebDeploy publisher syntax valid.'
+      - name: Check Microsoft Web Deploy executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          if (-not (Test-Path $exe)) {
+            choco install webdeploy --yes --no-progress --limit-output
+            if ($LASTEXITCODE -ne 0) { throw 'Installing Microsoft Web Deploy failed.' }
+          }
+          if (-not (Test-Path $exe)) { throw 'Microsoft Web Deploy binary unavailable.' }
+          Write-Output 'Microsoft Web Deploy is available.'
+      - name: Verify local WebDeploy dry-run arguments
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          $sourceDir = Join-Path $env:RUNNER_TEMP 'local-msdeploy-input'
+          $targetDir = Join-Path $env:RUNNER_TEMP 'local-msdeploy-target'
+          New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
+          New-Item -Path $targetDir -ItemType Directory -Force | Out-Null
+          & $exe '-verb:sync' "-source:contentPath=$sourceDir" "-dest:contentPath=$targetDir" '-whatif' '-enableRule:DoNotDeleteRule' 2>&1 | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Local msdeploy dry-run syntax failed before any remote credentials were involved.'
+          }
+          Write-Output 'Local Microsoft WebDeploy dry-run syntax passed.'
+      - name: Verify publishing port is reachable without credentials
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $serverHost = ([Uri]$rawServer).Host
+          $client = [System.Net.Sockets.TcpClient]::new()
+          try {
+            $result = $client.BeginConnect($serverHost,8172,$null,$null)
+            if (-not $result.AsyncWaitHandle.WaitOne([TimeSpan]::FromSeconds(8))) {
+              throw 'GitHub runner cannot reach port 8172; no server files changed.'
+            }
+            $client.EndConnect($result)
+            Write-Output 'GitHub Windows runner can reach the MonsterASP.NET WebDeploy TCP port.'
+          } finally {
+            $client.Close()
+          }
+      - name: Classify WebDeploy parser behavior with synthetic local-only credentials
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          $sourceDir = Join-Path $env:RUNNER_TEMP 'msdeploy-parser-only'
+          New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
+          $syntheticDest = '-dest:contentPath=siteTEST,computerName=https://127.0.0.1:1/msdeploy.axd?site=siteTEST,userName=synthetic,password=synthetic,authType=Basic'
+          $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
+          $start.UseShellExecute = $false
+          $start.CreateNoWindow = $true
+          $start.RedirectStandardOutput = $true
+          $start.RedirectStandardError = $true
+          foreach ($argument in @('-verb:sync',"-source:contentPath=$sourceDir",$syntheticDest,'-whatif','-enableRule:DoNotDeleteRule','-allowUntrusted')) {
+            [void]$start.ArgumentList.Add($argument)
+          }
+          $process = [System.Diagnostics.Process]::Start($start)
+          try {
+            $stdout = $process.StandardOutput.ReadToEndAsync()
+            $stderr = $process.StandardError.ReadToEndAsync()
+            if (-not $process.WaitForExit(15000)) { $process.Kill(); throw 'Synthetic parser check timed out.' }
+            $diagnostic = $stdout.GetAwaiter().GetResult() + [Environment]::NewLine + $stderr.GetAwaiter().GetResult()
+            # Only synthetic credentials and local files are involved: safe to print parser text.
+            Write-Output "Synthetic parser test exit code: $($process.ExitCode)"
+            Write-Output ($diagnostic -split [Environment]::NewLine | Select-Object -First 6)
+            if ($diagnostic -match '(?i)unrecognized argument|all arguments must begin|invalid argument|unknown parameter') {
+              throw 'WebDeploy rejected the fully synthetic command syntax before contacting any hosting provider.'
+            }
+          } finally {
+            $process.Dispose()
+          }
+      - name: Probe authenticated WebDeploy HTTP endpoint without publishing
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $hostName = ([Uri]$rawServer).Host
+          $endpoint = "https://$($hostName):8172/msdeploy.axd?site=$env:WEBSITE_NAME"
+          $client = [System.Net.Http.HttpClient]::new()
+          $client.Timeout = [TimeSpan]::FromSeconds(15)
+          $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $endpoint)
+          $authBytes = [System.Text.Encoding]::UTF8.GetBytes("$($env:SERVER_USERNAME):$($env:SERVER_PASSWORD)")
+          $request.Headers.Authorization = [System.Net.Http.Headers.AuthenticationHeaderValue]::new('Basic',[Convert]::ToBase64String($authBytes))
+          try {
+            $result = $client.Send($request)
+            Write-Output "Authenticated HTTPS GET received HTTP $([int]$result.StatusCode). GET may be rejected when WebDeploy requires POST."
+            if ([int]$result.StatusCode -in @(401,403)) {
+              Write-Output 'HTTP GET returned unauthorized; confirm whether WebDeploy requires POST before inferring invalid credentials.'
+            }
+          } catch {
+            Write-Output "HTTPS GET could not complete ($($_.Exception.GetType().Name)); WebDeploy uses POST, so this is not an upload test."
+          } finally {
+            [Array]::Clear($authBytes,0,$authBytes.Length)
+            $request.Dispose()
+            $client.Dispose()
+          }
+      - name: Test WebDeploy sync without changing the site (Microsoft -whatif)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe'
+          $site = $env:WEBSITE_NAME
+          $rawServer = $env:SERVER_COMPUTER_NAME.Trim()
+          if ($rawServer -notmatch '^https?://') { $rawServer = 'https://' + $rawServer }
+          $serverHost = ([Uri]$rawServer).Host
+          $endpoint = "https://$($serverHost):8172/msdeploy.axd?site=$site"
+          $sourceDir = Join-Path $env:RUNNER_TEMP 'empty-webdeploy-whatif'
+          New-Item -Path $sourceDir -ItemType Directory -Force | Out-Null
+          $source = "-source:contentPath=$sourceDir"
+          $dest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
+          # Microsoft-documented -whatif performs a dry-run and never writes to the site.
+          # DoNotDeleteRule additionally prevents a delete plan for the empty local source.
+          # ProcessStartInfo.ArgumentList avoids PowerShell's Windows native-argument quoting quirks.
+          # Keep the argument starting with '-' without nested quotes: MSDeploy rejects
+          # ProcessStartInfo's rewritten leading quote on Windows.
+          $quotedDest = "-dest:contentPath=$site,computerName=$endpoint,userName=$env:SERVER_USERNAME,password=$env:SERVER_PASSWORD,authType=Basic"
+          $start = [System.Diagnostics.ProcessStartInfo]::new($exe)
+          $start.UseShellExecute = $false
+          $start.CreateNoWindow = $true
+          $start.RedirectStandardOutput = $true
+          $start.RedirectStandardError = $true
+          foreach ($argument in @('-verb:sync',$source,$quotedDest,'-whatif','-enableRule:DoNotDeleteRule','-allowUntrusted')) {
+            [void]$start.ArgumentList.Add($argument)
+          }
+          $process = [System.Diagnostics.Process]::Start($start)
+          try {
+            $standardOut = $process.StandardOutput.ReadToEndAsync()
+            $standardErr = $process.StandardError.ReadToEndAsync()
+            if (-not $process.WaitForExit(30000)) {
+              $process.Kill()
+              throw 'WebDeploy read-only sync trial timed out; no files were uploaded.'
+            }
+            $diagnostic = $standardOut.GetAwaiter().GetResult() + [Environment]::NewLine + $standardErr.GetAwaiter().GetResult()
+            $exitCode = $process.ExitCode
+          } finally {
+            $process.Dispose()
+          }
+
+          if ($exitCode -ne 0) {
+            $reason = 'unclassified WebDeploy connection error'
+            if ($diagnostic -match '(?i)ERROR_USER_UNAUTHORIZED|401|403|authentication failed|invalid credentials|unauthorized') {
+              $reason = 'publishing credentials or site permission rejected (401/403)'
+            } elseif ($diagnostic -match '(?i)ERROR_DESTINATION_NOT_REACHABLE|connection refused|timed out|no such host|name or service not known') {
+              $reason = 'publishing host or port 8172 unreachable'
+            } elseif ($diagnostic -match '(?i)certificate|SSL|TLS|trust') {
+              $reason = 'publishing TLS certificate not trusted'
+            } elseif ($diagnostic -match '(?i)ERROR_SITE_DOES_NOT_EXIST|404|not found') {
+              $reason = 'site ID not found by WebDeploy'
+            } elseif ($diagnostic -match '(?i)permission|access denied') {
+              $reason = 'insufficient publishing permissions'
+            } elseif ($diagnostic -match '(?i)unrecognized|syntax|invalid argument') {
+              $reason = 'unsupported msdeploy command syntax'
+            }
+            # Error identifiers are sanitized constants such as ERROR_USER_UNAUTHORIZED.
+            # Never print the raw msdeploy output, which may contain credentials or paths.
+            $codeMatches = [regex]::Matches($diagnostic, '\bERROR_[A-Z0-9_]+\b')
+            $codes = @($codeMatches | ForEach-Object { $_.Value } | Sort-Object -Unique | Select-Object -First 4)
+            $errorCodes = if ($codes.Count -eq 0) { 'no recognizable WebDeploy error code' } else { $codes -join ', ' }
+            throw "No-change WebDeploy trial failed: $reason. Codes: $errorCodes. No files were uploaded."
+          }
+          Write-Output 'No-change WebDeploy trial passed. No files were uploaded.'
+
+      - name: Check public Smart Campus HTTP and HTTPS without changing hosting
+        shell: pwsh
+        run: |
+          $client = [System.Net.Http.HttpClient]::new()
+          $client.Timeout = [TimeSpan]::FromSeconds(12)
+          foreach ($protocol in @('http','https')) {
+            try {
+              $url = '{0}://smartcampus.tryasp.net/' -f $protocol
+              $response = $client.GetAsync($url).GetAwaiter().GetResult()
+              Write-Output "Public $($protocol.ToUpperInvariant()) homepage: HTTP $([int]$response.StatusCode)"
+              $response.Dispose()
+            } catch {
+              Write-Output "Public $($protocol.ToUpperInvariant()) homepage not yet verifiable: $($_.Exception.GetType().Name)"
+            }
+          }
+          $client.Dispose()

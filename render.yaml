@@ -1,0 +1,65 @@
+# Render Free — real React + ASP.NET Core web service (not the static demo).
+# Use the private GitHub branch until the complete runtime passes acceptance.
+# Never commit API keys, database passwords or the X.509 certificate here.
+# autoDeployTrigger: off prevents a code push from activating an incomplete release.
+services:
+  - type: web
+    name: smart-campus-o6u
+    runtime: docker
+    repo: https://github.com/MohamedTamer007/smart-campus
+    branch: codex/backend-integration
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: off
+    healthCheckPath: /health/ready
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: "8080"
+      - key: ASPNETCORE_HTTP_PORTS
+        value: "8080"
+      - key: Hosting__Platform
+        value: render
+      - key: Storage__Local
+        value: "false"
+      - key: Storage__Url
+        value: https://mninpcrhqsaafoshjqpn.supabase.co
+      - key: Email__Provider
+        value: resend
+      - key: Email__LocalSink
+        value: "false"
+      - key: DataProtection__Store
+        value: database
+      - key: AI__Provider
+        value: openrouter
+      - key: AI__AllowNonSensitiveInference
+        value: "false"
+      - key: AI__AllowNonSensitiveImages
+        value: "false"
+      - key: Release__Mode
+        value: controlled
+      # The following values must match your ACTUAL deployed host and external
+      # services. Render prompts privately for sync:false values on creation.
+      - key: PublicOrigin
+        sync: false
+      - key: AllowedHosts
+        sync: false
+      - key: ConnectionStrings__Campus
+        sync: false
+      - key: Storage__Key
+        sync: false
+      - key: Email__From
+        sync: false
+      - key: Email__ResendKey
+        sync: false
+      - key: Release__AllowedEmails__0
+        sync: false
+      # Base64-encoded PFX certificate and password. The certificate encrypts
+      # keys in Supabase; the private key must be secret and backed up safely.
+      - key: DataProtection__CertificateBase64
+        sync: false
+      - key: DataProtection__CertificatePassword
+        sync: false

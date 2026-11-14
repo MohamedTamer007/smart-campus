@@ -24,11 +24,24 @@ import {
 } from "../features/auth/Auth";
 import { Settings, Notifications } from "../features/account/Account";
 import { Access } from "./access";
+import { AdminCampusDirectory } from "../features/admin/CampusDirectory";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
 import { AppProvider, useApp } from "./context";
+import { hasRole } from "../services/contracts";
 import { BrandMark, Icon } from "../components/Icon";
 import { Home } from "./Home";
 import { Feedback, Page } from "../components/ui";
+import { useState } from "react";
+function StaffQueues() {
+  const { account, t } = useApp();
+  const maintenanceAccess = hasRole(account, "admin") || hasRole(account, "maintenance");
+  const custodyAccess = hasRole(account, "department") || hasRole(account, "secretariat");
+  const [view, setView] = useState(maintenanceAccess ? "maintenance" : "custody");
+  return <><div className="actions">
+    {maintenanceAccess && <button className="button" onClick={() => setView("maintenance")}>{t("الصيانة", "Maintenance")}</button>}
+    {custodyAccess && <button className="button" onClick={() => setView("custody")}>{t("العهدة والمعثورات", "Custody and found items")}</button>}
+  </div>{view === "maintenance" ? <MaintenanceList staff /> : <FoundList department />}</>;
+}
 function Shell() {
   const {
     t,
@@ -36,7 +49,11 @@ function Shell() {
     changeLanguage,
     account,
     sessionExpired,
+    sessionUnavailable,
   } = useApp();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const workQueueAccess = (["maintenance", "department", "secretariat", "admin"] as const)
+    .some(role => hasRole(account, role));
   return (
     <>
       <a className="skip-link" href="#main">
@@ -47,16 +64,17 @@ function Shell() {
           <BrandMark />
           <bdi>Smart Campus</bdi>
         </Link>
-        <nav aria-label={t("التنقل الرئيسي", "Main navigation")}>
-          <NavLink to="/" end>
+        <button className="mobile-menu" type="button" aria-label={t("فتح القائمة", "Open menu")} aria-expanded={mobileMenuOpen} aria-controls="primary-navigation" onClick={() => setMobileMenuOpen(value => !value)}>
+          <Icon name={mobileMenuOpen ? "close" : "menu"} />
+        </button>
+        <nav id="primary-navigation" className={mobileMenuOpen ? "mobile-open" : undefined} aria-label={t("التنقل الرئيسي", "Main navigation")}>
+          <NavLink to="/" end onClick={() => setMobileMenuOpen(false)}>
             {t("الرئيسية", "Home")}
           </NavLink>
-          <NavLink to="/requests">{t("طلباتي", "My requests")}</NavLink>
-          {["maintenance", "department", "secretariat", "admin"].includes(
-            account.role,
-          ) && <NavLink to="/staff">{t("لوحة العمل", "Work queue")}</NavLink>}
-          {account.role === "admin" && (
-            <NavLink to="/admin">{t("الإدارة", "Admin")}</NavLink>
+          <NavLink to="/requests" onClick={() => setMobileMenuOpen(false)}>{t("طلباتي", "My requests")}</NavLink>
+          {workQueueAccess && <NavLink to="/staff" onClick={() => setMobileMenuOpen(false)}>{t("لوحة العمل", "Work queue")}</NavLink>}
+          {hasRole(account, "admin") && (
+            <NavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>{t("الإدارة", "Admin")}</NavLink>
           )}
         </nav>
         <div className="header-actions">
@@ -81,6 +99,12 @@ function Shell() {
         </div>
       </header>
       <main id="main">
+        {sessionUnavailable && <div className="feedback error" role="status">
+          {t("تعذر الاتصال بالخدمة، لذلك لم نتمكن من التحقق من حالة تسجيل الدخول. أعد تحميل الصفحة بعد عودة الخدمة.", "The service is unavailable, so we could not check your sign-in status. Reload after the service is available.")}
+        </div>}
+        {account.isDemo && <div className="demo-account-banner" role="status">
+          {t("حساب عرض ببيانات خيالية — لا تُدخل معلومات حقيقية.", "Demo account with fictional data — do not enter real information.")}
+        </div>}
         {sessionExpired && (
           <Feedback kind="error">
             {t(
@@ -121,11 +145,7 @@ function Shell() {
               <Access
                 roles={["maintenance", "department", "secretariat", "admin"]}
               >
-                {["department", "secretariat"].includes(account.role) ? (
-                  <FoundList department />
-                ) : (
-                  <MaintenanceList staff />
-                )}
+                <StaffQueues />
               </Access>
             }
           />
@@ -142,6 +162,14 @@ function Shell() {
             element={
               <Access roles={["admin"]}>
                 <AdminOverview />
+              </Access>
+            }
+          />
+          <Route
+            path="/admin/directory"
+            element={
+              <Access roles={["admin"]}>
+                <AdminCampusDirectory />
               </Access>
             }
           />
@@ -213,6 +241,7 @@ function Shell() {
           <Route path="/register" element={<Auth register />} />
           <Route path="/verify" element={<Verification />} />
           <Route path="/recover" element={<Recovery />} />
+          <Route path="/reset" element={<ResetPassword />} />
           <Route path="/reset/:token" element={<ResetPassword />} />
           <Route
             path="/settings"
@@ -240,6 +269,12 @@ function Shell() {
           />
         </Routes>
       </main>
+      <nav className="mobile-bottom-nav" aria-label={t("تنقل الهاتف", "Mobile navigation")}>
+        <NavLink to="/" end><Icon name="home" /><span>{t("الرئيسية", "Home")}</span></NavLink>
+        <NavLink to="/requests"><Icon name="document" /><span>{t("طلباتي", "Requests")}</span></NavLink>
+        <NavLink to="/notifications"><Icon name="bell" /><span>{t("الإشعارات", "Alerts")}</span></NavLink>
+        <NavLink to={account.role === "guest" ? "/login" : "/settings"}><Icon name="user" /><span>{t("حسابي", "Account")}</span></NavLink>
+      </nav>
       <footer>
         <Link className="brand" to="/">
           <BrandMark />

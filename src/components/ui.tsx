@@ -69,8 +69,8 @@ export function useAction() {
   const [errorCode, setErrorCode] = useState<ServiceError["code"] | null>(null);
   const messages = {
     unavailable: t(
-      "الخدمة غير متاحة حتى ربطها بالنظام الخلفي. احتُفظ بمدخلاتك.",
-      "This service is unavailable until the backend is connected. Your input is kept.",
+      "الخدمة غير متاحة حالياً. احتُفظ بمدخلاتك.",
+      "This service is temporarily unavailable. Your input is kept.",
     ),
     expired: t(
       "انتهت الجلسة. سجل الدخول مجدداً.",
@@ -92,6 +92,10 @@ export function useAction() {
       "تحقق من الحقول المطلوبة وحالة السجل.",
       "Check required fields and the current record state.",
     ),
+    unverified: t("أكد بريدك الجامعي أولاً من رابط البريد.", "Verify your university email using the email link first."),
+    release_restricted: t("النظام في مرحلة اختبار مُقيد بالحسابات المعتمدة فقط.", "This testing release is restricted to authorized accounts."),
+    rate_limited: t("طلبات كثيرة. انتظر قليلاً ثم حاول مجدداً.", "Too many requests. Wait briefly and retry."),
+    internal: t("تعذر إكمال الطلب. حاول مجدداً.", "The request failed. Please retry."),
   };
 
   async function run(action: () => Promise<void>) {
@@ -102,9 +106,9 @@ export function useAction() {
     try {
       await action();
     } catch (error) {
-      if (!(error instanceof ServiceError)) throw error;
-      setErrorCode(error.code);
-      if (error.code === "expired") expireSession();
+      const code = error instanceof ServiceError ? error.code : "unavailable";
+      setErrorCode(code);
+      if (code === "expired") expireSession();
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -116,10 +120,12 @@ export function ActionForm({
   children,
   onSubmit,
   label,
+  danger = false,
 }: {
   children: ReactNode;
   onSubmit: (data: FormData) => Promise<void>;
   label: string;
+  danger?: boolean;
 }) {
   const { pending, message, run } = useAction();
   const { t } = useApp();
@@ -146,7 +152,7 @@ export function ActionForm({
     <form onSubmit={submit} className="form-stack">
       {children}
       {message && <Feedback kind="error">{message}</Feedback>}
-      <button className="button primary" disabled={pending}>
+      <button className={danger ? "button danger" : "button primary"} disabled={pending}>
         {pending ? t("جارٍ التنفيذ…", "Working…") : label}
       </button>
     </form>
@@ -155,13 +161,18 @@ export function ActionForm({
 export function Password({
   label,
   name = "password",
+  autoComplete,
 }: {
   label: string;
   name?: string;
+  autoComplete?: "current-password" | "new-password";
 }) {
   const [visible, setVisible] = useState(false);
   const { t } = useApp();
   const id = useId();
+  const completion = autoComplete ?? (name === "currentPassword" ? "current-password" : "new-password");
+  const creatingPassword = completion === "new-password";
+  const hintId = `${id}-hint`;
   return (
     <div className="field">
       <label htmlFor={id}>
@@ -174,18 +185,22 @@ export function Password({
           required
           name={name}
           type={visible ? "text" : "password"}
-          autoComplete={
-            name === "currentPassword" ? "current-password" : "new-password"
-          }
+          autoComplete={completion}
+          minLength={creatingPassword ? 12 : undefined}
+          maxLength={creatingPassword ? 128 : undefined}
+          aria-describedby={creatingPassword ? hintId : undefined}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
           aria-pressed={visible}
+          aria-controls={id}
+          aria-label={`${visible ? t("إخفاء", "Hide") : t("إظهار", "Show")} ${label}`}
         >
           {visible ? t("إخفاء", "Hide") : t("إظهار", "Show")}
         </button>
       </div>
+      {creatingPassword && <small id={hintId}>{t("من 12 إلى 128 حرفًا.", "Use 12 to 128 characters.")}</small>}
     </div>
   );
 }

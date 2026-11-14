@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useApp } from "../../app/context";
 import {
@@ -7,9 +7,11 @@ import {
   Field,
   Page,
   Password,
+  useAction,
 } from "../../components/ui";
 import { AsyncView } from "../../components/AsyncView";
 import { accountService } from "../../services/frontend";
+import { auth } from "../../services/auth";
 import { guestAccount, ServiceError } from "../../services/contracts";
 export function Settings() {
   const {
@@ -21,6 +23,7 @@ export function Settings() {
   } = useApp();
   const [saved, setSaved] = useState(false);
   const navigate = useNavigate();
+  const { pending: logoutPending, message: logoutError, run: runLogout } = useAction();
   return (
     <Page title={t("حسابي", "My account")}>
       <div className="panel narrow">
@@ -31,6 +34,7 @@ export function Settings() {
               await accountService.saveName(
                 account,
                 String(data.get("name")),
+                language,
               ),
             );
             setSaved(true);
@@ -44,9 +48,12 @@ export function Settings() {
               pattern=".*\S.*"
             />
           </Field>
-          <Field label={t("البريد الموثق", "Verified email")}>
+          <Field label={t("البريد الجامعي", "University email")}>
             <input value={account.email} readOnly dir="ltr" />
           </Field>
+          <Feedback kind="success">
+            {t("✓ حسابك مؤكد بالفعل — مش محتاج تأكيد البريد تاني.", "✓ Your account is verified — no further email confirmation needed.")}
+          </Feedback>
           <button className="button" type="button" onClick={changeLanguage}>
             {t("اللغة الحالية", "Current language")}:{" "}
             {language === "ar" ? "العربية" : "English"}
@@ -73,7 +80,8 @@ export function Settings() {
               String(data.get("currentPassword") ?? ""),
               String(data.get("password") ?? ""),
             );
-            setSaved(true);
+            updateAccount(guestAccount);
+            navigate("/login");
           }}
         >
           <Password
@@ -87,16 +95,43 @@ export function Settings() {
           />
         </ActionForm>
       </div>
-      <div className="narrow">
-        <button
-          className="button danger"
-          onClick={() => {
+      <div className="panel narrow">
+        <h2>{t("حذف الحساب", "Delete account")}</h2>
+        <p>{t(
+          "هيتم مسح بيانات تسجيل الدخول واسمك وإيميلك وتعطيل حسابك. السجلات القديمة للبلاغات والمعثورات بتفضل محفوظة باسم مجهول عشان ما يتأثرش سجل النظام.",
+          "Your sign-in credentials, name, and email will be erased and your account disabled. Historical maintenance and lost-property records remain anonymously to preserve the records.",
+        )}</p>
+        <ActionForm
+          label={t("حذف حسابي", "Delete my account")}
+          danger
+          onSubmit={async data => {
+            if (data.get("confirmDelete") !== "yes") throw new ServiceError("invalid");
+            await auth.deleteAccount(String(data.get("currentPassword") ?? ""));
             updateAccount(guestAccount);
-            navigate("/login");
+            navigate("/login?deleted=1");
           }}
         >
-          {t("تسجيل الخروج", "Sign out")}
+          <Password name="currentPassword" label={t("كلمة المرور الحالية للتأكيد", "Current password to confirm")} />
+          <label className="field">
+            <input type="checkbox" required name="confirmDelete" value="yes" />
+            {" "}{t("فاهم إن حذف الحساب مش ممكن أتراجع عنه.", "I understand that this account deletion cannot be undone.")}
+          </label>
+        </ActionForm>
+      </div>
+      <div className="narrow">
+        <button
+          type="button"
+          className="button danger"
+          disabled={logoutPending}
+          onClick={() => void runLogout(async () => {
+            await auth.logout();
+            updateAccount(guestAccount);
+            navigate("/login");
+          })}
+        >
+          {logoutPending ? t("جارٍ التنفيذ…", "Working…") : t("تسجيل الخروج", "Sign out")}
         </button>
+        {logoutError && <Feedback kind="error">{logoutError}</Feedback>}
       </div>
     </Page>
   );
@@ -104,6 +139,10 @@ export function Settings() {
 export function Notifications() {
   const { t, account } = useApp();
   const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRevision(value => value + 1), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
   const load = useCallback(
     () => accountService.notifications(account),
     [account],
@@ -132,7 +171,7 @@ export function Notifications() {
                         label={t("تحديد كمقروء", "Mark as read")}
                         onSubmit={async () => {
                           await accountService.markRead(account, n.id);
-                          setRevision(revision + 1);
+                          setRevision(value => value + 1);
                         }}
                       >
                         <span className="sr-only">{t(n.ar, n.en)}</span>

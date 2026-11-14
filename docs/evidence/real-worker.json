@@ -1,0 +1,11 @@
+{
+  "source": "GitHub Actions run 42683987444 job 129385761598",
+  "result": "real_worker_smoke_passed",
+  "model": "google/siglip2-base-patch16-224",
+  "revision": "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2",
+  "dimension": 768,
+  "loadSeconds": 22.61,
+  "fourRequestsSeconds": 1.186,
+  "platform": "GitHub Ubuntu CPU Docker, 6 GiB/2 CPU limit",
+  "limits": "Generated images and text only; no calibration or ARM/hosted capacity claim"
+}

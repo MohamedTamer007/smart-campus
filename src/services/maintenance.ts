@@ -1,8 +1,32 @@
 import type { Account } from "./contracts";
-import { backendUnavailable } from "./unavailable";
+import { api, form, json, pages, withPhoto } from "./http";
 
 export type MaintenanceStatus =
   "submitted" | "review" | "repair" | "resolved" | "rejected" | "cancelled";
+type Translate = (arabic: string, english: string) => string;
+
+const maintenanceValueLabels: Record<string, [string, string]> = {
+  plumbing: ["سباكة", "Plumbing"],
+  water: ["تسرب مياه", "Water leak"],
+  electrical: ["كهرباء", "Electrical"],
+  hvac: ["تكييف وتهوية", "HVAC"],
+  lighting: ["إضاءة", "Lighting"],
+  furniture: ["أثاث", "Furniture"],
+  doors: ["أبواب", "Doors"],
+  safety: ["سلامة", "Safety"],
+  other: ["أخرى", "Other"],
+  low: ["منخفضة", "Low"],
+  medium: ["متوسطة", "Medium"],
+  high: ["مرتفعة", "High"],
+};
+
+export function maintenanceValueLabel(value: string | null | undefined, t: Translate): string {
+  const normalized = value?.trim();
+  if (!normalized) return "—";
+  const label = maintenanceValueLabels[normalized.toLowerCase()];
+  return label ? t(...label) : normalized;
+}
+
 export interface MaintenanceInput {
   description: string;
   faculty: string;
@@ -20,9 +44,9 @@ export interface MaintenanceEvent {
   assigneeName?: string;
 }
 export interface OperationalDecision {
-  type: string;
-  priority: string;
-  risk: string;
+  type: string | null;
+  priority: string | null;
+  risk: string | null;
 }
 export interface MaintenanceReport extends MaintenanceInput {
   id: string;
@@ -32,8 +56,19 @@ export interface MaintenanceReport extends MaintenanceInput {
   createdAt: string;
   assignee: string;
   history: MaintenanceEvent[];
-  assessment?: { type: string; priority: string; risk: string };
-  decision?: OperationalDecision;
+  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null; explanation?: string | null; inputReviewed?: boolean } | null;
+  decision?: OperationalDecision | null;
+  mediaUrl?: string | null;
+  reference?: string;
+  locationNames?: { faculty: { ar: string; en: string }; building: { ar: string; en: string }; floor: { ar: string; en: string } };
+  cancelledAt?: string;
+  canEdit?: boolean;
+  canUpdate?: boolean;
+  canViewAssessment?: boolean;
+  canReviewAiInput?: boolean;
+  canReviewAiImage?: boolean;
+  departmentId?: string;
+  allowedAssignees?: { id: string; name: string }[];
 }
 export interface LocationOption {
   id: string;
@@ -80,13 +115,18 @@ interface MaintenanceService {
       decision?: OperationalDecision;
     },
   ): Promise<MaintenanceReport>;
+  reviewAi(id: string, version: number, confirmedNonSensitive: boolean, includeImage: boolean): Promise<MaintenanceReport>;
 }
 export const maintenance: MaintenanceService = {
-  locations: backendUnavailable,
-  create: backendUnavailable,
-  list: backendUnavailable,
-  detail: backendUnavailable,
-  edit: backendUnavailable,
-  cancel: backendUnavailable,
-  update: backendUnavailable,
+  locations: () => api<LocationOption[]>("/directory/locations"),
+  create: async (_actor, input) => normalize(await api<MaintenanceReport>("/maintenance", { method: "POST", body: form(input) })),
+  list: async () => Promise.all((await pages<MaintenanceReport>("/maintenance")).map(normalize)),
+  detail: async (_actor, id) => normalize(await api<MaintenanceReport>(`/maintenance/${id}`)),
+  edit: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}`, { method: "PUT", body: form({ ...request.input, version: request.version }) })),
+  cancel: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/cancel`, json("POST", { version: request.version }))),
+  update: async (_actor, request) => normalize(await api<MaintenanceReport>(`/maintenance/${request.id}/updates`, json("POST", request))),
+  reviewAi: async (id, version, confirmedNonSensitive, includeImage) => normalize(await api<MaintenanceReport>(`/maintenance/${id}/ai-review`, json("POST", { version, confirmedNonSensitive, includeImage }))),
 };
+async function normalize(report: MaintenanceReport) {
+  return withPhoto({ ...report, status: report.cancelledAt ? "cancelled" as const : report.status, assignee: report.assignee ?? "" });
+}

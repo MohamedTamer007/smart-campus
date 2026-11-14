@@ -1,0 +1,1 @@
+<Solution><Project Path="SmartCampus.Domain/SmartCampus.Domain.csproj"/><Project Path="SmartCampus.Infrastructure/SmartCampus.Infrastructure.csproj"/><Project Path="SmartCampus.Api/SmartCampus.Api.csproj"/><Project Path="SmartCampus.Tests/SmartCampus.Tests.csproj"/></Solution>

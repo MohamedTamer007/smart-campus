@@ -1,0 +1,177 @@
+name: Smart Campus CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-only
+          POSTGRES_DB: smart_campus_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      SMART_CAMPUS_TEST_DB: Host=127.0.0.1;Port=5432;Database=smart_campus_test;Username=postgres;Password=isolated-ci-only;Search Path=smart_campus,extensions,public
+      ConnectionStrings__Campus: Host=127.0.0.1;Port=5432;Database=smart_campus_dev;Username=postgres;Password=isolated-ci-only;Search Path=smart_campus,extensions,public
+      PublicOrigin: http://127.0.0.1:5080
+      Email__LocalSink: 'true'
+      Storage__Local: 'true'
+      RateLimits__AuthPerMinute: '1000'
+      RateLimits__PerMinute: '10000'
+      PGPASSWORD: isolated-ci-only
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Prepare isolated databases
+        run: |
+          psql -h 127.0.0.1 -U postgres -d smart_campus_test -v ON_ERROR_STOP=1 -c 'CREATE SCHEMA extensions; CREATE EXTENSION vector WITH SCHEMA extensions;'
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE smart_campus_dev;'
+          psql -h 127.0.0.1 -U postgres -d smart_campus_dev -v ON_ERROR_STOP=1 -c 'CREATE SCHEMA extensions; CREATE EXTENSION vector WITH SCHEMA extensions;'
+      - name: Scan committed history for credentials
+        run: |
+          mkdir -p test-results
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --gitleaks-ignore-path /repo/.gitleaksignore --redact=100 --report-format json --report-path /repo/test-results/gitleaks.json
+      - name: Backend tests with PostgreSQL 17
+        run: dotnet test backend/SmartCampus.slnx --logger 'trx;LogFileName=backend.trx' --results-directory test-results/backend
+      - name: Verify reviewed storage policy on isolated fixtures
+        run: psql -h 127.0.0.1 -U postgres -d smart_campus_test -v ON_ERROR_STOP=1 -f scripts/sql/test-storage-prefix.sql > test-results/storage-policy.txt
+      - name: Frontend checks
+        run: |
+          npm ci
+          npm test
+          npm run typecheck
+          npm run lint
+          npm run build
+          npm audit --audit-level=moderate
+      - name: Worker boundary tests
+        run: python -m unittest discover -s worker -v
+      - name: Backup safety tests
+        run: python -m unittest discover -s scripts/tests -v
+      - name: Encrypted database backup and isolated restore
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+          PGHOST: 127.0.0.1
+          PGUSER: postgres
+          PGDATABASE: smart_campus_test
+        run: |
+          # Ubuntu's Azure mirror can have transient DNS failures; try the
+          # default configured mirror first, then the official Ubuntu mirror.
+          if ! (sudo apt-get update -qq -o Acquire::Retries=2 -o Acquire::http::Timeout=15 &&
+                sudo apt-get install -y -o Acquire::Retries=2 -o Acquire::http::Timeout=15 age rclone); then
+            echo "Package mirror unavailable; retrying via archive.ubuntu.com"
+            if test -f /etc/apt/sources.list.d/ubuntu.sources; then
+              sudo sed -i 's|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+              sudo sed -i 's|https://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+            fi
+            sudo apt-get update -qq -o Acquire::Retries=3 -o Acquire::http::Timeout=15
+            sudo apt-get install -y -o Acquire::Retries=3 -o Acquire::http::Timeout=15 age rclone
+          fi
+          mkdir -p "$RUNNER_TEMP/pg-tools"
+          for tool in pg_dump pg_restore psql; do
+            cat > "$RUNNER_TEMP/pg-tools/$tool" <<'SH'
+          #!/bin/sh
+          exec docker exec -i -e PGDATABASE -e PGUSER -e PGPASSWORD "$PG_CONTAINER" "$(basename "$0")" "$@"
+          SH
+            chmod +x "$RUNNER_TEMP/pg-tools/$tool"
+          done
+          export PATH="$RUNNER_TEMP/pg-tools:$PATH"
+          age-keygen -o "$RUNNER_TEMP/backup-test.key"
+          recipient=$(age-keygen -y "$RUNNER_TEMP/backup-test.key")
+          expected=$(psql -Atc 'SELECT count(*) FROM smart_campus."Reports";')
+          python scripts/backup-database.py --output-dir "$RUNNER_TEMP/campus-backup" --recipient "$recipient"
+          psql -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE smart_campus_restore_test;'
+          export PGDATABASE=smart_campus_restore_test
+          psql -v ON_ERROR_STOP=1 -c 'CREATE SCHEMA extensions; CREATE EXTENSION vector WITH SCHEMA extensions;'
+          python scripts/restore-database.py --manifest "$RUNNER_TEMP"/campus-backup/*.manifest.json --identity-file "$RUNNER_TEMP/backup-test.key"
+          actual=$(psql -Atc 'SELECT count(*) FROM smart_campus."Reports";')
+          test "$actual" = "$expected"
+          python scripts/verify-restored-database.py --source smart_campus_test --restored smart_campus_restore_test > test-results/restore.json
+      - name: Media encryption and isolated file restoration
+        run: |
+          mkdir -p "$RUNNER_TEMP/media-source" "$RUNNER_TEMP/media-ciphertext" "$RUNNER_TEMP/media-restored"
+          printf 'synthetic media encryption fixture\n' > "$RUNNER_TEMP/media-source/fixture.bin"
+          rclone --config "$RUNNER_TEMP/test-rclone.conf" config create test-crypt crypt remote "$RUNNER_TEMP/media-ciphertext" "password=$(rclone obscure synthetic-ci-only)" filename_encryption standard directory_name_encryption true >/dev/null
+          rclone --config "$RUNNER_TEMP/test-rclone.conf" copy "$RUNNER_TEMP/media-source" test-crypt:
+          rclone --config "$RUNNER_TEMP/test-rclone.conf" cryptcheck "$RUNNER_TEMP/media-source" test-crypt:
+          rclone --config "$RUNNER_TEMP/test-rclone.conf" copy test-crypt: "$RUNNER_TEMP/media-restored"
+          cmp "$RUNNER_TEMP/media-source/fixture.bin" "$RUNNER_TEMP/media-restored/fixture.bin"
+          test -z "$(find "$RUNNER_TEMP/media-ciphertext" -name fixture.bin)"
+          printf 'Synthetic bytes and filename encryption verified through real rclone crypt and isolated restoration. Hosted S3/OCI integration not exercised.\n' > test-results/media-restore.txt
+      - name: Backend dependency advisories
+        run: |
+          dotnet list backend/SmartCampus.slnx package --vulnerable --include-transitive --format json > test-results/nuget-audit.json
+          python -c 'import json; d=json.load(open("test-results/nuget-audit.json")); p=[x for project in d.get("projects",[]) for framework in project.get("frameworks",[]) for key in ("topLevelPackages","transitivePackages") for x in framework.get(key,[]) if x.get("vulnerabilities")]; print("Vulnerable packages:",len(p)); raise SystemExit(bool(p))'
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Existing browser regression checks
+        run: npm run test:e2e
+      - name: Start integrated development host
+        run: |
+          mkdir -p backend/SmartCampus.Api/wwwroot
+          cp -R dist/. backend/SmartCampus.Api/wwwroot/
+          dotnet run --no-build --project backend/SmartCampus.Api -- --migrate
+          dotnet run --no-build --project backend/SmartCampus.Api -- --seed-demo
+          dotnet run --no-build --project backend/SmartCampus.Api --urls http://127.0.0.1:5080 > test-results/api.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:5080/health/ready; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Integrated browser journeys
+        env:
+          SMART_CAMPUS_E2E: '1'
+        run: npm run test:e2e
+      - name: Build production API image
+        run: docker build --tag smart-campus:ci .
+      - name: Validate VM packaging
+        env:
+          API_IMAGE: smart-campus:ci
+          WORKER_IMAGE: smart-campus-worker:ci
+          API_ENV_FILE: ${{ github.workspace }}/deployment/api.env.example
+          WORKER_ENV_FILE: ${{ github.workspace }}/deployment/worker.env.example
+          CAMPUS_HOST: campus.example.test
+        run: |
+          docker compose -f deployment/compose.yml config --quiet
+          test "$(docker inspect --format '{{.Config.User}}' smart-campus:ci)" = 1654
+          docker run --rm --network none --env CAMPUS_HOST=campus.example.test \
+            --mount "type=bind,source=$PWD/deployment/Caddyfile,target=/etc/caddy/Caddyfile,readonly" \
+            --entrypoint caddy caddy:2.11.9-alpine validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: checks-${{ github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

@@ -1,0 +1,626 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="536d4cb0-29c7-4e37-bc78-998c4252b9c5" name="Pc@HUSSIENY 2026-11-09 17:01:36" runUser="HUSSIENY\Pc" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-11-09T17:01:36.8399052+02:00" queuing="2026-11-09T17:01:36.8399054+02:00" start="2026-11-09T17:01:28.6990489+02:00" finish="2026-11-09T17:01:46.7315758+02:00" />
+  <TestSettings name="default" id="eceed013-6e42-4e29-bff4-68afe600877a">
+    <Deployment runDeploymentRoot="Pc_HUSSIENY_2026-11-09_17_01_36" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="2b8d688d-e953-4565-a6bc-335060d270ae" testId="29c7daf2-a71f-2bb0-57e1-062f4bef418f" testName="SmartCampus.Tests.ApiTests.Expired_verification_and_reset_tokens_are_rejected" computerName="HUSSIENY" duration="00:00:00.0181080" startTime="2026-11-09T17:01:38.8467812+02:00" endTime="2026-11-09T17:01:38.8651587+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2b8d688d-e953-4565-a6bc-335060d270ae" />
+    <UnitTestResult executionId="c3cddb6d-fc7f-4388-80cb-154f403cf401" testId="c6151b9e-36a7-e42f-b34c-501805531c3c" testName="SmartCampus.Tests.ApiTests.Unauthenticated_unverified_and_forged_privileges_are_denied" computerName="HUSSIENY" duration="00:00:00.1551345" startTime="2026-11-09T17:01:37.5101633+02:00" endTime="2026-11-09T17:01:37.6656129+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c3cddb6d-fc7f-4388-80cb-154f403cf401" />
+    <UnitTestResult executionId="a9349e2d-2788-4842-871a-44632406dc86" testId="8843a37d-3b0e-6b41-2def-9ff38707f856" testName="SmartCampus.Tests.RetrievalTests.Pgvector_ranking_filters_candidates_and_persists_user_specific_result_grants" computerName="HUSSIENY" duration="00:00:00.3039453" startTime="2026-11-09T17:01:46.3407708+02:00" endTime="2026-11-09T17:01:46.6446707+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a9349e2d-2788-4842-871a-44632406dc86" />
+    <UnitTestResult executionId="a6475dfc-65c7-47e8-9ea6-d1a833a825d5" testId="efffc448-ab0c-aba3-da27-f3dd5004a767" testName="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;submitted&quot;, after: &quot;resolved&quot;)" computerName="HUSSIENY" duration="00:00:00.0000066" startTime="2026-11-09T17:01:44.8962222+02:00" endTime="2026-11-09T17:01:44.8962698+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a6475dfc-65c7-47e8-9ea6-d1a833a825d5" />
+    <UnitTestResult executionId="d37e3caa-561a-4a6d-90af-0ccc672fd49d" testId="c3e7a043-2d9d-df44-01c4-d794b4c6de54" testName="SmartCampus.Tests.ApiTests.Concurrent_approvals_create_one_reservation_and_both_confirmations_close_it" computerName="HUSSIENY" duration="00:00:03.1237098" startTime="2026-11-09T17:01:41.7538036+02:00" endTime="2026-11-09T17:01:44.8777856+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d37e3caa-561a-4a6d-90af-0ccc672fd49d" />
+    <UnitTestResult executionId="30574b08-36ad-4aff-81fc-cfe37f8d7dd8" testId="15b752a3-51a6-2b68-4a12-7ebebfb0ca85" testName="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;rejected&quot;, after: &quot;submitted&quot;)" computerName="HUSSIENY" duration="00:00:00.0002890" startTime="2026-11-09T17:01:44.8958787+02:00" endTime="2026-11-09T17:01:44.8959775+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="30574b08-36ad-4aff-81fc-cfe37f8d7dd8" />
+    <UnitTestResult executionId="71c5a3df-08c7-47b6-90d8-30204703e3f6" testId="b0573840-e1da-059b-a099-71b8b061e7a4" testName="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a@o6u.edu.eg.evil.com&quot;)" computerName="HUSSIENY" duration="00:00:00.0000184" startTime="2026-11-09T17:01:44.8943984+02:00" endTime="2026-11-09T17:01:44.8944431+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="71c5a3df-08c7-47b6-90d8-30204703e3f6" />
+    <UnitTestResult executionId="03ae9c43-1a8a-4f05-9254-824a61b0351e" testId="b3739986-6856-213f-5782-76eb4d57a048" testName="SmartCampus.Tests.RuleTests.Unrecognized_or_truncated_AI_output_is_rejected" computerName="HUSSIENY" duration="00:00:00.0007092" startTime="2026-11-09T17:01:44.8954929+02:00" endTime="2026-11-09T17:01:44.8955628+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="03ae9c43-1a8a-4f05-9254-824a61b0351e" />
+    <UnitTestResult executionId="04609788-d155-42b3-bce2-df9c92e8cb1b" testId="ac26a31b-a4e4-33e7-632c-3aeae4d730e4" testName="SmartCampus.Tests.ProviderTests.Provider_failure_never_creates_a_suggestion(status: 429, body: &quot;{}&quot;, expected: &quot;ai_rate_limited&quot;)" computerName="HUSSIENY" duration="00:00:00.0048319" startTime="2026-11-09T17:01:44.8855348+02:00" endTime="2026-11-09T17:01:44.8901308+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="04609788-d155-42b3-bce2-df9c92e8cb1b" />
+    <UnitTestResult executionId="5eb17a9b-381a-4f12-953c-a7057aa42a8d" testId="a8710195-fc80-3884-5ff9-3bb3119bfc9f" testName="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;resolved&quot;, after: &quot;review&quot;)" computerName="HUSSIENY" duration="00:00:00.0000061" startTime="2026-11-09T17:01:44.8976430+02:00" endTime="2026-11-09T17:01:44.8977555+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5eb17a9b-381a-4f12-953c-a7057aa42a8d" />
+    <UnitTestResult executionId="93c1b950-029d-4931-9a29-5fa4f51d32cd" testId="74bdd791-cd5e-fbe4-0068-a9776dae0d28" testName="SmartCampus.Tests.RuleTests.Valid_AI_output_preserves_priority_and_risk_separately" computerName="HUSSIENY" duration="00:00:00.0002223" startTime="2026-11-09T17:01:44.8980026+02:00" endTime="2026-11-09T17:01:44.8980585+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="93c1b950-029d-4931-9a29-5fa4f51d32cd" />
+    <UnitTestResult executionId="26188010-654d-4249-b7fe-b7505163a66f" testId="00ceb60f-f880-eded-7757-97dde5a3d7e8" testName="SmartCampus.Tests.ApiTests.Notifications_are_recipient_owned_and_dashboard_counts_use_real_records" computerName="HUSSIENY" duration="00:00:00.4043300" startTime="2026-11-09T17:01:40.4372654+02:00" endTime="2026-11-09T17:01:40.8419925+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="26188010-654d-4249-b7fe-b7505163a66f" />
+    <UnitTestResult executionId="2a63b7a8-2c35-445c-9a17-6ce0872fa441" testId="be821fa8-0d86-4f29-8903-17ad5e5f73d3" testName="SmartCampus.Tests.ProviderTests.Provider_failure_never_creates_a_suggestion(status: 503, body: &quot;{}&quot;, expected: &quot;ai_unavailable&quot;)" computerName="HUSSIENY" duration="00:00:00.0006374" startTime="2026-11-09T17:01:44.8903051+02:00" endTime="2026-11-09T17:01:44.8908512+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2a63b7a8-2c35-445c-9a17-6ce0872fa441" />
+    <UnitTestResult executionId="c6bf2892-a316-4dc4-b7c7-274e4a85cbb0" testId="9dc70362-c099-fa92-a8f9-e114529d9fed" testName="SmartCampus.Tests.ApiTests.Invalid_upload_and_inconsistent_location_are_rejected" computerName="HUSSIENY" duration="00:00:00.1543702" startTime="2026-11-09T17:01:36.8053260+02:00" endTime="2026-11-09T17:01:36.9485310+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c6bf2892-a316-4dc4-b7c7-274e4a85cbb0" />
+    <UnitTestResult executionId="21d42316-86ca-4c2b-add5-61cab9655a38" testId="b2335ef9-f29b-306f-6a05-8b4761b1478f" testName="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;submitted&quot;, after: &quot;rejected&quot;)" computerName="HUSSIENY" duration="00:00:00.0000158" startTime="2026-11-09T17:01:44.8960812+02:00" endTime="2026-11-09T17:01:44.8961309+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="21d42316-86ca-4c2b-add5-61cab9655a38" />
+    <UnitTestResult executionId="2df497ef-86fb-4932-a29b-364a96b40299" testId="832dd068-4a92-8996-fbdf-6f91e1463180" testName="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a@@o6u.edu.eg&quot;)" computerName="HUSSIENY" duration="00:00:00.0010148" startTime="2026-11-09T17:01:44.8931451+02:00" endTime="2026-11-09T17:01:44.8939659+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2df497ef-86fb-4932-a29b-364a96b40299" />
+    <UnitTestResult executionId="5a404a30-e51c-46cd-b8b6-889f9af72f26" testId="ee0a4a55-08e7-1435-0edd-2be01a0ff16b" testName="SmartCampus.Tests.ApiTests.Missing_csrf_is_rejected_and_logout_revokes_session" computerName="HUSSIENY" duration="00:00:00.1640539" startTime="2026-11-09T17:01:39.3790882+02:00" endTime="2026-11-09T17:01:39.5434333+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5a404a30-e51c-46cd-b8b6-889f9af72f26" />
+    <UnitTestResult executionId="f73eff94-e1ea-4b1e-89d9-8aaa61e06ab4" testId="4c6c112a-78d4-2d88-f3f8-06b39279dfac" testName="SmartCampus.Tests.ApiTests.Admin_grants_are_versioned_and_revoke_existing_sessions" computerName="HUSSIENY" duration="00:00:00.6347048" startTime="2026-11-09T17:01:37.6658134+02:00" endTime="2026-11-09T17:01:38.3008540+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f73eff94-e1ea-4b1e-89d9-8aaa61e06ab4" />
+    <UnitTestResult executionId="3e73841e-3282-472f-9cd0-54de68ec331f" testId="a128105b-f264-80f3-8b63-785e4e3926b8" testName="SmartCampus.Tests.ApiTests.Delivery_first_still_requires_independent_requester_receipt" computerName="HUSSIENY" duration="00:00:00.5103539" startTime="2026-11-09T17:01:41.2428804+02:00" endTime="2026-11-09T17:01:41.7536242+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3e73841e-3282-472f-9cd0-54de68ec331f" />
+    <UnitTestResult executionId="2453d4ef-cc06-4c86-b132-5f02a87b9df1" testId="070c39e8-7c8f-47c7-0a1e-fd0ba9ac1de7" testName="SmartCampus.Tests.ProviderTests.Provider_failure_never_creates_a_suggestion(status: 200, body: &quot;{}&quot;, expected: &quot;invalid_ai_response&quot;)" computerName="HUSSIENY" duration="00:00:00.0007854" startTime="2026-11-09T17:01:44.8910239+02:00" endTime="2026-11-09T17:01:44.8917398+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2453d4ef-cc06-4c86-b132-5f02a87b9df1" />
+    <UnitTestResult executionId="830769fd-2758-4d87-b7d3-b6a95231e66d" testId="128ecc4a-8319-0557-2d8e-d0ba36db25d2" testName="SmartCampus.Tests.ApiTests.Malformed_account_action_tokens_return_validation_errors" computerName="HUSSIENY" duration="00:00:00.0315011" startTime="2026-11-09T17:01:37.3533544+02:00" endTime="2026-11-09T17:01:37.3851480+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="830769fd-2758-4d87-b7d3-b6a95231e66d" />
+    <UnitTestResult executionId="56263735-2c60-4453-bf37-ef435d22e0fd" testId="15c36b3f-4728-d682-54e6-e86eef249f0f" testName="SmartCampus.Tests.ApiTests.Prehandling_cancellation_and_rejection_preserve_truthful_states" computerName="HUSSIENY" duration="00:00:00.5452534" startTime="2026-11-09T17:01:38.3010476+02:00" endTime="2026-11-09T17:01:38.8465608+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="56263735-2c60-4453-bf37-ef435d22e0fd" />
+    <UnitTestResult executionId="6228dfc8-0d08-4aee-addd-63e66808c82e" testId="92bd00a6-bce7-6209-3525-5822b15d2183" testName="SmartCampus.Tests.ApiTests.Reservation_blocks_transfer_and_cancellation_releases_existing_claims" computerName="HUSSIENY" duration="00:00:01.4741476" startTime="2026-11-09T17:01:35.3194267+02:00" endTime="2026-11-09T17:01:36.7915350+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6228dfc8-0d08-4aee-addd-63e66808c82e" />
+    <UnitTestResult executionId="280070bc-cbcb-4e1d-92c6-ea52eecc6cdc" testId="fa28852b-8938-3fc8-b7a0-a2455dae8a2f" testName="SmartCampus.Tests.ApiTests.Maintenance_scope_stale_updates_and_lifecycle_are_enforced" computerName="HUSSIENY" duration="00:00:00.7037473" startTime="2026-11-09T17:01:39.5436287+02:00" endTime="2026-11-09T17:01:40.2476796+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="280070bc-cbcb-4e1d-92c6-ea52eecc6cdc" />
+    <UnitTestResult executionId="377c6c70-4097-46ff-923d-fde772a9bf19" testId="1dbcea6e-73c2-5662-3507-e7e5d31eeb6a" testName="SmartCampus.Tests.RuleTests.Embedding_revision_dimension_and_normalization_are_enforced" computerName="HUSSIENY" duration="00:00:00.0029595" startTime="2026-11-09T17:01:44.8981855+02:00" endTime="2026-11-09T17:01:44.9007849+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="377c6c70-4097-46ff-923d-fde772a9bf19" />
+    <UnitTestResult executionId="5c5e8f63-dc4f-4ada-8798-22fe80c9646d" testId="218fc622-cc58-7611-3a5b-f5f42482b87b" testName="SmartCampus.Tests.RuleTests.University_email_is_normalized" computerName="HUSSIENY" duration="00:00:00.0001291" startTime="2026-11-09T17:01:44.9009833+02:00" endTime="2026-11-09T17:01:44.9010464+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5c5e8f63-dc4f-4ada-8798-22fe80c9646d" />
+    <UnitTestResult executionId="aa118ae3-fb61-4786-ad08-e9bcd8fbf460" testId="7d92948a-0ca1-e87b-391c-5b146ebbbc1a" testName="SmartCampus.Tests.ApiTests.Custody_changes_only_on_scoped_receipt_and_former_custodian_loses_authority" computerName="HUSSIENY" duration="00:00:00.5127955" startTime="2026-11-09T17:01:38.8653700+02:00" endTime="2026-11-09T17:01:39.3788182+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="aa118ae3-fb61-4786-ad08-e9bcd8fbf460" />
+    <UnitTestResult executionId="bba2240b-4bd5-431f-8259-bff6ed1d6480" testId="1bccf2cd-b7d2-ed11-0924-0c9b1de865c5" testName="SmartCampus.Tests.ApiTests.Private_inventory_media_and_uncalibrated_search_do_not_leak" computerName="HUSSIENY" duration="00:00:00.4041359" startTime="2026-11-09T17:01:36.9496648+02:00" endTime="2026-11-09T17:01:37.3530620+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bba2240b-4bd5-431f-8259-bff6ed1d6480" />
+    <UnitTestResult executionId="715c2dcd-df15-4633-8e51-96c5fb6b35ba" testId="19525b3d-2616-4b55-b90b-cc70ab7d7015" testName="SmartCampus.Tests.ApiTests.Registration_verification_recovery_and_replayed_tokens_follow_real_flows" computerName="HUSSIENY" duration="00:00:00.4002572" startTime="2026-11-09T17:01:40.8422151+02:00" endTime="2026-11-09T17:01:41.2427313+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="715c2dcd-df15-4633-8e51-96c5fb6b35ba" />
+    <UnitTestResult executionId="36e810cb-6130-457f-9452-1bfa122c8343" testId="290e9241-79eb-8d57-7c56-178eedd0b1eb" testName="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;repair&quot;, after: &quot;rejected&quot;)" computerName="HUSSIENY" duration="00:00:00.0004235" startTime="2026-11-09T17:01:44.8957323+02:00" endTime="2026-11-09T17:01:44.8957824+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="36e810cb-6130-457f-9452-1bfa122c8343" />
+    <UnitTestResult executionId="dc5f0b1e-c79e-4556-adb7-ac3dbb877f0c" testId="6881aa59-a2fe-b4d4-9e1f-2b4505a25592" testName="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;Name &lt;a@o6u.edu.eg&gt;&quot;)" computerName="HUSSIENY" duration="00:00:00.0000094" startTime="2026-11-09T17:01:44.8946522+02:00" endTime="2026-11-09T17:01:44.8947018+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dc5f0b1e-c79e-4556-adb7-ac3dbb877f0c" />
+    <UnitTestResult executionId="35b628f6-d1af-4e43-a17d-81cae0ec3974" testId="c1b93c5d-eb0e-f07f-140f-7e50ef4a468a" testName="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a@sub.o6u.edu.eg&quot;)" computerName="HUSSIENY" duration="00:00:00.0000080" startTime="2026-11-09T17:01:44.8945205+02:00" endTime="2026-11-09T17:01:44.8945680+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="35b628f6-d1af-4e43-a17d-81cae0ec3974" />
+    <UnitTestResult executionId="1abbda1a-ff7f-4ab7-bb32-ff475ae61786" testId="0f7ecfc4-ee37-e09b-509c-273d9da7b7f1" testName="SmartCampus.Tests.ApiTests.Expired_database_session_is_rejected_even_with_a_cookie" computerName="HUSSIENY" duration="00:00:00.1242931" startTime="2026-11-09T17:01:37.3853215+02:00" endTime="2026-11-09T17:01:37.5099906+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1abbda1a-ff7f-4ab7-bb32-ff475ae61786" />
+    <UnitTestResult executionId="ae3b9cc8-feec-4274-994b-ac68c2e7fc25" testId="cded511c-039c-34ca-299a-ef4f7c595c46" testName="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a b@o6u.edu.eg&quot;)" computerName="HUSSIENY" duration="00:00:00.0002839" startTime="2026-11-09T17:01:44.8940965+02:00" endTime="2026-11-09T17:01:44.8942921+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ae3b9cc8-feec-4274-994b-ac68c2e7fc25" />
+    <UnitTestResult executionId="a83dc10a-2358-46cb-bfa4-e0b819fbda1c" testId="620ccff7-1294-76b7-7dc8-3a3ec1c84d10" testName="SmartCampus.Tests.ProviderTests.Valid_provider_envelope_returns_only_validated_suggestions" computerName="HUSSIENY" duration="00:00:00.0009196" startTime="2026-11-09T17:01:44.8919391+02:00" endTime="2026-11-09T17:01:44.8927352+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a83dc10a-2358-46cb-bfa4-e0b819fbda1c" />
+    <UnitTestResult executionId="df812c91-1519-40d3-9ef5-d72dc751a083" testId="696338e2-016b-86cf-3203-3a95d019258a" testName="SmartCampus.Tests.ApiTests.Pending_handover_cancellation_keeps_item_and_original_custody" computerName="HUSSIENY" duration="00:00:00.1889422" startTime="2026-11-09T17:01:40.2478556+02:00" endTime="2026-11-09T17:01:40.4371078+02:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="df812c91-1519-40d3-9ef5-d72dc751a083" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a@sub.o6u.edu.eg&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="c1b93c5d-eb0e-f07f-140f-7e50ef4a468a">
+      <Execution id="35b628f6-d1af-4e43-a17d-81cae0ec3974" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Deceptive_email_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Invalid_upload_and_inconsistent_location_are_rejected" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="9dc70362-c099-fa92-a8f9-e114529d9fed">
+      <Execution id="c6bf2892-a316-4dc4-b7c7-274e4a85cbb0" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Invalid_upload_and_inconsistent_location_are_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Valid_AI_output_preserves_priority_and_risk_separately" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="74bdd791-cd5e-fbe4-0068-a9776dae0d28">
+      <Execution id="93c1b950-029d-4931-9a29-5fa4f51d32cd" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Valid_AI_output_preserves_priority_and_risk_separately" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Unrecognized_or_truncated_AI_output_is_rejected" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="b3739986-6856-213f-5782-76eb4d57a048">
+      <Execution id="03ae9c43-1a8a-4f05-9254-824a61b0351e" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Unrecognized_or_truncated_AI_output_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Maintenance_scope_stale_updates_and_lifecycle_are_enforced" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="fa28852b-8938-3fc8-b7a0-a2455dae8a2f">
+      <Execution id="280070bc-cbcb-4e1d-92c6-ea52eecc6cdc" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Maintenance_scope_stale_updates_and_lifecycle_are_enforced" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Expired_database_session_is_rejected_even_with_a_cookie" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="0f7ecfc4-ee37-e09b-509c-273d9da7b7f1">
+      <Execution id="1abbda1a-ff7f-4ab7-bb32-ff475ae61786" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Expired_database_session_is_rejected_even_with_a_cookie" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Expired_verification_and_reset_tokens_are_rejected" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="29c7daf2-a71f-2bb0-57e1-062f4bef418f">
+      <Execution id="2b8d688d-e953-4565-a6bc-335060d270ae" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Expired_verification_and_reset_tokens_are_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;Name &lt;a@o6u.edu.eg&gt;&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="6881aa59-a2fe-b4d4-9e1f-2b4505a25592">
+      <Execution id="dc5f0b1e-c79e-4556-adb7-ac3dbb877f0c" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Deceptive_email_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Registration_verification_recovery_and_replayed_tokens_follow_real_flows" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="19525b3d-2616-4b55-b90b-cc70ab7d7015">
+      <Execution id="715c2dcd-df15-4633-8e51-96c5fb6b35ba" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Registration_verification_recovery_and_replayed_tokens_follow_real_flows" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.University_email_is_normalized" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="218fc622-cc58-7611-3a5b-f5f42482b87b">
+      <Execution id="5c5e8f63-dc4f-4ada-8798-22fe80c9646d" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="University_email_is_normalized" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Reservation_blocks_transfer_and_cancellation_releases_existing_claims" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="92bd00a6-bce7-6209-3525-5822b15d2183">
+      <Execution id="6228dfc8-0d08-4aee-addd-63e66808c82e" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Reservation_blocks_transfer_and_cancellation_releases_existing_claims" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Private_inventory_media_and_uncalibrated_search_do_not_leak" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="1bccf2cd-b7d2-ed11-0924-0c9b1de865c5">
+      <Execution id="bba2240b-4bd5-431f-8259-bff6ed1d6480" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Private_inventory_media_and_uncalibrated_search_do_not_leak" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Notifications_are_recipient_owned_and_dashboard_counts_use_real_records" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="00ceb60f-f880-eded-7757-97dde5a3d7e8">
+      <Execution id="26188010-654d-4249-b7fe-b7505163a66f" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Notifications_are_recipient_owned_and_dashboard_counts_use_real_records" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Admin_grants_are_versioned_and_revoke_existing_sessions" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="4c6c112a-78d4-2d88-f3f8-06b39279dfac">
+      <Execution id="f73eff94-e1ea-4b1e-89d9-8aaa61e06ab4" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Admin_grants_are_versioned_and_revoke_existing_sessions" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Malformed_account_action_tokens_return_validation_errors" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="128ecc4a-8319-0557-2d8e-d0ba36db25d2">
+      <Execution id="830769fd-2758-4d87-b7d3-b6a95231e66d" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Malformed_account_action_tokens_return_validation_errors" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ProviderTests.Provider_failure_never_creates_a_suggestion(status: 429, body: &quot;{}&quot;, expected: &quot;ai_rate_limited&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="ac26a31b-a4e4-33e7-632c-3aeae4d730e4">
+      <Execution id="04609788-d155-42b3-bce2-df9c92e8cb1b" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ProviderTests" name="Provider_failure_never_creates_a_suggestion" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ProviderTests.Provider_failure_never_creates_a_suggestion(status: 200, body: &quot;{}&quot;, expected: &quot;invalid_ai_response&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="070c39e8-7c8f-47c7-0a1e-fd0ba9ac1de7">
+      <Execution id="2453d4ef-cc06-4c86-b132-5f02a87b9df1" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ProviderTests" name="Provider_failure_never_creates_a_suggestion" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Custody_changes_only_on_scoped_receipt_and_former_custodian_loses_authority" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="7d92948a-0ca1-e87b-391c-5b146ebbbc1a">
+      <Execution id="aa118ae3-fb61-4786-ad08-e9bcd8fbf460" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Custody_changes_only_on_scoped_receipt_and_former_custodian_loses_authority" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Concurrent_approvals_create_one_reservation_and_both_confirmations_close_it" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="c3e7a043-2d9d-df44-01c4-d794b4c6de54">
+      <Execution id="d37e3caa-561a-4a6d-90af-0ccc672fd49d" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Concurrent_approvals_create_one_reservation_and_both_confirmations_close_it" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ProviderTests.Provider_failure_never_creates_a_suggestion(status: 503, body: &quot;{}&quot;, expected: &quot;ai_unavailable&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="be821fa8-0d86-4f29-8903-17ad5e5f73d3">
+      <Execution id="2a63b7a8-2c35-445c-9a17-6ce0872fa441" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ProviderTests" name="Provider_failure_never_creates_a_suggestion" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;submitted&quot;, after: &quot;resolved&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="efffc448-ab0c-aba3-da27-f3dd5004a767">
+      <Execution id="a6475dfc-65c7-47e8-9ea6-d1a833a825d5" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Invalid_maintenance_transition_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Delivery_first_still_requires_independent_requester_receipt" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="a128105b-f264-80f3-8b63-785e4e3926b8">
+      <Execution id="3e73841e-3282-472f-9cd0-54de68ec331f" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Delivery_first_still_requires_independent_requester_receipt" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a b@o6u.edu.eg&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="cded511c-039c-34ca-299a-ef4f7c595c46">
+      <Execution id="ae3b9cc8-feec-4274-994b-ac68c2e7fc25" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Deceptive_email_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RetrievalTests.Pgvector_ranking_filters_candidates_and_persists_user_specific_result_grants" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="8843a37d-3b0e-6b41-2def-9ff38707f856">
+      <Execution id="a9349e2d-2788-4842-871a-44632406dc86" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RetrievalTests" name="Pgvector_ranking_filters_candidates_and_persists_user_specific_result_grants" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Missing_csrf_is_rejected_and_logout_revokes_session" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="ee0a4a55-08e7-1435-0edd-2be01a0ff16b">
+      <Execution id="5a404a30-e51c-46cd-b8b6-889f9af72f26" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Missing_csrf_is_rejected_and_logout_revokes_session" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;submitted&quot;, after: &quot;rejected&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="b2335ef9-f29b-306f-6a05-8b4761b1478f">
+      <Execution id="21d42316-86ca-4c2b-add5-61cab9655a38" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Invalid_maintenance_transition_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;repair&quot;, after: &quot;rejected&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="290e9241-79eb-8d57-7c56-178eedd0b1eb">
+      <Execution id="36e810cb-6130-457f-9452-1bfa122c8343" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Invalid_maintenance_transition_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Prehandling_cancellation_and_rejection_preserve_truthful_states" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="15c36b3f-4728-d682-54e6-e86eef249f0f">
+      <Execution id="56263735-2c60-4453-bf37-ef435d22e0fd" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Prehandling_cancellation_and_rejection_preserve_truthful_states" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;resolved&quot;, after: &quot;review&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="a8710195-fc80-3884-5ff9-3bb3119bfc9f">
+      <Execution id="5eb17a9b-381a-4f12-953c-a7057aa42a8d" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Invalid_maintenance_transition_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Invalid_maintenance_transition_is_rejected(before: &quot;rejected&quot;, after: &quot;submitted&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="15b752a3-51a6-2b68-4a12-7ebebfb0ca85">
+      <Execution id="30574b08-36ad-4aff-81fc-cfe37f8d7dd8" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Invalid_maintenance_transition_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a@@o6u.edu.eg&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="832dd068-4a92-8996-fbdf-6f91e1463180">
+      <Execution id="2df497ef-86fb-4932-a29b-364a96b40299" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Deceptive_email_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Pending_handover_cancellation_keeps_item_and_original_custody" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="696338e2-016b-86cf-3203-3a95d019258a">
+      <Execution id="df812c91-1519-40d3-9ef5-d72dc751a083" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Pending_handover_cancellation_keeps_item_and_original_custody" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Embedding_revision_dimension_and_normalization_are_enforced" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="1dbcea6e-73c2-5662-3507-e7e5d31eeb6a">
+      <Execution id="377c6c70-4097-46ff-923d-fde772a9bf19" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Embedding_revision_dimension_and_normalization_are_enforced" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ProviderTests.Valid_provider_envelope_returns_only_validated_suggestions" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="620ccff7-1294-76b7-7dc8-3a3ec1c84d10">
+      <Execution id="a83dc10a-2358-46cb-bfa4-e0b819fbda1c" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ProviderTests" name="Valid_provider_envelope_returns_only_validated_suggestions" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.RuleTests.Deceptive_email_is_rejected(email: &quot;a@o6u.edu.eg.evil.com&quot;)" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="b0573840-e1da-059b-a099-71b8b061e7a4">
+      <Execution id="71c5a3df-08c7-47b6-90d8-30204703e3f6" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.RuleTests" name="Deceptive_email_is_rejected" />
+    </UnitTest>
+    <UnitTest name="SmartCampus.Tests.ApiTests.Unauthenticated_unverified_and_forged_privileges_are_denied" storage="c:\users\pc\documents\codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\smartcampus.tests\bin\debug\net10.0\smartcampus.tests.dll" id="c6151b9e-36a7-e42f-b34c-501805531c3c">
+      <Execution id="c3cddb6d-fc7f-4388-80cb-154f403cf401" />
+      <TestMethod codeBase="C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Tests\bin\Debug\net10.0\SmartCampus.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="SmartCampus.Tests.ApiTests" name="Unauthenticated_unverified_and_forged_privileges_are_denied" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="29c7daf2-a71f-2bb0-57e1-062f4bef418f" executionId="2b8d688d-e953-4565-a6bc-335060d270ae" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c6151b9e-36a7-e42f-b34c-501805531c3c" executionId="c3cddb6d-fc7f-4388-80cb-154f403cf401" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8843a37d-3b0e-6b41-2def-9ff38707f856" executionId="a9349e2d-2788-4842-871a-44632406dc86" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="efffc448-ab0c-aba3-da27-f3dd5004a767" executionId="a6475dfc-65c7-47e8-9ea6-d1a833a825d5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c3e7a043-2d9d-df44-01c4-d794b4c6de54" executionId="d37e3caa-561a-4a6d-90af-0ccc672fd49d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="15b752a3-51a6-2b68-4a12-7ebebfb0ca85" executionId="30574b08-36ad-4aff-81fc-cfe37f8d7dd8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b0573840-e1da-059b-a099-71b8b061e7a4" executionId="71c5a3df-08c7-47b6-90d8-30204703e3f6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b3739986-6856-213f-5782-76eb4d57a048" executionId="03ae9c43-1a8a-4f05-9254-824a61b0351e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ac26a31b-a4e4-33e7-632c-3aeae4d730e4" executionId="04609788-d155-42b3-bce2-df9c92e8cb1b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a8710195-fc80-3884-5ff9-3bb3119bfc9f" executionId="5eb17a9b-381a-4f12-953c-a7057aa42a8d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="74bdd791-cd5e-fbe4-0068-a9776dae0d28" executionId="93c1b950-029d-4931-9a29-5fa4f51d32cd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="00ceb60f-f880-eded-7757-97dde5a3d7e8" executionId="26188010-654d-4249-b7fe-b7505163a66f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="be821fa8-0d86-4f29-8903-17ad5e5f73d3" executionId="2a63b7a8-2c35-445c-9a17-6ce0872fa441" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9dc70362-c099-fa92-a8f9-e114529d9fed" executionId="c6bf2892-a316-4dc4-b7c7-274e4a85cbb0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b2335ef9-f29b-306f-6a05-8b4761b1478f" executionId="21d42316-86ca-4c2b-add5-61cab9655a38" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="832dd068-4a92-8996-fbdf-6f91e1463180" executionId="2df497ef-86fb-4932-a29b-364a96b40299" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ee0a4a55-08e7-1435-0edd-2be01a0ff16b" executionId="5a404a30-e51c-46cd-b8b6-889f9af72f26" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4c6c112a-78d4-2d88-f3f8-06b39279dfac" executionId="f73eff94-e1ea-4b1e-89d9-8aaa61e06ab4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a128105b-f264-80f3-8b63-785e4e3926b8" executionId="3e73841e-3282-472f-9cd0-54de68ec331f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="070c39e8-7c8f-47c7-0a1e-fd0ba9ac1de7" executionId="2453d4ef-cc06-4c86-b132-5f02a87b9df1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="128ecc4a-8319-0557-2d8e-d0ba36db25d2" executionId="830769fd-2758-4d87-b7d3-b6a95231e66d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="15c36b3f-4728-d682-54e6-e86eef249f0f" executionId="56263735-2c60-4453-bf37-ef435d22e0fd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="92bd00a6-bce7-6209-3525-5822b15d2183" executionId="6228dfc8-0d08-4aee-addd-63e66808c82e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fa28852b-8938-3fc8-b7a0-a2455dae8a2f" executionId="280070bc-cbcb-4e1d-92c6-ea52eecc6cdc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1dbcea6e-73c2-5662-3507-e7e5d31eeb6a" executionId="377c6c70-4097-46ff-923d-fde772a9bf19" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="218fc622-cc58-7611-3a5b-f5f42482b87b" executionId="5c5e8f63-dc4f-4ada-8798-22fe80c9646d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7d92948a-0ca1-e87b-391c-5b146ebbbc1a" executionId="aa118ae3-fb61-4786-ad08-e9bcd8fbf460" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1bccf2cd-b7d2-ed11-0924-0c9b1de865c5" executionId="bba2240b-4bd5-431f-8259-bff6ed1d6480" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="19525b3d-2616-4b55-b90b-cc70ab7d7015" executionId="715c2dcd-df15-4633-8e51-96c5fb6b35ba" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="290e9241-79eb-8d57-7c56-178eedd0b1eb" executionId="36e810cb-6130-457f-9452-1bfa122c8343" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6881aa59-a2fe-b4d4-9e1f-2b4505a25592" executionId="dc5f0b1e-c79e-4556-adb7-ac3dbb877f0c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c1b93c5d-eb0e-f07f-140f-7e50ef4a468a" executionId="35b628f6-d1af-4e43-a17d-81cae0ec3974" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0f7ecfc4-ee37-e09b-509c-273d9da7b7f1" executionId="1abbda1a-ff7f-4ab7-bb32-ff475ae61786" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cded511c-039c-34ca-299a-ef4f7c595c46" executionId="ae3b9cc8-feec-4274-994b-ac68c2e7fc25" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="620ccff7-1294-76b7-7dc8-3a3ec1c84d10" executionId="a83dc10a-2358-46cb-bfa4-e0b819fbda1c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="696338e2-016b-86cf-3203-3a95d019258a" executionId="df812c91-1519-40d3-9ef5-d72dc751a083" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="36" executed="36" passed="36" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.14)&#xD;
+[xUnit.net 00:00:00.15]   Discovering: SmartCampus.Tests&#xD;
+[xUnit.net 00:00:00.22]   Discovered:  SmartCampus.Tests&#xD;
+[xUnit.net 00:00:00.25]   Starting:    SmartCampus.Tests&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Application started. Press Ctrl+C to shut down.&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Hosting environment: Development&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Content root path: C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Api&#xD;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]&#xD;
+      Failed executing DbCommand (7ms) [Parameters=[], CommandType='Text', CommandTimeout='30']&#xD;
+      SELECT "MigrationId", "ProductVersion"&#xD;
+      FROM smart_campus."__EFMigrationsHistory"&#xD;
+      ORDER BY "MigrationId";&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: item_unavailable; endpoint SmartCampus.Api.LostFoundController.Confirm (SmartCampus.Api); trace 0HNPUE9CIU1GE&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: item_unavailable; endpoint SmartCampus.Api.LostFoundController.Handover (SmartCampus.Api); trace 0HNPUE9CIU1GF&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_upload; endpoint SmartCampus.Api.LostFoundController.Register (SmartCampus.Api); trace 0HNPUE9CIU1GL&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_location; endpoint SmartCampus.Api.MaintenanceController.Create (SmartCampus.Api); trace 0HNPUE9CIU1GM&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.LostFoundController.Detail (SmartCampus.Api); trace 0HNPUE9CIU1GU&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.MediaController.Download (SmartCampus.Api); trace 0HNPUE9CIU1H0&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.LostFoundController.Claim (SmartCampus.Api); trace 0HNPUE9CIU1H3&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_token; endpoint SmartCampus.Api.AuthController.Verify (SmartCampus.Api); trace 0HNPUE9CIU1H5&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_token; endpoint SmartCampus.Api.AuthController.Reset (SmartCampus.Api); trace 0HNPUE9CIU1H6&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: unverified; endpoint SmartCampus.Api.AuthController.Login (SmartCampus.Api); trace 0HNPUE9CIU1HD&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.AdministrationController.Accounts (SmartCampus.Api); trace 0HNPUE9CIU1HH&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.AdministrationController.Grants (SmartCampus.Api); trace 0HNPUE9CIU1HI&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: conflict; endpoint SmartCampus.Api.AdministrationController.Grants (SmartCampus.Api); trace 0HNPUE9CIU1HS&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_input; endpoint SmartCampus.Api.MaintenanceController.Update (SmartCampus.Api); trace 0HNPUE9CIU1IB&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_token; endpoint SmartCampus.Api.AuthController.Verify (SmartCampus.Api); trace 0HNPUE9CIU1IE&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_token; endpoint SmartCampus.Api.AuthController.Reset (SmartCampus.Api); trace 0HNPUE9CIU1IF&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.LostFoundController.Confirm (SmartCampus.Api); trace 0HNPUE9CIU1IR&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.LostFoundController.Cancel (SmartCampus.Api); trace 0HNPUE9CIU1IU&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_csrf; endpoint SmartCampus.Api.AuthController.Logout (SmartCampus.Api); trace 0HNPUE9CIU1J2&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.MaintenanceController.Detail (SmartCampus.Api); trace 0HNPUE9CIU1JK&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.MaintenanceController.Detail (SmartCampus.Api); trace 0HNPUE9CIU1JL&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: conflict; endpoint SmartCampus.Api.MaintenanceController.Cancel (SmartCampus.Api); trace 0HNPUE9CIU1JO&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: conflict; endpoint SmartCampus.Api.MaintenanceController.Update (SmartCampus.Api); trace 0HNPUE9CIU1JP&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_transition; endpoint SmartCampus.Api.MaintenanceController.Update (SmartCampus.Api); trace 0HNPUE9CIU1JS&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.NotificationsController.Read (SmartCampus.Api); trace 0HNPUE9CIU1KD&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_token; endpoint SmartCampus.Api.AuthController.Verify (SmartCampus.Api); trace 0HNPUE9CIU1KJ&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_token; endpoint SmartCampus.Api.AuthController.Reset (SmartCampus.Api); trace 0HNPUE9CIU1KP&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: conflict; endpoint SmartCampus.Api.ClaimsController.Cancel (SmartCampus.Api); trace 0HNPUE9CIU1L8&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.ClaimsController.Confirm (SmartCampus.Api); trace 0HNPUE9CIU1L9&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]&#xD;
+      Failed executing DbCommand (1ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?', @p2='?' (DbType = Guid), @p3='?' (DbType = DateTime), @p4='?' (DbType = Guid), @p5='?' (DbType = Guid), @p6='?' (DbType = DateTime), @p7='?', @p8='?' (DbType = DateTime), @p9='?' (DbType = DateTime), @p10='?' (DbType = Guid), @p11='?', @p12='?' (DbType = Guid), @p13='?', @p14='?', @p15='?', @p16='?', @p17='?' (DbType = DateTime), @p18='?' (DbType = Guid), @p19='?' (DbType = Boolean), @p20='?' (DbType = DateTime), @p21='?' (DbType = Guid), @p22='?', @p23='?' (DbType = Int32), @p24='?' (DbType = Guid), @p25='?' (DbType = DateTime), @p26='?' (DbType = Guid), @p27='?', @p28='?', @p29='?' (DbType = DateTime), @p30='?' (DbType = Guid), @p31='?' (DbType = Guid), @p32='?' (DbType = DateTime), @p33='?' (DbType = Guid), @p34='?', @p35='?', @p36='?' (DbType = DateTime), @p37='?' (DbType = Guid), @p38='?' (DbType = Guid), @p39='?' (DbType = DateTime), @p40='?' (DbType = Guid), @p41='?', @p42='?', @p43='?' (DbType = DateTime), @p44='?' (DbType = Guid)], CommandType='Text', CommandTimeout='30']&#xD;
+      INSERT INTO smart_campus."Audit" ("Id", "Action", "ActorId", "CreatedAt", "EntityId")&#xD;
+      VALUES (@p0, @p1, @p2, @p3, @p4);&#xD;
+      INSERT INTO smart_campus."Claims" ("Id", "ClosedAt", "ClosureReason", "CreatedAt", "DeliveredAt", "DeliveredBy", "Instructions", "ItemId", "Message", "Phone", "Place", "Reason", "ReceivedAt", "RequesterId", "ReservationActive", "ReviewedAt", "ReviewedBy", "Status", "Version")&#xD;
+      VALUES (@p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23);&#xD;
+      INSERT INTO smart_campus."Notifications" ("Id", "CreatedAt", "EntityId", "EntityType", "Kind", "ReadAt", "RecipientId")&#xD;
+      VALUES (@p24, @p25, @p26, @p27, @p28, @p29, @p30);&#xD;
+      INSERT INTO smart_campus."Notifications" ("Id", "CreatedAt", "EntityId", "EntityType", "Kind", "ReadAt", "RecipientId")&#xD;
+      VALUES (@p31, @p32, @p33, @p34, @p35, @p36, @p37);&#xD;
+      INSERT INTO smart_campus."Notifications" ("Id", "CreatedAt", "EntityId", "EntityType", "Kind", "ReadAt", "RecipientId")&#xD;
+      VALUES (@p38, @p39, @p40, @p41, @p42, @p43, @p44);&#xD;
+fail: Microsoft.EntityFrameworkCore.Update[10000]&#xD;
+      An exception occurred in the database while saving changes for context type 'SmartCampus.Infrastructure.CampusDb'.&#xD;
+      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.&#xD;
+       ---&gt; Npgsql.PostgresException (0x80004005): 23505: duplicate key value violates unique constraint "IX_Claims_ItemId_RequesterId"&#xD;
+      DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.&#xD;
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)&#xD;
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource&lt;TResult&gt;.GetResult(Int16 token)&#xD;
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+        Exception data:&#xD;
+          Severity: ERROR&#xD;
+          SqlState: 23505&#xD;
+          MessageText: duplicate key value violates unique constraint "IX_Claims_ItemId_RequesterId"&#xD;
+          Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.&#xD;
+          SchemaName: smart_campus&#xD;
+          TableName: Claims&#xD;
+          ConstraintName: IX_Claims_ItemId_RequesterId&#xD;
+          File: nbtinsert.c&#xD;
+          Line: 666&#xD;
+          Routine: _bt_check_unique&#xD;
+         --- End of inner exception stack trace ---&#xD;
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)&#xD;
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)&#xD;
+      Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.&#xD;
+       ---&gt; Npgsql.PostgresException (0x80004005): 23505: duplicate key value violates unique constraint "IX_Claims_ItemId_RequesterId"&#xD;
+      DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.&#xD;
+         at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)&#xD;
+         at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource&lt;TResult&gt;.GetResult(Int16 token)&#xD;
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)&#xD;
+         at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+        Exception data:&#xD;
+          Severity: ERROR&#xD;
+          SqlState: 23505&#xD;
+          MessageText: duplicate key value violates unique constraint "IX_Claims_ItemId_RequesterId"&#xD;
+          Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.&#xD;
+          SchemaName: smart_campus&#xD;
+          TableName: Claims&#xD;
+          ConstraintName: IX_Claims_ItemId_RequesterId&#xD;
+          File: nbtinsert.c&#xD;
+          Line: 666&#xD;
+          Routine: _bt_check_unique&#xD;
+         --- End of inner exception stack trace ---&#xD;
+         at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)&#xD;
+         at Npgsql.EntityFrameworkCore.PostgreSQL.Storage.Internal.NpgsqlExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)&#xD;
+         at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: conflict; endpoint SmartCampus.Api.LostFoundController.Claim (SmartCampus.Api); trace 0HNPUE9CIU1M0&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: item_unavailable; endpoint SmartCampus.Api.ClaimsController.Approve (SmartCampus.Api); trace 0HNPUE9CIU1M1&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.ClaimsController.Approve (SmartCampus.Api); trace 0HNPUE9CIU1M3&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: forbidden; endpoint SmartCampus.Api.ClaimsController.Detail (SmartCampus.Api); trace 0HNPUE9CIU1M4&#xD;
+warn: SmartCampus.Api[0]&#xD;
+      Request rejected: invalid_transition; endpoint SmartCampus.Api.ClaimsController.Cancel (SmartCampus.Api); trace 0HNPUE9CIU1M6&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Application is shutting down...&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Application started. Press Ctrl+C to shut down.&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Hosting environment: Development&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Content root path: C:\Users\Pc\Documents\Codex\2026-11-09\smart-campus-complete-backend-development-integration-2\outputs\smart-campus\backend\SmartCampus.Api&#xD;
+fail: Microsoft.EntityFrameworkCore.Database.Command[20102]&#xD;
+      Failed executing DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']&#xD;
+      SELECT "MigrationId", "ProductVersion"&#xD;
+      FROM smart_campus."__EFMigrationsHistory"&#xD;
+      ORDER BY "MigrationId";&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Antiforgery.DefaultAntiforgery[8]&#xD;
+      The 'Cache-Control' and 'Pragma' headers have been overridden and set to 'no-cache, no-store' and 'no-cache' respectively to prevent caching of this response. Any response that uses antiforgery should not be cached.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Routing.EndpointRoutingMiddleware[9]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpMaxRequestBodySizeFeature.&#xD;
+warn: Microsoft.AspNetCore.Mvc.Filters.RequestSizeLimitFilter[1]&#xD;
+      A request body size limit could not be applied. This server does not support the IHttpRequestBodySizeFeature.&#xD;
+info: Microsoft.Hosting.Lifetime[0]&#xD;
+      Application is shutting down...&#xD;
+[xUnit.net 00:00:17.48]   Finished:    SmartCampus.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

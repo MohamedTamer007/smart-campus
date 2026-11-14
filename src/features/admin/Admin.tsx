@@ -1,20 +1,24 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../../app/context";
+import { DirectoryOptions } from "../../components/DirectoryOptions";
 import { AsyncView } from "../../components/AsyncView";
 import { ActionForm, Feedback, Field, Page } from "../../components/ui";
 import {
   directory,
-  calculateStats,
+  statistics,
   type AssignableRole,
   type DashboardScope,
+  saveBuildingPosition,
 } from "../../services/admin";
 import {
   maintenance,
+  maintenanceValueLabel,
   type MaintenanceStatus,
 } from "../../services/maintenance";
 import { lostFound, currentCustodian } from "../../services/lostFound";
-import { ServiceError, type Role } from "../../services/contracts";
+import { hasRole, ServiceError, type Role } from "../../services/contracts";
+import { OperationsStatus } from "./OperationsStatus";
 const labels: Record<MaintenanceStatus, [string, string]> = {
   submitted: ["تم الإرسال", "Submitted"],
   review: ["قيد المراجعة", "Under review"],
@@ -46,6 +50,38 @@ function scopeName(
       : scope === "maintenance"
         ? t("الصيانة", "Maintenance")
         : "—";
+}
+function MetricDistribution({
+  title,
+  values,
+  t,
+}: {
+  title: string;
+  values: Record<string, number>;
+  t: (arabic: string, english: string) => string;
+}) {
+  const entries = Object.entries(values).sort(([left], [right]) => left.localeCompare(right));
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  return (
+    <div className="panel">
+      <h2>{title}</h2>
+      {entries.length ? (
+        <div className="bar-chart">
+          {entries.map(([value, count]) => (
+            <div className="bar-row" key={value}>
+              <span>{maintenanceValueLabel(value, t)}</span>
+              <div className="bar-track" aria-hidden="true">
+                <span style={{ width: `${total ? (count / total) * 100 : 0}%` }} />
+              </div>
+              <b>{count}</b>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Feedback>{t("لا توجد قرارات موظفين ضمن الفترة المحددة.", "No staff decisions in the selected period.")}</Feedback>
+      )}
+    </div>
+  );
 }
 export function Requests() {
   const { t, account } = useApp();
@@ -135,14 +171,11 @@ export function AdminOverview() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [scope, setScope] = useState<DashboardScope>("all");
-  const load = useCallback(async () => {
-    const [reports, items, claims] = await Promise.all([
-      maintenance.list(account),
-      lostFound.itemsFor(account),
-      lostFound.claims(account),
-    ]);
-    return { reports, items, claims };
-  }, [account]);
+  const [revision, setRevision] = useState(0);
+  const [buildingId, setBuildingId] = useState("");
+  const [mapDraft, setMapDraft] = useState<{ x: number; y: number } | null>(null);
+  const [mapSaveFailed, setMapSaveFailed] = useState(false);
+  const load = useCallback(() => statistics({ from, to, scope }), [from, to, scope]);
   return (
     <Page
       title={t("لوحة الإدارة", "Admin overview")}
@@ -174,11 +207,7 @@ export function AdminOverview() {
             onChange={(e) => setScope(e.target.value as DashboardScope)}
           >
             <option value="all">{t("كل الجهات", "All departments")}</option>
-            <option value="maintenance">{t("الصيانة", "Maintenance")}</option>
-            <option value="security">{t("الأمن", "Security")}</option>
-            <option value="secretariat">
-              {t("السكرتارية", "Secretariat")}
-            </option>
+            <DirectoryOptions kind="all" />
           </select>
         </Field>
         <p className="muted">
@@ -197,8 +226,12 @@ export function AdminOverview() {
         )}
       </div>
       <div className="actions">
+        <button className="button secondary no-print" onClick={() => window.print()}>{t("طباعة التقرير", "Print report")}</button>
         <Link className="button secondary" to="/admin/accounts">
           {t("المستخدمون والصلاحيات", "Accounts and permissions")}
+        </Link>
+        <Link className="button secondary" to="/admin/directory">
+          {t("دليل الجهات والمواقع", "Departments and locations")}
         </Link>
         <Link className="button" to="/staff">
           {t("بلاغات الصيانة", "Maintenance queue")}
@@ -208,13 +241,11 @@ export function AdminOverview() {
         </Link>
       </div>
       <div className="spacer" />
-      <AsyncView key={`${account.id}`} load={load}>
-        {(data) => {
-          const stats = calculateStats(data.reports, data.items, data.claims, {
-            from,
-            to,
-            scope,
-          });
+      <AsyncView key={`${account.id}-${from}-${to}-${scope}-${revision}`} load={load}>
+        {(stats) => {
+          const mapBuildings = Array.from(new Map(
+            [...(stats.unplacedBuildings ?? []), ...(stats.buildings ?? [])].map(building => [building.id, building]),
+          ).values());
           return (
             <>
               <div className="stats admin-stats">
@@ -223,6 +254,22 @@ export function AdminOverview() {
                     {t("إجمالي بلاغات الصيانة", "Total maintenance reports")}
                   </span>
                   <strong>{stats.totalReports}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("بلاغات مفتوحة", "Open reports")}</span>
+                  <strong>{stats.openReports ?? stats.byStatus.submitted + stats.byStatus.review + stats.byStatus.repair}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("نسبة الحل", "Resolution rate")}</span>
+                  <strong>{stats.resolutionRate === undefined ? "—" : `${Math.round(stats.resolutionRate * 100)}%`}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("متوسط زمن الحل", "Average resolution time")}</span>
+                  <strong>{stats.averageResolutionHours == null ? "—" : `${stats.averageResolutionHours.toFixed(1)} ${t("ساعة", "h")}`}</strong>
+                </div>
+                <div className="stat">
+                  <span>{t("عمر أقدم بلاغ مفتوح", "Oldest open report")}</span>
+                  <strong>{stats.oldestOpenDays == null ? "—" : `${stats.oldestOpenDays.toFixed(1)} ${t("يوم", "days")}`}</strong>
                 </div>
                 <div className="stat">
                   <span>
@@ -264,12 +311,12 @@ export function AdminOverview() {
                 </div>
                 <div className="panel">
                   <h2>
-                    {t("توزيع البلاغات حسب المرفق", "Reports by facility")}
+                    {t("توزيع البلاغات حسب المبنى", "Reports by building")}
                   </h2>
-                  {Object.entries(stats.locations).length ? (
-                    Object.entries(stats.locations).map(([location, count]) => (
-                      <p key={location}>
-                        {location}: {count}
+                  {(stats.buildings ?? []).length ? (
+                    stats.buildings!.map((building) => (
+                      <p key={building.id}>
+                        {t(building.ar, building.en)}: {building.count}
                       </p>
                     ))
                   ) : (
@@ -284,7 +331,7 @@ export function AdminOverview() {
                   {Object.entries(stats.faultTypes).length ? (
                     Object.entries(stats.faultTypes).map(([type, count]) => (
                       <p key={type}>
-                        {type}: {count}
+                        {maintenanceValueLabel(type, t)}: {count}
                       </p>
                     ))
                   ) : (
@@ -295,12 +342,113 @@ export function AdminOverview() {
                       )}
                     </p>
                   )}
+                  <h2>{t("الأعطال المتكررة التي سجلها الموظفون", "Recurring staff-recorded faults")}</h2>
+                  {(stats.recurrence ?? []).length ? stats.recurrence!.map((fault) => <p key={`${fault.type}-${fault.buildingAr}-${fault.floorAr}`}>
+                    {maintenanceValueLabel(fault.type, t)} · {t(fault.buildingAr, fault.buildingEn)} · {t(fault.floorAr, fault.floorEn)}: {fault.count}
+                  </p>) : <p>{t("لا توجد أعطال متكررة معتمدة في هذه الفترة.", "No staff-confirmed recurring faults in this period.")}</p>}
                 </div>
+              </div>
+              <p className="muted">
+                {t("التوزيعات التالية من القرارات التشغيلية التي سجلها الموظفون؛ لا تشمل اقتراحات AI.", "The following distributions use staff-entered operational decisions; AI suggestions are excluded.")}
+              </p>
+              <div className="split">
+                <MetricDistribution title={t("الأولوية المعتمدة", "Staff-confirmed priority")} values={stats.priorities ?? {}} t={t} />
+                <MetricDistribution title={t("الخطورة المعتمدة", "Staff-confirmed risk")} values={stats.risks ?? {}} t={t} />
+              </div>
+              <div className="split">
+                <section className="panel campus-map-panel">
+                  <h2>{t("مخطط مواقع البلاغات", "Report location map")}</h2>
+                  <p>{t("مخطط توضيحي غير جغرافي؛ الأسماء والأعداد من بيانات النظام، وتُحفظ مواضع المباني يدويًا.", "Schematic, not geographic. Names and counts come from records; building positions are set manually.")}</p>
+                  <svg className="campus-map" viewBox="0 0 100 56" role="img" aria-label={t("مخطط مباني الحرم وعدد البلاغات", "Campus building schematic and report counts")}>
+                    <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
+                    {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <g key={b.id} transform={`translate(${b.x} ${b.y})`}>
+                      <circle r="2.5" fill="#144caa" stroke="white" strokeWidth=".8" />
+                      <text y="-3.5" textAnchor="middle" fontSize="2.5" fill="#142b54">{t(b.ar, b.en)}</text>
+                      <text y="5.5" textAnchor="middle" fontSize="2.7" fontWeight="700" fill="#c44300">{b.count}</text>
+                    </g>)}
+                  </svg>
+                  {hasRole(account, "admin") && <div className="map-editor no-print">
+                    {mapSaveFailed && <Feedback kind="error">{t("تعذر حفظ الموضع؛ أعد تحميل اللوحة ثم حاول مجددًا.", "The position could not be saved. Reload the dashboard and try again.")}</Feedback>}
+                    <Field label={t("مبنى لتحديد موضعه", "Building to position")}>
+                      <select value={buildingId} onChange={event => { setBuildingId(event.target.value); setMapDraft(null); }}>
+                        <option value="">{t("اختر مبنى", "Choose a building")}</option>
+                        {mapBuildings.map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
+                      </select>
+                    </Field>
+                    <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر المخطط، أو استخدم الأسهم بعد التركيز عليه. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the schematic, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
+                    <button
+                      type="button"
+                      className="map-editor-canvas-button"
+                      disabled={!buildingId}
+                      aria-label={t("اختيار موضع المبنى على المخطط", "Set building position on the schematic")}
+                      aria-describedby="map-editor-help"
+                      onKeyDown={event => {
+                        const movement: Record<string, { x: number; y: number }> = {
+                          ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
+                          ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
+                        };
+                        const delta = movement[event.key];
+                        if (!delta) return;
+                        event.preventDefault();
+                        const current = mapDraft ?? { x: 50, y: 28 };
+                        const step = event.shiftKey ? 5 : 1;
+                        setMapDraft({
+                          x: Math.max(0, Math.min(100, current.x + delta.x * step)),
+                          y: Math.max(0, Math.min(56, current.y + delta.y * step)),
+                        });
+                      }}
+                      onClick={event => {
+                        if (!buildingId) return;
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        if (rect.width <= 0 || rect.height <= 0) {
+                          setMapDraft({ x: 50, y: 28 });
+                          return;
+                        }
+                        setMapDraft({
+                          x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)),
+                          y: Math.max(0, Math.min(56, (event.clientY - rect.top) / rect.height * 56)),
+                        });
+                      }}
+                    >
+                      <svg className="campus-map map-editor-canvas" viewBox="0 0 100 56" preserveAspectRatio="none" aria-hidden="true">
+                        <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
+                        {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y!} r="2" fill="#144caa" />)}
+                        {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y} r="2.8" fill="#c44300" />}
+                      </svg>
+                    </button>
+                    <div className="actions">
+                      <button className="button" disabled={!buildingId || !mapDraft} onClick={async () => {
+                        const target = (stats.unplacedBuildings ?? []).concat(stats.buildings ?? []).find(b => b.id === buildingId);
+                        if (!target || !mapDraft) return;
+                        setMapSaveFailed(false);
+                        try {
+                          const result = await saveBuildingPosition(buildingId, mapDraft.x, mapDraft.y, target.version);
+                          if (result.version) { setBuildingId(""); setMapDraft(null); setRevision(value => value + 1); }
+                        } catch { setMapSaveFailed(true); }
+                      }}>{t("حفظ الموضع", "Save position")}</button>
+                      {buildingId && (stats.buildings ?? []).some(b => b.id === buildingId) && <button className="button secondary" onClick={async () => {
+                        const target = stats.buildings!.find(b => b.id === buildingId)!;
+                        setMapSaveFailed(false);
+                        try {
+                          const result = await saveBuildingPosition(buildingId, null, null, target.version);
+                          if (result.version) { setBuildingId(""); setMapDraft(null); setRevision(value => value + 1); }
+                        } catch { setMapSaveFailed(true); }
+                      }}>{t("إزالة من المخطط", "Remove from map")}</button>}
+                    </div>
+                  </div>}
+                  <h3>{t("مواقع غير موضوعة على المخطط", "Locations not placed on the map")}</h3>
+                  {(stats.unplacedBuildings ?? []).length ? (stats.unplacedBuildings ?? []).map(b => <p key={b.id}>{t(b.ar, b.en)} · {b.count}</p>) : <p>{t("جميع المباني ذات الصلة موضوعة.", "All relevant buildings are placed.")}</p>}
+                </section>
+                <section className="panel">
+                  <h2>{t("الاتجاه الأسبوعي للبلاغات", "Weekly report trend")}</h2>
+                  {(stats.weeklyTrend ?? []).map(w => <p key={w.weekOf}><bdi>{w.weekOf}</bdi> · {w.count}</p>)}
+                </section>
               </div>
             </>
           );
         }}
       </AsyncView>
+      <OperationsStatus />
     </Page>
   );
 }
@@ -341,8 +489,16 @@ export function AdminAccounts() {
                         <td>
                           <bdi>{entry.account.name}</bdi>
                         </td>
-                        <td>{roleName(entry.account.role, t)}</td>
-                        <td>{scopeName(entry.account.department, t)}</td>
+                        <td>{(entry.account.roles?.length ? entry.account.roles : [entry.account.role]).map(grant =>
+                          <div key={grant}>{roleName(grant as Role, t)}{entry.version && entry.key !== account.id && <ActionForm label={t("إزالة الدور", "Remove role")} onSubmit={async () => {
+                            await directory.replaceGrants(entry.key, (entry.account.roles ?? []).filter(role => role !== grant), entry.account.departments?.map(scope => scope.id) ?? [], entry.version!);
+                            setRevision(value => value + 1);
+                          }}><span className="sr-only">{grant}</span></ActionForm>}</div>)}</td>
+                        <td>{entry.account.departments?.map(scope => <div key={scope.id}>{scope.code}{entry.version && entry.key !== account.id &&
+                          <ActionForm label={t("إزالة النطاق", "Remove scope")} onSubmit={async () => {
+                            await directory.replaceGrants(entry.key, entry.account.roles ?? [], entry.account.departments?.filter(other => other.id !== scope.id).map(other => other.id) ?? [], entry.version!);
+                            setRevision(value => value + 1);
+                          }}><span className="sr-only">{scope.code}</span></ActionForm>}</div>) ?? scopeName(entry.account.department, t)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -361,6 +517,7 @@ export function AdminAccounts() {
                         role,
                         scope: String(data.get("scope") ?? ""),
                         confirmAdmin: data.get("confirmAdmin") === "on",
+                        ...(entries.find(entry => entry.key === key)?.version ? { version: entries.find(entry => entry.key === key)?.version } : {}),
                       },
                     );
                     setRevision((v) => v + 1);
@@ -411,23 +568,18 @@ export function AdminAccounts() {
                     </select>
                   </Field>
                   {role === "maintenance" && (
-                    <Field label={t("النطاق", "Scope")}>
-                      <select name="scope">
-                        <option value="maintenance">
-                          {t("الصيانة", "Maintenance")}
-                        </option>
+                    <Field label={t("النطاق", "Scope")} required>
+                      <select name="scope" required defaultValue="">
+                        <option value="">{t("اختر جهة الصيانة", "Choose maintenance department")}</option>
+                        <DirectoryOptions kind="maintenance" />
                       </select>
                     </Field>
                   )}
                   {role === "department" && (
                     <Field label={t("الجهة", "Department")} required>
-                      <select name="scope">
-                        <option value="security">
-                          {t("الأمن", "Security")}
-                        </option>
-                        <option value="secretariat">
-                          {t("السكرتارية", "Secretariat")}
-                        </option>
+                      <select name="scope" required defaultValue="">
+                        <option value="">{t("اختر الجهة", "Choose department")}</option>
+                        <DirectoryOptions />
                       </select>
                     </Field>
                   )}

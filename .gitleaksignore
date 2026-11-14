@@ -1,0 +1,6 @@
+# Reviewed false positive: two adjacent EMPTY example settings were matched across a newline.
+# The extracted value is the next setting's NAME, AI__NvidiaKey; no credential exists there.
+# Exact commit/file/rule/line only. Future values and every other finding remain scanned.
+4ec62b8c49bc93abb58fbe4d206e4dda8cbbe87a:deployment/api.env.example:generic-api-key:23
+# Same empty-setting-name false positive in the quoted-empty template revision.
+d497526979f9f6a68e45cfebed5595dcc0d536b3:deployment/api.env.example:generic-api-key:23
