@@ -126,7 +126,7 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         await retrieval.Index(documentation.Id);
         // A worker restart/requeue must reuse the persisted model revision.
         await retrieval.Index(blue);
-        Assert.Equal(6, boundary.Calls);
+        Assert.Equal(4, boundary.Calls);
         await db.Database.OpenConnectionAsync();
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
         await using (var schemaCommand = connection.CreateCommand())
@@ -143,7 +143,7 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
             Assert.Equal(1, await corrupt.ExecuteNonQueryAsync());
         }
         await retrieval.Index(blue);
-        Assert.Equal(6, boundary.Calls); // mismatch is repaired from the bounded embedding cache, without another provider request
+        Assert.Equal(4, boundary.Calls); // mismatch is repaired from the bounded embedding cache, without another provider request
         Assert.Equal(RemoteEmbeddings.Dimension, await db.Database.SqlQuery<int>(
             $"SELECT \"Dimension\" AS \"Value\" FROM smart_campus.\"Embeddings\" WHERE \"SourceId\"={blue} AND \"Revision\"={RemoteEmbeddings.Revision(config)}").SingleAsync());
         Assert.Equal(RemoteEmbeddings.Model, await db.Database.SqlQuery<string>(
