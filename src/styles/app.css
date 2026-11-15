@@ -129,6 +129,17 @@ p {
   align-items: center;
   border-bottom: 3px solid transparent;
 }
+.nav-logout {
+  display: none;
+  align-items: center;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: #b3261e;
+  cursor: pointer;
+  text-align: start;
+}
 .header nav a.active {
   border-color: #e15307;
   color: var(--navy);
@@ -211,26 +222,12 @@ main {
   align-self: center;
   color: inherit;
 }
-.guest-home .hero {
-  min-height: 0;
-  background: #fff;
-  border: 0;
-  border-radius: var(--radius) var(--radius) 0 0;
-  padding: 28px 24px 20px;
-  color: var(--navy);
-}
-.guest-home .hero h1,
-.guest-home .hero p {
-  color: var(--navy);
-  text-shadow: none;
-}
-.guest-home .hero p { margin-bottom: 0; }
 .guest-eyebrow {
   align-self: center;
   border-radius: 999px;
   padding: 5px 12px;
-  background: #edf2f8;
-  color: #53657e;
+  background: rgba(255, 255, 255, 0.92);
+  color: #142b54;
   font-size: .76rem;
   font-weight: 700;
 }
@@ -241,14 +238,7 @@ main {
   gap: 16px;
   flex-wrap: wrap;
 }
-.guest-actions .text-link { color: var(--blue); }
-.guest-campus-photo {
-  display: block;
-  width: 100%;
-  max-height: 300px;
-  object-fit: cover;
-  object-position: center 48%;
-}
+.guest-actions .text-link { color: #fff; text-decoration: underline; }
 .guest-home .services { margin-top: 24px; }
 .eyebrow {
   font-size: 0.69rem;
@@ -407,6 +397,10 @@ footer .brand {
 }
 .auth-card .form-stack {
   text-align: start;
+}
+.auth-switch {
+  text-align: center;
+  margin-top: 16px;
 }
 .auth-single .auth-links {
   max-width: 560px;
@@ -741,8 +735,13 @@ dialog::backdrop {
     padding: 10px 0;
     border-bottom: 1px solid var(--line);
   }
-  .header nav a:last-child {
-    border-bottom: 0;
+  .header nav .nav-logout {
+    min-height: 44px;
+    padding: 10px 0;
+    width: 100%;
+  }
+  .header nav .nav-logout {
+    display: flex;
   }
   .mobile-menu {
     order: 0;
@@ -770,39 +769,9 @@ dialog::backdrop {
     padding: 26px;
   }
   .hero {
-    min-height: 0;
-    padding: 20px 12px 168px;
-    border: 0;
-    border-radius: 0;
-    background: #fff;
-    color: var(--navy);
-    overflow: visible;
-    justify-content: flex-start;
-  }
-  .guest-home .hero {
-    padding: 20px 12px;
-    border-radius: var(--radius) var(--radius) 0 0;
-  }
-  .guest-home .hero::after { display: none; }
-  .hero::after {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    height: 152px;
-    background: url("../assets/campus-photo.webp") center 55% / cover no-repeat;
-  }
-  .hero h1,
-  .hero p {
-    position: relative;
-    z-index: 1;
-    text-shadow: none;
-    color: var(--navy);
-  }
-  .hero .text-link {
-    position: relative;
-    z-index: 1;
-    color: var(--blue);
+    min-height: 260px;
+    padding: 28px 16px;
+    border-radius: var(--radius);
   }
   .hero p {
     font-size: 0.95rem;

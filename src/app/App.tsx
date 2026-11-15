@@ -25,9 +25,10 @@ import {
 import { Settings, Notifications } from "../features/account/Account";
 import { Access } from "./access";
 import { AdminCampusDirectory } from "../features/admin/CampusDirectory";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 import { AppProvider, useApp } from "./context";
-import { hasRole } from "../services/contracts";
+import { auth } from "../services/auth";
+import { hasRole, guestAccount } from "../services/contracts";
 import { BrandMark, Icon } from "../components/Icon";
 import { Home } from "./Home";
 import { Feedback, Page } from "../components/ui";
@@ -50,7 +51,9 @@ function Shell() {
     account,
     sessionExpired,
     sessionUnavailable,
+    updateAccount,
   } = useApp();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const workQueueAccess = (["maintenance", "department", "secretariat", "admin"] as const)
     .some(role => hasRole(account, role));
@@ -60,13 +63,13 @@ function Shell() {
         {t("انتقل للمحتوى", "Skip to content")}
       </a>
       <header className="header">
+        <button className="mobile-menu" type="button" aria-label={t("فتح القائمة", "Open menu")} aria-expanded={mobileMenuOpen} aria-controls="primary-navigation" onClick={() => setMobileMenuOpen(value => !value)}>
+          <Icon name={mobileMenuOpen ? "close" : "menu"} />
+        </button>
         <Link className="brand" to="/">
           <BrandMark />
           <bdi>Smart Campus</bdi>
         </Link>
-        <button className="mobile-menu" type="button" aria-label={t("فتح القائمة", "Open menu")} aria-expanded={mobileMenuOpen} aria-controls="primary-navigation" onClick={() => setMobileMenuOpen(value => !value)}>
-          <Icon name={mobileMenuOpen ? "close" : "menu"} />
-        </button>
         <nav id="primary-navigation" className={mobileMenuOpen ? "mobile-open" : undefined} aria-label={t("التنقل الرئيسي", "Main navigation")}>
           <NavLink to="/" end onClick={() => setMobileMenuOpen(false)}>
             {t("الرئيسية", "Home")}
@@ -76,6 +79,12 @@ function Shell() {
           {hasRole(account, "admin") && (
             <NavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>{t("الإدارة", "Admin")}</NavLink>
           )}
+          {account.role !== "guest" && <button type="button" className="nav-logout" onClick={async () => {
+            setMobileMenuOpen(false);
+            try { await auth.logout(); } catch { /* session cleared locally regardless */ }
+            updateAccount(guestAccount);
+            navigate("/login");
+          }}>{t("تسجيل الخروج", "Sign out")}</button>}
         </nav>
         <div className="header-actions">
           <button className="language" onClick={changeLanguage}>

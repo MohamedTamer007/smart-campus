@@ -42,7 +42,6 @@ function AuthPanel({ registration, onSubmit, showDeleted = false }: {
   }
 
   return <section className={`panel auth-card ${registration ? "auth-register" : "auth-login"}`}>
-        <div className={`service-icon ${registration ? "orange" : "blue"}`} aria-hidden="true">{registration ? "＋" : "↪"}</div>
         <h2>{registration ? t("ابدأ حسابك", "Create your account") : t("مرحباً بعودتك", "Welcome back")}</h2>
         <p>{registration ? t("أنشئ حسابك للوصول إلى خدمات الطالب في Smart Campus.", "Create an account to access Smart Campus student services.") : t("ادخل إلى حسابك لمتابعة خدمات الحرم.", "Sign in to continue to your campus services.")}</p>
         {showDeleted && <Feedback kind="success">
@@ -125,12 +124,14 @@ export function Auth({ register = false }: { register?: boolean }) {
   }
   return <Page title={register ? t("إنشاء حساب", "Create account") : t("تسجيل الدخول", "Sign in")}
     subtitle={t("بريدك الجامعي، وكلمة مرور خاصة بالموقع.", "Your university email and a password for this site.")}>
-    {register ? <div className="auth-single narrow"><AuthPanel registration onSubmit={submit} />
-      <div className="auth-links"><Link to="/login">{t("لديك حساب؟ سجّل الدخول", "Have an account? Sign in")}</Link></div>
-    </div> : <div className="auth-split">
-      <AuthPanel registration onSubmit={submit} />
-      <AuthPanel registration={false} onSubmit={submit} showDeleted={params.get("deleted") === "1"} />
-    </div>}
+    <div className="auth-single narrow">
+      <AuthPanel registration={register} onSubmit={submit} showDeleted={!register && params.get("deleted") === "1"} />
+      <p className="auth-switch">
+        {register
+          ? <>{t("لديك حساب؟", "Already have an account?")} <Link to="/login">{t("سجّل الدخول", "Sign in")}</Link></>
+          : <>{t("ليس لديك حساب؟", "Don't have an account?")} <Link to="/register">{t("أنشئ حساباً", "Sign up")}</Link></>}
+      </p>
+    </div>
   </Page>;
 }
 

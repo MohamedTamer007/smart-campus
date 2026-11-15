@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useApp } from "./context";
 import { Icon } from "../components/Icon";
 import { verified } from "../services/contracts";
-import campusPhoto from "../assets/campus-photo.webp";
 export function Home() {
   const { t, account } = useApp();
   const ready = verified(account);
@@ -27,7 +26,6 @@ export function Home() {
           <Link className="text-link" to="/register">{t("إنشاء حساب جامعي", "Create a university account")}</Link>
         </div>}
       </section>
-      {guest && <img className="guest-campus-photo" src={campusPhoto} alt={t("مبنى الحرم الجامعي", "University campus building")} />}
       <section className="services" aria-label={t("الخدمات", "Services")}>
         <article className="service-card">
           <span className="service-icon orange">
