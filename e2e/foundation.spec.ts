@@ -23,14 +23,10 @@ test("guest home follows the reference order with its sign-in and university reg
   await expect(page.getByRole("heading", { name: "أهلاً بك في Smart Campus" })).toBeVisible();
   await expect(page.getByRole("link", { name: "سجّل الدخول لبدء الاستخدام" })).toHaveAttribute("href", "/login");
   await expect(page.getByRole("link", { name: "إنشاء حساب جامعي" })).toHaveAttribute("href", "/register");
-  const hero = await page.locator(".guest-home .hero").boundingBox();
-  const campus = await page.getByRole("img", { name: "مبنى الحرم الجامعي" }).boundingBox();
-  const services = await page.locator(".guest-home .services").boundingBox();
-  expect(hero).not.toBeNull();
-  expect(campus).not.toBeNull();
-  expect(services).not.toBeNull();
-  expect(hero!.y + hero!.height).toBeLessThanOrEqual(campus!.y + 1);
-  expect(campus!.y + campus!.height).toBeLessThanOrEqual(services!.y + 1);
+  const hero = page.locator(".guest-home .hero");
+  await expect(hero.getByRole("heading", { name: "أهلاً بك في Smart Campus" })).toBeVisible();
+  await expect(page.locator(".guest-campus-photo")).toHaveCount(0);
+  expect(await hero.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain("url(");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -80,3 +76,17 @@ for (const width of [390, 768, 1440]) {
     ).toBeVisible();
   });
 }
+
+test("login and sign-up are separate pages linked to each other", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(page.locator(".auth-login")).toHaveCount(1);
+  await expect(page.locator(".auth-register")).toHaveCount(0);
+  await expect(page.locator(".auth-card .service-icon")).toHaveCount(0);
+  await page.getByRole("link", { name: "Sign up", exact: true }).click();
+  await expect(page).toHaveURL(/\/register$/);
+  await expect(page.locator(".auth-register")).toHaveCount(1);
+  await expect(page.locator(".auth-login")).toHaveCount(0);
+  await page.locator("main").getByRole("link", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
