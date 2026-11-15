@@ -140,6 +140,11 @@ p {
   cursor: pointer;
   text-align: start;
 }
+.nav-logout-error {
+  color: #b3261e;
+  font-size: 0.8rem;
+  padding: 4px 0;
+}
 .header nav a.active {
   border-color: #e15307;
   color: var(--navy);

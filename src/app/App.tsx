@@ -55,6 +55,7 @@ function Shell() {
   } = useApp();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
   const workQueueAccess = (["maintenance", "department", "secretariat", "admin"] as const)
     .some(role => hasRole(account, role));
   return (
@@ -80,11 +81,18 @@ function Shell() {
             <NavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>{t("الإدارة", "Admin")}</NavLink>
           )}
           {account.role !== "guest" && <button type="button" className="nav-logout" onClick={async () => {
+            setLogoutError(false);
+            try {
+              await auth.logout();
+            } catch {
+              setLogoutError(true);
+              return;
+            }
             setMobileMenuOpen(false);
-            try { await auth.logout(); } catch { /* session cleared locally regardless */ }
             updateAccount(guestAccount);
             navigate("/login");
           }}>{t("تسجيل الخروج", "Sign out")}</button>}
+          {logoutError && <span className="nav-logout-error" role="alert">{t("تعذر تسجيل الخروج. حاول مرة أخرى.", "Could not sign out. Try again.")}</span>}
         </nav>
         <div className="header-actions">
           <button className="language" onClick={changeLanguage}>
