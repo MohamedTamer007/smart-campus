@@ -46,6 +46,25 @@ export const statistics = async (query: { scope?: string; from?: string; to?: st
   return api<Stats>(`/statistics?${parameters}`);
 };
 
+/** A problem reported repeatedly at one place. Forecast fields are null for non-administrators or with too little history. */
+export interface RecurringFault {
+  type: string;
+  buildingAr: string;
+  buildingEn: string;
+  floorAr: string;
+  floorEn: string;
+  count: number;
+  location?: string | null;
+  incidents?: number;
+  lastReported?: string;
+  medianDays?: number | null;
+  minDays?: number | null;
+  maxDays?: number | null;
+  nextEstimate?: string | null;
+  overdue?: boolean;
+  reportIds?: string[];
+}
+
 export interface Stats {
   totalReports: number;
   byStatus: Record<MaintenanceStatus, number>;
@@ -57,7 +76,7 @@ export interface Stats {
   risks?: Record<string, number>;
   buildings?: { id: string; ar: string; en: string; count: number; x: number | null; y: number | null; version: number }[];
   unplacedBuildings?: { id: string; ar: string; en: string; count: number; x: number | null; y: number | null; version: number }[];
-  recurrence?: { type: string; buildingAr: string; buildingEn: string; floorAr: string; floorEn: string; count: number }[];
+  recurrence?: RecurringFault[];
   openReports?: number;
   resolutionRate?: number;
   averageResolutionHours?: number | null;

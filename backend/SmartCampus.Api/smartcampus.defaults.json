@@ -9,6 +9,9 @@
   "AI": {
     "AllowNonSensitiveInference": false,
     "AllowNonSensitiveImages": false,
+    "AllowItemPhotoDescription": true,
+    "DescribeDailyRequestLimit": 100,
+    "DescribeRequestsPerMinute": 10,
     "GeminiFreeTierOnly": false,
     "GeminiDailyRequestLimit": 50,
     "GeminiRequestsPerMinute": 10,

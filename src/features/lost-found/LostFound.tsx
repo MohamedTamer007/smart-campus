@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
@@ -14,6 +14,7 @@ import { DirectoryOptions } from "../../components/DirectoryOptions";
 import { hasRole, ServiceError } from "../../services/contracts";
 import {
   lostFound,
+  describeFoundPhoto,
   currentCustodian,
   departmentStats,
   receiving,
@@ -138,7 +139,7 @@ function FoundCard({ item, similarity, queryDescription }: { item: FoundItem; si
   );
 }
 export function RegisterFound() {
-  const { t, account } = useApp();
+  const { t, account, language } = useApp();
   const navigate = useNavigate();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Africa/Cairo",
@@ -150,12 +151,36 @@ export function RegisterFound() {
   const [draft, setDraft] = useState<FoundDraft>(
     () => foundDrafts.get(account.id) ?? emptyDraft(),
   );
+  const [describing, setDescribing] = useState(false);
+  const [suggested, setSuggested] = useState(false);
+  const photoRequest = useRef(0);
+  useEffect(() => () => { photoRequest.current++; }, []);
   function change(partial: Partial<FoundDraft>) {
     setDraft((previous) => {
       const next = { ...previous, ...partial };
       foundDrafts.set(account.id, next);
       return next;
     });
+  }
+  // The AI drafts a description from the photo, but never replaces text the finder
+  // already typed, and the finder can edit or delete it freely.
+  async function choosePhoto(file?: File) {
+    setPhoto(file);
+    const request = ++photoRequest.current;
+    setSuggested(false);
+    if (!file) { setDescribing(false); return; }
+    setDescribing(true);
+    const description = await describeFoundPhoto(file, language);
+    if (request !== photoRequest.current) return;
+    setDescribing(false);
+    if (!description) return;
+    setDraft((previous) => {
+      if (previous.description.trim()) return previous;
+      const next = { ...previous, description };
+      foundDrafts.set(account.id, next);
+      return next;
+    });
+    setSuggested(true);
   }
   return (
     <Page
@@ -194,14 +219,22 @@ export function RegisterFound() {
             navigate(`/found/${item.id}`);
           }}
         >
-          <ImageField required photo={photo} onChange={setPhoto} />
-          <Field label={t("وصف الغرض", "Item description")} required>
+          <ImageField required photo={photo} onChange={(file) => { void choosePhoto(file); }} />
+          <Field
+            label={t("وصف الغرض", "Item description")}
+            required
+            hint={describing
+              ? t("جارٍ إنشاء وصف مقترح من الصورة…", "Drafting a description from the photo…")
+              : suggested
+                ? t("وصف مقترح من الذكاء الاصطناعي — راجعه وعدّله كما تشاء.", "AI-suggested description — review and edit it as you like.")
+                : undefined}
+          >
             <textarea
               required
               name="description"
               maxLength={4000}
               value={draft.description}
-              onChange={(e) => change({ description: e.target.value })}
+              onChange={(e) => { setSuggested(false); change({ description: e.target.value }); }}
             />
           </Field>
           <Field

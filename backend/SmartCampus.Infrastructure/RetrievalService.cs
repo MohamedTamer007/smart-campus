@@ -69,7 +69,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         }
         var text = await EmbedText(description);
         if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
-        var candidates = await Candidates(actor, text, image, threshold);
+        var candidates = await Candidates(actor, description, text, image, threshold);
         var itemIds = candidates.Select(candidate => candidate.ItemId).ToArray();
         if (candidates.Length > 0)
         {
@@ -90,7 +90,14 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             calibration = threshold.HasValue ? config["Search:CalibrationApproval"] : null, calibrated = threshold.HasValue };
     }
 
-    public async Task Index(Guid id)
+    /// <summary>Text embedded for an item: the finder's description plus the internal AI reading, when present.</summary>
+    public static string PassageText(FoundItem found) =>
+        string.IsNullOrWhiteSpace(found.AiDescription) ? found.Description
+            : $"{found.Description} | {found.AiDescription}" + (string.IsNullOrEmpty(found.AiCategory) ? "" : $" | category: {found.AiCategory}");
+
+    // force=true re-embeds the description vector (used once the AI text exists);
+    // the existing vector keeps serving searches until it is replaced.
+    public async Task Index(Guid id, bool force = false)
     {
         var found = await db.Items.FindAsync(id) ?? throw new RuleException("not_found", 404);
         if (Hosted && !RemoteEmbeddings.Configured(config))
@@ -99,9 +106,10 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         // A worker lease can expire while the AppPool is idle or after a restart.
         // Preserve each completed embedding before advancing so a resumed job
         // never spends another provider request for a vector already persisted.
-        if (!await HasStored(found.Id, revision))
+        if (force || !await HasStored(found.Id, revision))
         {
-            var description = Hosted ? await remote.Passage(found.Description) : await EmbedText(found.Description);
+            var passage = PassageText(found);
+            var description = Hosted ? await remote.Passage(passage) : await EmbedText(passage);
             await Store(found.Id, found.Id, "description", description);
         }
         // A university must approve third-party transfer of private photos separately.
@@ -211,7 +219,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         await command.ExecuteNonQueryAsync();
     }
 
-    private async Task<RetrievalCandidate[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, double? threshold)
+    private async Task<RetrievalCandidate[]> Candidates(Actor actor, string description, EmbeddingResponse? text, EmbeddingResponse? image, double? threshold)
     {
         var query = text ?? image ?? throw new RuleException("search_input_required");
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
@@ -235,10 +243,12 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             ), scored AS (SELECT "ItemId", CASE WHEN NOT @hastext THEN image_image WHEN @hasimage THEN
                 (text_score + COALESCE(image_image, text_score))/2
               ELSE text_score END AS score, text_score, image_image FROM signals)
-            SELECT "ItemId", score, text_score, CASE WHEN @hasimage THEN image_image ELSE NULL END FROM scored
-            WHERE score IS NOT NULL AND (@threshold IS NULL OR score>=@threshold)
-            ORDER BY score DESC,"ItemId" LIMIT 5
+            SELECT s."ItemId", s.score, s.text_score, CASE WHEN @hasimage THEN s.image_image ELSE NULL END,
+              f."Description", f."AiDescription", f."AiCategory" FROM scored s JOIN smart_campus."Items" f ON f."Id"=s."ItemId"
+            WHERE s.score IS NOT NULL AND (@threshold IS NULL OR s.score>=@threshold)
+            ORDER BY s.score DESC,s."ItemId" LIMIT @pool
             """;
+        command.Parameters.AddWithValue("pool", Math.Clamp(config.GetValue("Search:CandidatePool", 20), 5, 50));
         command.Parameters.AddWithValue("text", Vector(query.Vector));
         command.Parameters.AddWithValue("image", Vector((image ?? query).Vector));
         command.Parameters.AddWithValue("hastext", text is not null);
@@ -249,17 +259,25 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         command.Parameters.AddWithValue("user", actor.Id);
         command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
         command.Parameters.AddWithValue("threshold", NpgsqlTypes.NpgsqlDbType.Double, (object?)threshold ?? DBNull.Value);
-        var candidates = new List<RetrievalCandidate>();
+        var pool = new List<PooledCandidate>();
         await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync()) candidates.Add(new(reader.GetGuid(0), Similarity(reader.GetDouble(1)),
-            reader.IsDBNull(2) ? null : Similarity(reader.GetDouble(2)), reader.IsDBNull(3) ? null : Similarity(reader.GetDouble(3))));
-        return candidates.ToArray();
+        while (await reader.ReadAsync())
+        {
+            var candidate = new RetrievalCandidate(reader.GetGuid(0), Similarity(reader.GetDouble(1)),
+                reader.IsDBNull(2) ? null : Similarity(reader.GetDouble(2)), reader.IsDBNull(3) ? null : Similarity(reader.GetDouble(3)));
+            var finderText = reader.GetString(4);
+            var aiText = reader.IsDBNull(5) ? "" : reader.GetString(5);
+            pool.Add(new(candidate, finderText + " " + aiText, reader.IsDBNull(6) ? null : reader.GetString(6)));
+        }
+        // The nearest-vector pool is tidied with category, keyword and score-gap checks
+        // before the final five are returned (see SearchRelevance).
+        return SearchRelevance.Select(description, pool, SearchRelevance.OptionsFrom(config)).Select(p => p.Candidate).ToArray();
     }
 
     private static double Similarity(double score) => double.IsFinite(score)
         ? Math.Clamp(score, -1, 1) : throw new RuleException("invalid_embedding", 503);
 
-    private static async Task<string> VectorSchema(NpgsqlConnection connection)
+    internal static async Task<string> VectorSchema(NpgsqlConnection connection)
     {
         await using var command = connection.CreateCommand();
         command.CommandText = "SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='vector'";

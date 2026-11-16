@@ -15,10 +15,12 @@ public sealed class InferenceBudget(CampusDb db, IConfiguration config, TimeProv
 {
     public async Task Reserve(string provider, CancellationToken cancellation)
     {
-        if (provider is not ("openrouter" or "gemini")) throw new RuleException("ai_not_configured", 503);
-        var prefix = provider == "gemini" ? "Gemini" : "OpenRouter";
-        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", 50);
-        var perMinute = config.GetValue($"AI:{prefix}RequestsPerMinute", provider == "gemini" ? 10 : 20);
+        if (provider is not ("openrouter" or "gemini" or "openrouter-describe")) throw new RuleException("ai_not_configured", 503);
+        // Found-item photo descriptions get their own counters so uploads can never
+        // use up the quota that maintenance triage depends on.
+        var prefix = provider switch { "gemini" => "Gemini", "openrouter-describe" => "Describe", _ => "OpenRouter" };
+        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", provider == "openrouter-describe" ? 100 : 50);
+        var perMinute = config.GetValue($"AI:{prefix}RequestsPerMinute", provider switch { "gemini" => 10, "openrouter-describe" => 10, _ => 20 });
         if (daily <= 0 || perMinute <= 0) throw new RuleException("ai_quota_not_configured", 503);
         var now = clock.GetUtcNow().ToUniversalTime();
         var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);

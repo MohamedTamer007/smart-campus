@@ -231,6 +231,48 @@ it("requires a photo and nonfuture date and keeps a found-item draft on failure"
   expect(register).toHaveBeenCalledOnce();
 }, 15_000);
 
+const png = () => new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "photo.png", { type: "image/png" });
+
+it("pre-fills an editable AI description from the photo", async () => {
+  const actor: Account = { id: "found-describe-test", name: "Member", email: "", role: "user" };
+  const api = vi.spyOn(http, "api").mockImplementation(async (path: string) => {
+    if (path === "/found/describe") return { description: "Silver wristwatch with a metal strap" } as never;
+    throw new ServiceError("unavailable");
+  });
+  renderForActor(actor, <RegisterFound />);
+  const description = (await screen.findByLabelText(/^Item description/)) as HTMLTextAreaElement;
+  await userEvent.upload(await screen.findByLabelText(/^Item photo/), png());
+  expect(await screen.findByDisplayValue("Silver wristwatch with a metal strap")).toBeTruthy();
+  expect(screen.getByText(/AI-suggested description/)).toBeTruthy();
+  const call = api.mock.calls.find(([path]) => path === "/found/describe")!;
+  expect((call[1]!.body as FormData).get("language")).toBe("en");
+  await userEvent.type(description, " and a red dial");
+  expect(description.value).toBe("Silver wristwatch with a metal strap and a red dial");
+  expect(screen.queryByText(/AI-suggested description/)).toBeNull();
+});
+
+it("never overwrites a description the finder already typed, and stays silent when the AI is unavailable", async () => {
+  const actor: Account = { id: "found-describe-typed", name: "Member", email: "", role: "user" };
+  vi.spyOn(http, "api").mockImplementation(async (path: string) => {
+    if (path === "/found/describe") return { description: "AI text" } as never;
+    throw new ServiceError("unavailable");
+  });
+  renderForActor(actor, <RegisterFound />);
+  const description = (await screen.findByLabelText(/^Item description/)) as HTMLTextAreaElement;
+  await userEvent.type(description, "My own words");
+  await userEvent.upload(await screen.findByLabelText(/^Item photo/), png());
+  await screen.findByRole("button", { name: "Remove photo" });
+  expect(description.value).toBe("My own words");
+  cleanup();
+  vi.spyOn(http, "api").mockRejectedValue(new ServiceError("unavailable"));
+  renderForActor({ ...actor, id: "found-describe-failed" }, <RegisterFound />);
+  const empty = (await screen.findByLabelText(/^Item description/)) as HTMLTextAreaElement;
+  await userEvent.upload(await screen.findByLabelText(/^Item photo/), png());
+  await screen.findByRole("button", { name: "Remove photo" });
+  expect(empty.value).toBe("");
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
 it.each([true, false])("renders returned matches with server scores only when available (scores: %s)", async scored => {
   const actor: Account = { id: "search-form-test", name: "Member", email: "", role: "user" };
   const item: FoundItem = { id: "match-1", description: "Blue thermos with a star sticker", place: "Library", date: "2026-11-01", storage: "", uploaderId: "finder", custodianId: "finder", state: "available", createdAt: "2026-11-01T00:00:00Z", version: 1 };

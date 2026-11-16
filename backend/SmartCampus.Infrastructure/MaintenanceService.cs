@@ -285,5 +285,8 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
     {
         db.Assessments.Add(new() { ReportId = report.Id, InputVersion = report.ContentVersion });
         db.Jobs.Add(new() { Kind = "maintenance", EntityId = report.Id, InputVersion = report.ContentVersion, Key = $"maintenance:{report.Id}:{report.ContentVersion}" });
+        // Optional text vector for spotting repeated problems; failure only means the dashboard uses text rules.
+        if (ReportSimilarity.Enabled(config))
+            db.Jobs.Add(new() { Kind = "reportvec", EntityId = report.Id, InputVersion = report.ContentVersion, Key = $"reportvec:{report.Id}:{report.ContentVersion}" });
     }
 }

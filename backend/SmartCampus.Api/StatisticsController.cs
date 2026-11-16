@@ -7,7 +7,10 @@ using SmartCampus.Infrastructure;
 namespace SmartCampus.Api;
 
 public sealed record StatisticsLocation(Guid Id, string Ar, string En, int Count, double? X, double? Y, int Version);
-public sealed record RecurringFault(string Type, string BuildingAr, string BuildingEn, string FloorAr, string FloorEn, int Count);
+/// <summary>A problem reported repeatedly at one place, with an administrator-only next-occurrence estimate.</summary>
+public sealed record RecurringFault(string Type, string BuildingAr, string BuildingEn, string FloorAr, string FloorEn, int Count,
+    string? Location, int Incidents, DateTimeOffset LastReported, double? MedianDays, double? MinDays, double? MaxDays,
+    DateTimeOffset? NextEstimate, bool Overdue, Guid[] ReportIds);
 public sealed record WeeklyReportCount(DateOnly WeekOf, int Count);
 public sealed record StatisticsResponse(int TotalReports, Dictionary<string, int> ByStatus, int AvailableItems,
     int PendingClaims, Dictionary<string, int> Locations, Dictionary<string, int> FaultTypes,
@@ -17,7 +20,7 @@ public sealed record StatisticsResponse(int TotalReports, Dictionary<string, int
     WeeklyReportCount[] WeeklyTrend);
 
 [ApiController, Authorize, Route("api/v1/statistics")]
-public sealed class StatisticsController(CampusDb db, Access access) : ControllerBase
+public sealed class StatisticsController(CampusDb db, Access access, ReportSimilarity similarity, IConfiguration config) : ControllerBase
 {
     [HttpGet]
     public async Task<StatisticsResponse> Statistics(DateOnly? from, DateOnly? to, Guid? departmentId)
@@ -67,14 +70,26 @@ public sealed class StatisticsController(CampusDb db, Access access) : Controlle
         var buildingCounts = buildingGroups.ToDictionary(x => x.Id, x => x.Count);
         var buildings = buildingGroups.Select(b => new StatisticsLocation(b.Id, b.Ar, b.En, b.Count, b.MapX, b.MapY, b.PositionVersion)).ToArray();
 
-        var recurrenceRows = await reports.Where(r => r.FaultType != null)
-            .Join(db.Locations.AsNoTracking(), r => r.BuildingId, l => l.Id, (r, b) => new { Report = r, Building = b })
-            .Join(db.Locations.AsNoTracking(), x => x.Report.FloorId, l => l.Id,
-                (x, floor) => new { x.Report.FaultType, x.Building.Ar, x.Building.En, FloorAr = floor.Ar, FloorEn = floor.En })
-            .GroupBy(x => new { x.FaultType, x.Ar, x.En, x.FloorAr, x.FloorEn })
-            .Select(g => new { g.Key.FaultType, g.Key.Ar, g.Key.En, g.Key.FloorAr, g.Key.FloorEn, Count = g.Count() })
-            .Where(x => x.Count > 1).OrderByDescending(x => x.Count).ToArrayAsync();
-        var recurrence = recurrenceRows.Select(x => new RecurringFault(x.FaultType!, x.Ar, x.En, x.FloorAr, x.FloorEn, x.Count)).ToArray();
+        // Repeated problems at the same place, judged only on staff decisions (never AI suggestions).
+        // Rejected reports are not real problems; cancelled ones are already excluded below.
+        var recurrenceSource = await reports.Where(r => r.FaultType != null && !r.CancelledAt.HasValue && r.Status != "rejected")
+            .Select(r => new RecurrenceReport(r.Id, r.FaultType!, r.BuildingId, r.FloorId, r.Description, r.Details, r.CreatedAt, r.ResolvedAt))
+            .ToArrayAsync();
+        var vectors = await similarity.Vectors(recurrenceSource.Select(r => r.Id).ToArray());
+        var groups = RecurrenceAnalysis.Analyze(recurrenceSource, vectors, config.GetValue("Maintenance:SimilarReportThreshold", 0.85), DateTimeOffset.UtcNow)
+            .Take(30).ToArray();
+        var nameIds = groups.SelectMany(g => new[] { g.BuildingId, g.FloorId }).Distinct().ToArray();
+        var names = await db.Locations.AsNoTracking().Where(l => nameIds.Contains(l.Id)).ToDictionaryAsync(l => l.Id, l => l);
+        var recurrence = groups.Select(g =>
+        {
+            var building = names.GetValueOrDefault(g.BuildingId);
+            var floor = names.GetValueOrDefault(g.FloorId);
+            var overdue = actor.Admin && g.NextEstimate.HasValue && g.NextEstimate.Value < DateTimeOffset.UtcNow;
+            // Forecasts are an administrator view; other roles still see the repeat counts.
+            return new RecurringFault(g.FaultType, building?.Ar ?? "", building?.En ?? "", floor?.Ar ?? "", floor?.En ?? "", g.ReportIds.Length,
+                g.Location, g.Incidents, g.LastReported, actor.Admin ? g.MedianDays : null, actor.Admin ? g.MinDays : null,
+                actor.Admin ? g.MaxDays : null, actor.Admin ? g.NextEstimate : null, overdue, g.ReportIds);
+        }).ToArray();
 
         var locationIds = await reports.Select(r => r.FacultyId).Union(reports.Select(r => r.BuildingId))
             .Union(reports.Select(r => r.FloorId)).Distinct().ToArrayAsync();

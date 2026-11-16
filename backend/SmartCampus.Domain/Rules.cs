@@ -155,6 +155,11 @@ public sealed class FoundItem : VersionedRecord
     public DateOnly Date { get; set; }
     public string Storage { get; set; } = "";
     public string State { get; set; } = "available";
+    // Internal AI reading of the item photo, kept apart from the finder's own
+    // Description. Used for matching only; the finder's text is never overwritten.
+    public string? AiDescription { get; set; }
+    public string? AiCategory { get; set; }
+    public string AiStatus { get; set; } = "none";
 }
 
 public sealed class CustodyHandover : VersionedRecord

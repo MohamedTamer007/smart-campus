@@ -9,6 +9,7 @@ import {
   statistics,
   type AssignableRole,
   type DashboardScope,
+  type RecurringFault,
   saveBuildingPosition,
 } from "../../services/admin";
 import {
@@ -80,6 +81,62 @@ function MetricDistribution({
       ) : (
         <Feedback>{t("لا توجد قرارات موظفين ضمن الفترة المحددة.", "No staff decisions in the selected period.")}</Feedback>
       )}
+    </div>
+  );
+}
+const day = (iso?: string | null) => (iso ? iso.slice(0, 10) : "—");
+/**
+ * Problems reported again and again at one place. The next-occurrence date is the median gap
+ * between earlier incidents, shown only with enough history; it is an estimate, not a guarantee.
+ */
+export function RecurringFaults({ faults, t }: { faults: RecurringFault[]; t: (arabic: string, english: string) => string }) {
+  if (!faults.length)
+    return <p>{t("لا توجد أعطال متكررة معتمدة في هذه الفترة.", "No staff-confirmed recurring faults in this period.")}</p>;
+  const forecast = faults.some((fault) => fault.incidents !== undefined);
+  return (
+    <div className="table-wrap">
+      <table className="recurring-faults">
+        <thead>
+          <tr>
+            <th>{t("العطل والمكان", "Problem and place")}</th>
+            <th>{t("مرات الإبلاغ", "Reports")}</th>
+            {forecast && <th>{t("الحالات", "Incidents")}</th>}
+            {forecast && <th>{t("آخر بلاغ", "Last reported")}</th>}
+            {forecast && <th>{t("التوقع القادم (تقديري)", "Next (estimate)")}</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {faults.map((fault) => (
+            <tr key={`${fault.type}-${fault.buildingAr}-${fault.floorAr}-${fault.location ?? ""}-${fault.reportIds?.[0] ?? fault.count}`}>
+              <td>
+                {maintenanceValueLabel(fault.type, t)} · {t(fault.buildingAr, fault.buildingEn)} · {t(fault.floorAr, fault.floorEn)}
+                {fault.location && <> · <bdi>{fault.location}</bdi></>}
+              </td>
+              <td><b>{fault.count}</b></td>
+              {forecast && <td>{fault.incidents ?? "—"}</td>}
+              {forecast && <td><bdi>{day(fault.lastReported)}</bdi></td>}
+              {forecast && (
+                <td>
+                  {fault.nextEstimate ? (
+                    <>
+                      <bdi>{day(fault.nextEstimate)}</bdi>
+                      {fault.overdue && <span className="tag"> {t("متأخر عن المتوقع", "Overdue")}</span>}
+                      <small className="muted" style={{ display: "block" }}>
+                        {t(
+                          `بناءً على ${fault.incidents} حالات، بمتوسط ${fault.medianDays} يوماً بين الحالة والأخرى (من ${fault.minDays} إلى ${fault.maxDays})`,
+                          `Based on ${fault.incidents} incidents: median ${fault.medianDays} days apart (${fault.minDays}–${fault.maxDays})`,
+                        )}
+                      </small>
+                    </>
+                  ) : (
+                    <span className="muted">{t("لا يوجد سجل كافٍ (يلزم 3 حالات)", "Not enough history (3 incidents needed)")}</span>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -343,9 +400,7 @@ export function AdminOverview() {
                     </p>
                   )}
                   <h2>{t("الأعطال المتكررة التي سجلها الموظفون", "Recurring staff-recorded faults")}</h2>
-                  {(stats.recurrence ?? []).length ? stats.recurrence!.map((fault) => <p key={`${fault.type}-${fault.buildingAr}-${fault.floorAr}`}>
-                    {maintenanceValueLabel(fault.type, t)} · {t(fault.buildingAr, fault.buildingEn)} · {t(fault.floorAr, fault.floorEn)}: {fault.count}
-                  </p>) : <p>{t("لا توجد أعطال متكررة معتمدة في هذه الفترة.", "No staff-confirmed recurring faults in this period.")}</p>}
+                  <RecurringFaults faults={stats.recurrence ?? []} t={t} />
                 </div>
               </div>
               <p className="muted">
