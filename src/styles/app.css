@@ -1026,48 +1026,87 @@ button:hover:enabled {
 .admin-stats strong {
   font-size: 1.7rem;
 }
-.campus-map {
-  display: block;
+.campus-map-stage {
+  position: relative;
   width: 100%;
-  min-height: 240px;
   margin: 12px 0 20px;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #f8fbff;
 }
 .campus-map-image {
   display: block;
   width: 100%;
   height: auto;
-  margin: 12px 0 20px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
 }
-.campus-map text {
+.campus-map-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
   font-family: "Noto Sans Arabic", Tahoma, Arial, sans-serif;
 }
 .map-editor-canvas {
-  min-height: 200px;
+  margin: 0;
   touch-action: manipulation;
 }
 .map-editor-canvas-button {
+  grid-column: 1;
+  grid-row: 2 / span 2;
   display: block;
+  align-self: start;
   width: 100%;
+  min-height: 0;
   padding: 0;
   border: 0;
   border-radius: 12px;
   background: transparent;
   text-align: start;
 }
+.map-editor-canvas-button:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
 .map-editor-canvas-button:not(:disabled) { cursor: crosshair; }
-.map-editor-canvas-button .map-editor-canvas { margin-block: 0 20px; }
-.map-editor {
+.map-editor-canvas-button .campus-map-stage { margin: 0; }
+.map-editor.no-print {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, .55fr);
+  align-items: start;
+  gap: 12px;
   border-top: 1px solid var(--line);
   padding-top: 16px;
   margin-top: 18px;
 }
-.map-editor .field {
-  max-width: 420px;
+.map-editor .feedback {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.map-editor-controls {
+  grid-column: 2;
+  grid-row: 2;
+}
+.map-editor-controls .field {
+  max-width: none;
+}
+.map-editor-controls p { margin-bottom: 0; }
+.map-editor .actions {
+  grid-column: 2;
+  grid-row: 3;
+  margin-top: 0;
+}
+@media (max-width: 540px) {
+  .map-editor.no-print {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .map-editor-controls,
+  .map-editor-canvas-button,
+  .map-editor .actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 .no-print {
   display: inline-flex;

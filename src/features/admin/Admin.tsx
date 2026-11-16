@@ -358,22 +358,33 @@ export function AdminOverview() {
               <div className="split">
                 <section className="panel campus-map-panel">
                   <h2>{t("مخطط مواقع البلاغات", "Report location map")}</h2>
-                  <p>{t("مخطط توضيحي غير جغرافي؛ الأسماء والأعداد من بيانات النظام، وتُحفظ مواضع المباني يدويًا.", "Schematic, not geographic. Names and counts come from records; building positions are set manually.")}</p>
-                  <img className="campus-map-image" src="/campus-map.png" alt={t("صورة جوية لمباني الحرم الجامعي", "Aerial photograph of the campus buildings")} />
+                  <p>{t("صورة جوية للحرم؛ تظهر عليها المباني وأعداد البلاغات، ويمكن تحديد مواقع المباني بالنقر على الصورة.", "Aerial campus photo with building locations and report counts. Click the photo to place buildings.")}</p>
+                  <div className="campus-map-stage">
+                    <img className="campus-map-image" src="/campus-map.jpg" alt="" />
+                    <svg className="campus-map-overlay" viewBox="0 0 100 52.58" role="img" aria-label={t("مواقع المباني وأعداد البلاغات على صورة الحرم", "Building locations and report counts on the campus photo")}>
+                      {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <g key={b.id} transform={`translate(${b.x} ${b.y! * 52.58 / 56})`}>
+                        <circle r="2.5" fill="#144caa" stroke="white" strokeWidth=".8" />
+                        <text y="-3.5" textAnchor="middle" fontSize="2.5" fill="#fff" stroke="#142b54" strokeWidth=".35" paintOrder="stroke">{t(b.ar, b.en)}</text>
+                        <text y="5.5" textAnchor="middle" fontSize="2.7" fontWeight="700" fill="#fff" stroke="#c44300" strokeWidth=".35" paintOrder="stroke">{b.count}</text>
+                      </g>)}
+                    </svg>
+                  </div>
                   {hasRole(account, "admin") && <div className="map-editor no-print">
                     {mapSaveFailed && <Feedback kind="error">{t("تعذر حفظ الموضع؛ أعد تحميل اللوحة ثم حاول مجددًا.", "The position could not be saved. Reload the dashboard and try again.")}</Feedback>}
+                    <div className="map-editor-controls">
                     <Field label={t("مبنى لتحديد موضعه", "Building to position")}>
                       <select value={buildingId} onChange={event => { setBuildingId(event.target.value); setMapDraft(null); }}>
                         <option value="">{t("اختر مبنى", "Choose a building")}</option>
                         {mapBuildings.map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
                       </select>
                     </Field>
-                    <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر المخطط، أو استخدم الأسهم بعد التركيز عليه. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the schematic, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
+                    <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر الصورة، أو استخدم الأسهم بعد التركيز عليها. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the photo, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
+                    </div>
                     <button
                       type="button"
                       className="map-editor-canvas-button"
                       disabled={!buildingId}
-                      aria-label={t("اختيار موضع المبنى على المخطط", "Set building position on the schematic")}
+                      aria-label={t("اختيار موضع المبنى على الصورة", "Set building position on the photo")}
                       aria-describedby="map-editor-help"
                       onKeyDown={event => {
                         const movement: Record<string, { x: number; y: number }> = {
@@ -403,11 +414,13 @@ export function AdminOverview() {
                         });
                       }}
                     >
-                      <svg className="campus-map map-editor-canvas" viewBox="0 0 100 56" preserveAspectRatio="none" aria-hidden="true">
-                        <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
-                        {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y!} r="2" fill="#144caa" />)}
-                        {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y} r="2.8" fill="#c44300" />}
-                      </svg>
+                      <div className="campus-map-stage map-editor-canvas">
+                        <img className="campus-map-image" src="/campus-map.jpg" alt="" />
+                        <svg className="campus-map-overlay" viewBox="0 0 100 52.58" aria-hidden="true">
+                          {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y! * 52.58 / 56} r="2" fill="#144caa" stroke="white" strokeWidth=".7" />)}
+                          {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y * 52.58 / 56} r="2.8" fill="#c44300" stroke="white" strokeWidth=".7" />}
+                        </svg>
+                      </div>
                     </button>
                     <div className="actions">
                       <button className="button" disabled={!buildingId || !mapDraft} onClick={async () => {
