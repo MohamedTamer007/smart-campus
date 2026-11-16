@@ -32,7 +32,7 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
         string.Equals(configuration["Search:GeminiProviderDataCollection"], "allow", StringComparison.OrdinalIgnoreCase) &&
         configuration.GetValue<bool>("AI:GeminiFreeTierOnly") &&
         !string.IsNullOrWhiteSpace(configuration["AI:GeminiKey"]) &&
-        configuration.GetValue("AI:GeminiDailyRequestLimit", 50) > 0 &&
+        configuration.GetValue("AI:GeminiDailyRequestLimit", 1000) > 0 &&
         configuration.GetValue("AI:GeminiRequestsPerMinute", 10) > 0;
 
     public Task<EmbeddingResponse> Passage(string description, CancellationToken cancellation = default) =>

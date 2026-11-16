@@ -48,7 +48,7 @@ public sealed class OperationsController(
         var quotas = new[]
         {
             new ProviderQuotaResponse("openrouter", usageByProvider.GetValueOrDefault("openrouter"), config.GetValue("AI:OpenRouterDailyRequestLimit", 50)),
-            new ProviderQuotaResponse("gemini", usageByProvider.GetValueOrDefault("gemini"), config.GetValue("AI:GeminiDailyRequestLimit", 50))
+            new ProviderQuotaResponse("gemini", usageByProvider.GetValueOrDefault("gemini"), config.GetValue("AI:GeminiDailyRequestLimit", 1000))
         };
 
         var worker = config["Search:Provider"] == "hosted"

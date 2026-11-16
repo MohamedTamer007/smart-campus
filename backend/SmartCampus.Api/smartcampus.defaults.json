@@ -10,7 +10,7 @@
     "AllowNonSensitiveInference": false,
     "AllowNonSensitiveImages": false,
     "GeminiFreeTierOnly": false,
-    "GeminiDailyRequestLimit": 50,
+    "GeminiDailyRequestLimit": 1000,
     "GeminiRequestsPerMinute": 10,
     "ProviderDataCollection": "deny",
     "FaultTypes": [ "plumbing", "water", "electrical", "hvac", "lighting", "furniture", "doors", "safety", "other" ],

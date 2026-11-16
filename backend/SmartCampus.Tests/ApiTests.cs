@@ -51,7 +51,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.Equal(2, quotas.Length);
         var quota = Assert.Single(quotas, row => row.GetProperty("provider").GetString() == "openrouter");
         var geminiQuota = Assert.Single(quotas, row => row.GetProperty("provider").GetString() == "gemini");
-        Assert.Equal(50, geminiQuota.GetProperty("dailyLimit").GetInt32());
+        Assert.Equal(1000, geminiQuota.GetProperty("dailyLimit").GetInt32());
         var matching = response.GetProperty("matching");
         Assert.Equal("local", matching.GetProperty("provider").GetString());
         Assert.Equal(RetrievalService.Model, matching.GetProperty("model").GetString());

@@ -17,7 +17,7 @@ public sealed class InferenceBudget(CampusDb db, IConfiguration config, TimeProv
     {
         if (provider is not ("openrouter" or "gemini")) throw new RuleException("ai_not_configured", 503);
         var prefix = provider == "gemini" ? "Gemini" : "OpenRouter";
-        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", 50);
+        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", provider == "gemini" ? 1000 : 50);
         var perMinute = config.GetValue($"AI:{prefix}RequestsPerMinute", provider == "gemini" ? 10 : 20);
         if (daily <= 0 || perMinute <= 0) throw new RuleException("ai_quota_not_configured", 503);
         var now = clock.GetUtcNow().ToUniversalTime();
