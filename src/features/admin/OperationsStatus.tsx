@@ -38,8 +38,8 @@ export function OperationsStatus() {
           return (
             <>
               <p><span className="tag">{t("متصل", "Online")}</span> {t("واجهة النظام تستجيب", "The application API is responding")}</p>
-              <p>{t("خدمة اقتراحات المطابقة", "Matching suggestions")}: <strong>{workerStatus}</strong></p>
-              <p>{t("اعتماد المعايرة", "Matching calibration")}: <strong>{status.calibrationApproved ? t("معتمدة", "Approved") : t("غير معتمدة", "Not approved")}</strong></p>
+              <p>{t("خدمة المطابقة", "Matching service")}: {workerStatus}</p>
+              <p>{t("اعتماد المعايرة", "Calibration approval")}: {status.calibrationApproved ? t("معتمدة", "Approved") : t("غير معتمدة", "Not approved")}</p>
               <p>{t("المهام الخلفية", "Background jobs")}: {t("بالانتظار", "Pending")} {count("pending")} · {t("قيد التنفيذ", "Running")} {count("running")} · {t("متعذرة", "Unavailable")} {count("unavailable")}</p>
               <p>{t("آخر تحديث للحالة", "Last status check")}: <time dateTime={status.sampledAt}>{checkedAt}</time></p>
               <details>

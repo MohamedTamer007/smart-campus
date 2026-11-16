@@ -88,6 +88,10 @@ it("renders API operational counts and truthful worker unavailability", async ()
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
   expect(await screen.findByText(/Matching service: Unavailable/)).toBeTruthy();
   expect(screen.getByText(/Calibration approval: Not approved/)).toBeTruthy();
+  expect(screen.getByText(/Background jobs: Pending 2/)).toBeTruthy();
+  const details = screen.getByText("Service and processing details");
+  expect(screen.queryByText("AI configuration")).toBeNull();
+  await userEvent.click(details);
   expect(screen.getByText(/Provider data-collection policy approval: Denied by default/)).toBeTruthy();
   expect(screen.getByText(/Maintenance processing/).closest("li")?.textContent).toContain("2");
   expect(screen.getByText(/7 \/ 50/)).toBeTruthy();
@@ -100,6 +104,7 @@ it("shows when the provider collection policy is explicitly approved", async () 
       textTransferEnabled: true, imageTransferEnabled: false, providerDataCollectionApproved: true },
     quotas: [], jobs: [] });
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
+  await userEvent.click(await screen.findByText("Service and processing details"));
   expect(await screen.findByText(/Provider data-collection policy approval: Allowed only for approved non-sensitive inputs/)).toBeTruthy();
 });
 
@@ -109,6 +114,7 @@ it("does not infer provider collection approval from an older operations respons
     ai: { provider: "openrouter", textConfigured: false, imagesConfigured: false, taxonomyConfigured: true,
       textTransferEnabled: false, imageTransferEnabled: false }, quotas: [], jobs: [] });
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
+  await userEvent.click(await screen.findByText("Service and processing details"));
   expect(await screen.findByText(/Provider data-collection policy approval: Approval status unavailable/)).toBeTruthy();
 });
 
