@@ -12,6 +12,8 @@ export function CampusMapEditor({ enabled, position, buildings, onPosition }: {
 }) {
   const { t, language } = useApp();
   const [zoom, setZoom] = useState(1);
+  const [panning, setPanning] = useState(false);
+  const pan = useRef<{ id: number; x: number; y: number; left: number; top: number; moved: boolean } | null>(null);
   const dragging = useRef<number | null>(null);
   const suppressClick = useRef(false);
   const viewport = useRef<HTMLDivElement>(null);
@@ -31,6 +33,8 @@ export function CampusMapEditor({ enabled, position, buildings, onPosition }: {
       event.currentTarget.releasePointerCapture(event.pointerId);
   }
   function reset() {
+    pan.current = null;
+    setPanning(false);
     setZoom(1);
     viewport.current?.scrollTo?.({ left: 0, top: 0 });
   }
@@ -43,7 +47,69 @@ export function CampusMapEditor({ enabled, position, buildings, onPosition }: {
         <button type="button" className="button secondary" aria-label={t("تكبير الخريطة", "Zoom in")} disabled={zoom >= 4} onClick={() => setZoom(value => Math.min(4, value + .5))}>+</button>
         <button type="button" className="button secondary" onClick={reset}>{t("إعادة العرض", "Reset view")}</button>
       </div>
-      <div className="map-editor-viewport" ref={viewport} dir="ltr">
+      {zoom > 1 && <p className="map-pan-help">{t("اسحب الصورة للتنقل؛ واسحب العلامة لتغيير موضع المبنى.", "Drag the photo to pan; drag the marker to move the building.")}</p>}
+      <div
+        className={`map-editor-viewport${zoom > 1 ? " is-zoomed" : ""}${panning ? " is-panning" : ""}`}
+        ref={viewport}
+        dir="ltr"
+        role="region"
+        aria-label={t("التنقل داخل الخريطة المكبرة", "Pan the zoomed map")}
+        tabIndex={zoom > 1 ? 0 : -1}
+        onKeyDown={event => {
+          if (event.target !== event.currentTarget || zoom <= 1) return;
+          const movement: Record<string, Position> = {
+            ArrowLeft: { x: -40, y: 0 }, ArrowRight: { x: 40, y: 0 },
+            ArrowUp: { x: 0, y: -40 }, ArrowDown: { x: 0, y: 40 },
+          };
+          const delta = movement[event.key];
+          if (!delta) return;
+          event.preventDefault();
+          event.currentTarget.scrollLeft += delta.x;
+          event.currentTarget.scrollTop += delta.y;
+        }}
+        onPointerDown={event => {
+          if (zoom <= 1 || event.button !== 0 || pan.current !== null || dragging.current !== null ||
+            (event.target instanceof Element && event.target.closest("[data-map-marker]"))) return;
+          suppressClick.current = false;
+          pan.current = { id: event.pointerId, x: event.clientX, y: event.clientY,
+            left: event.currentTarget.scrollLeft, top: event.currentTarget.scrollTop, moved: false };
+        }}
+        onPointerMove={event => {
+          const current = pan.current;
+          if (!current || current.id !== event.pointerId) return;
+          const dx = event.clientX - current.x;
+          const dy = event.clientY - current.y;
+          if (!current.moved && Math.hypot(dx, dy) < 5) return;
+          if (!current.moved) {
+            current.moved = true;
+            suppressClick.current = true;
+            setPanning(true);
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }
+          event.preventDefault();
+          event.currentTarget.scrollLeft = current.left - dx;
+          event.currentTarget.scrollTop = current.top - dy;
+        }}
+        onPointerUp={event => {
+          if (pan.current?.id !== event.pointerId) return;
+          pan.current = null;
+          setPanning(false);
+          if (event.currentTarget.hasPointerCapture(event.pointerId))
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onPointerCancel={() => { pan.current = null; setPanning(false); }}
+        onLostPointerCapture={event => {
+          if (event.target !== event.currentTarget) return;
+          pan.current = null;
+          setPanning(false);
+        }}
+        onClickCapture={event => {
+          if (!suppressClick.current) return;
+          suppressClick.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+      >
         <button
           type="button"
           className="map-editor-canvas-button"

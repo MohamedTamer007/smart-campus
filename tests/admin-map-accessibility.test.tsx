@@ -110,3 +110,31 @@ it("keeps clicked and dragged building positions aligned with a zoomed photo", a
   await user.click(screen.getByRole("button", { name: "Save position" }));
   await waitFor(() => expect(adminService.saveBuildingPosition).toHaveBeenCalledWith("building-a", 100, 0, 7));
 });
+
+it.each([
+  { selected: false, pointerType: "mouse" },
+  { selected: true, pointerType: "touch" },
+])("pans a zoomed photo without placing a building ($pointerType, selected=$selected)", async ({ selected, pointerType }) => {
+  const user = userEvent.setup();
+  render(<MemoryRouter><AppProvider><Session><AdminOverview /></Session></AppProvider></MemoryRouter>);
+  const canvas = await screen.findByRole("button", { name: "Set building position on the photo" });
+  if (selected) await user.selectOptions(screen.getByLabelText("Building to position"), "building-a");
+  await user.click(screen.getByRole("button", { name: "Zoom in" }));
+  const viewport = screen.getByRole("region", { name: "Pan the zoomed map" });
+  Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
+  Object.defineProperty(viewport, "hasPointerCapture", { value: () => true });
+  Object.defineProperty(viewport, "releasePointerCapture", { value: vi.fn() });
+  fireEvent.pointerDown(canvas, { pointerId: 2, pointerType, button: 0, clientX: 300, clientY: 300 });
+  if (pointerType === "touch") {
+    fireEvent.pointerMove(viewport, { pointerId: 2, pointerType, clientX: 240, clientY: 250 });
+    fireEvent.lostPointerCapture(canvas, { pointerId: 2, pointerType });
+  }
+  fireEvent.pointerMove(viewport, { pointerId: 2, pointerType, clientX: 180, clientY: 200 });
+  fireEvent.pointerUp(viewport, { pointerId: 2, pointerType });
+  fireEvent.click(canvas, { clientX: 180, clientY: 200 });
+  expect(viewport.scrollLeft).toBe(120);
+  expect(viewport.scrollTop).toBe(100);
+  expect((screen.getByRole("button", { name: "Save position" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(canvas.querySelector("[data-map-marker]")).toBeNull();
+  expect(adminService.saveBuildingPosition).not.toHaveBeenCalled();
+});
