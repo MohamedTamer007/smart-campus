@@ -667,3 +667,9 @@ Code, security, test and documentation review passed. Found-item inventory lists
 - Fixed the bilingual assertions in `OpenRouter_text_classification_uses_pinned_free_model_without_paid_fallback` to match its existing shared provider fixture (`صناعي` / `Synthetic`). Both language assertions remain enabled. CI on the preceding commit failed only this expectation; its PostgreSQL backend suite passed after correction.
 - Commit `6f1c2926afab4a27a2dc8f451fc340cdaad87874` deployed successfully in [run 43958792358](https://github.com/MohamedTamer007/smart-campus/actions/runs/43958792358): 17 frontend test files passed, backend 157 passed / 76 skipped on the Windows runner, build and WebDeploy succeeded. An independent `Invoke-WebRequest https://smartcampus.tryasp.net/health/live` returned HTTP 200 with `status=live`.
 - The map position selector now uses the default arrow cursor while disabled before building selection, overriding the global disabled-button wait cursor. Its enabled crosshair behavior and building-selection requirement are preserved. This stylesheet change is covered by the automatic build and deployment checks on the new commit.
+
+
+## 16 November 2026 — Map save button cursor
+
+- Extended the map editor's disabled-state cursor override to its save-position action. A disabled save button now shows the default arrow rather than the global wait cursor; disabled behavior and enabled button styling are preserved.
+- Reviewed the current remote stylesheet and the scoped selector diff. This CSS-only adjustment adds no tests or dependencies. Automatic frontend/backend checks and deployment run on the release branch; live asset verification follows deployment.
