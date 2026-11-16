@@ -136,45 +136,92 @@ export function Auth({ register = false }: { register?: boolean }) {
 }
 
 export function Verification() {
-  const { t, account } = useApp();
+  const { t, account, updateAccount } = useApp();
   const alreadySignedIn = account.role !== "guest" && account.role !== "unverified";
   const [params] = useSearchParams();
+  const token = params.get("token");
   const [verified, setVerified] = useState(false);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [resent, setResent] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+
   return (
     <Page title={t("تأكيد البريد الجامعي", "Verify university email")}>
       <div className="panel narrow">
-        {alreadySignedIn ? (
+        {alreadySignedIn || verified ? (
           <Feedback kind="success">
-            {t("حسابك مؤكّد بالفعل ✅ مش محتاج تأكيد البريد مرة تانية.", "Your account is already verified ✅ No further confirmation is needed.")}
+            {alreadySignedIn || alreadyVerified
+              ? t("حسابك مؤكّد بالفعل ✅ مش محتاج تأكيد البريد مرة تانية.", "Your account is already verified ✅ No further confirmation is needed.")
+              : t("تم تأكيد البريد. يمكنك تسجيل الدخول.", "Email verified. You can now sign in.")}
           </Feedback>
         ) : (
-          <Feedback>
-            {t("افتح رابط التأكيد من بريدك الجامعي ثم أكد أدناه. إذا لم تجد الرسالة، افحص مجلد الرسائل غير المرغوب فيها (Junk/Spam).", "Open the link from your university inbox, then confirm below. If you do not see the message, check your Junk or Spam folder.")}
-          </Feedback>
+          <>
+            {token ? (
+              <>
+                <Feedback>
+                  {t("اضغط تأكيد البريد لإتمام التأكيد أو لمعرفة إذا كان بريدك مؤكّداً بالفعل.", "Confirm your email below, or check whether this link has already verified your account.")}
+                </Feedback>
+                <ActionForm
+                  label={t("تأكيد البريد", "Confirm email")}
+                  onSubmit={async () => {
+                    const result = await auth.verify(params.get("userId") ?? "", token);
+                    setAlreadyVerified(Boolean(result.alreadyVerified));
+                    setVerified(true);
+                  }}
+                >
+                  <p>{t("تأكيد عنوان البريد الجامعي.", "Verify your university email address.")}</p>
+                </ActionForm>
+              </>
+            ) : (
+              <>
+                <Feedback>
+                  {t("لو سجلت حساباً جديداً، افتح رابط التأكيد من بريدك الجامعي. ولو أكدت بريدك قبل كده، سجل دخولك هنا لمعرفة حالته.", "If you just registered, open the verification link in your university inbox. If you have already verified your email, sign in here to check its status.")}
+                </Feedback>
+                <ActionForm
+                  label={t("التحقق من حالة الحساب", "Check verification status")}
+                  onSubmit={async data => {
+                    updateAccount(await auth.login(String(data.get("email")), String(data.get("password"))));
+                  }}
+                >
+                  <Field label={t("البريد الجامعي", "University email")} required>
+                    <input required type="email" dir="ltr" name="email" autoComplete="email" />
+                  </Field>
+                  <Password label={t("كلمة المرور", "Password")} autoComplete="current-password" />
+                </ActionForm>
+              </>
+            )}
+            {!resent && (
+              <button
+                type="button"
+                className="text-link"
+                aria-expanded={showResend}
+                onClick={() => setShowResend(value => !value)}
+              >
+                {t("لم تصلك الرسالة؟ إعادة إرسال رابط التأكيد", "Didn't get the email? Resend verification link")}
+              </button>
+            )}
+            {showResend && !resent && (
+              <ActionForm
+                label={t("إعادة إرسال رابط التأكيد", "Resend verification link")}
+                onSubmit={async data => {
+                  await auth.resend(String(data.get("email")));
+                  setResent(true);
+                }}
+              >
+                <Field label={t("البريد الجامعي", "University email")} required>
+                  <input required type="email" dir="ltr" name="email" autoComplete="email" />
+                </Field>
+              </ActionForm>
+            )}
+            {resent && (
+              <Feedback>
+                {t("تحقق من بريدك إذا كان العنوان مؤهلاً. إذا لم تجد الرسالة، افحص مجلد الرسائل غير المرغوب فيها (Junk/Spam).", "Check your inbox if the address is eligible. If you do not see the message, check your Junk or Spam folder.")}
+              </Feedback>
+            )}
+          </>
         )}
-        {verified && <Feedback kind="success">{alreadyVerified
-          ? t("بريدك مؤكّد بالفعل، مش محتاج تأكيده تاني.", "Your email is already verified. No need to verify again.")
-          : t("تم تأكيد البريد. يمكنك تسجيل الدخول.", "Email verified. You can now sign in.")}</Feedback>}
-        {resent && <Feedback>{t("تحقق من بريدك إذا كان العنوان مؤهلاً. إذا لم تجد الرسالة، افحص مجلد الرسائل غير المرغوب فيها (Junk/Spam).", "Check your inbox if the address is eligible. If you do not see the message, check your Junk or Spam folder.")}</Feedback>}
-        {!alreadySignedIn && !verified && params.get("token") && <ActionForm label={t("تأكيد البريد", "Confirm email")} onSubmit={async () => {
-          const result = await auth.verify(params.get("userId") ?? "", params.get("token") ?? "");
-          setAlreadyVerified(Boolean(result.alreadyVerified));
-          setVerified(true);
-        }}><p>{t("تأكيد عنوان البريد الجامعي.", "Verify your university email address.")}</p></ActionForm>}
-        {!alreadySignedIn && !verified && <ActionForm
-          label={t("إعادة إرسال رابط التأكيد", "Resend verification link")}
-          onSubmit={async data => { await auth.resend(String(data.get("email"))); setResent(true); }}
-        >
-          <Field label={t("البريد الجامعي", "University email")} required>
-            <input required type="email" dir="ltr" name="email" />
-          </Field>
-        </ActionForm>}
         {alreadySignedIn && <Link className="text-link" to="/settings">{t("الذهاب لحسابي", "Go to my account")}</Link>}
-        <Link className="text-link" to="/login">
-          {t("تسجيل الدخول", "Sign in")}
-        </Link>
+        {!alreadySignedIn && <Link className="text-link" to="/login">{t("تسجيل الدخول", "Sign in")}</Link>}
       </div>
     </Page>
   );
