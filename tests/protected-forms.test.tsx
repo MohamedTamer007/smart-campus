@@ -99,13 +99,20 @@ it("renders API operational counts and truthful worker unavailability", async ()
 
 it("shows when the provider collection policy is explicitly approved", async () => {
   vi.spyOn(adminServices, "operations").mockResolvedValue({ sampledAt: "2026-11-09T12:00:00Z", deployment: "test-only",
-    workingSetBytes: 64 * 1024 * 1024, worker: "hosted_blocked", calibrationApproved: false,
+    workingSetBytes: 64 * 1024 * 1024, worker: "hosted_configured", calibrationApproved: false,
     ai: { provider: "openrouter", textConfigured: true, imagesConfigured: false, taxonomyConfigured: true,
       textTransferEnabled: true, imageTransferEnabled: false, providerDataCollectionApproved: true },
-    quotas: [], jobs: [] });
+    matching: { provider: "google", model: "gemini-embedding-2", dimension: 768, configured: true,
+      imagesConfigured: true, searchMode: "suggestions" },
+    quotas: [{ provider: "gemini", used: 12, dailyLimit: 50 }], jobs: [] });
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
   await userEvent.click(await screen.findByText("Service and processing details"));
   expect(await screen.findByText(/Provider data-collection policy approval: Allowed only for approved non-sensitive inputs/)).toBeTruthy();
+  expect(screen.getByText(/Lost-and-found matching model:/).textContent).toContain("gemini-embedding-2");
+  expect(screen.getByText(/Configured search mode: Similarity suggestions without approved calibration/)).toBeTruthy();
+  expect(screen.getByText(/Image matching: Configured and approved/)).toBeTruthy();
+  expect(screen.getByText(/Gemini Embedding 2/).closest("li")?.textContent).toContain("12 / 50");
+  expect(screen.getByText(/opening the dashboard does not send a Gemini probe/)).toBeTruthy();
 });
 
 it("does not infer provider collection approval from an older operations response", async () => {

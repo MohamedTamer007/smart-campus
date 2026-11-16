@@ -31,6 +31,11 @@ export function OperationsStatus() {
               : status.worker === "hosted_blocked"
                 ? t("غير جاهزة؛ إعدادات الخدمة ناقصة", "Not ready; service setup is incomplete")
                 : t("غير متاحة", "Unavailable");
+          const searchModes: Record<string, string> = {
+            calibrated: t("مطابقة بمعايرة معتمدة", "Matching with approved calibration"),
+            suggestions: t("اقتراحات تشابه بدون معايرة معتمدة", "Similarity suggestions without approved calibration"),
+            blocked: t("غير متاح حاليًا", "Currently unavailable"),
+          };
           const checkedAt = new Intl.DateTimeFormat(language === "ar" ? "ar-EG" : "en-GB", {
             dateStyle: "medium",
             timeStyle: "short",
@@ -39,15 +44,32 @@ export function OperationsStatus() {
             <>
               <p><span className="tag">{t("متصل", "Online")}</span> {t("واجهة النظام تستجيب", "The application API is responding")}</p>
               <p>{t("خدمة المطابقة", "Matching service")}: {workerStatus}</p>
+              {status.matching && (
+                <>
+                  <p>{t("نموذج مطابقة المفقودات", "Lost-and-found matching model")}: <bdi>{status.matching.model}</bdi></p>
+                  <p>{t("وضع البحث المسموح", "Configured search mode")}: {searchModes[status.matching.searchMode] ?? t("غير معروف", "Unknown")}</p>
+                </>
+              )}
               <p>{t("اعتماد المعايرة", "Calibration approval")}: {status.calibrationApproved ? t("معتمدة", "Approved") : t("غير معتمدة", "Not approved")}</p>
               <p>{t("المهام الخلفية", "Background jobs")}: {t("بالانتظار", "Pending")} {count("pending")} · {t("قيد التنفيذ", "Running")} {count("running")} · {t("متعذرة", "Unavailable")} {count("unavailable")}</p>
               <p>{t("آخر تحديث للحالة", "Last status check")}: <time dateTime={status.sampledAt}>{checkedAt}</time></p>
               <details>
                 <summary>{t("تفاصيل الخدمات والمعالجة", "Service and processing details")}</summary>
                 <div>
+                  {status.matching && (
+                    <>
+                      <h3>{t("مطابقة المفقودات والمعثورات", "Lost-and-found matching")}</h3>
+                      <p>{t("المزود", "Provider")}: <bdi>{status.matching.provider === "google" ? "Google" : t("محلي", "Local")}</bdi></p>
+                      <p>{t("النموذج", "Model")}: <bdi>{status.matching.model}</bdi>{status.matching.dimension != null && <> · {status.matching.dimension} {t("بُعد", "dimensions")}</>}</p>
+                      <p>{t("مطابقة الوصف", "Description matching")}: {status.matching.configured ? t("الإعداد مكتمل", "Configured") : t("الإعداد غير مكتمل أو الخدمة غير متاحة", "Configuration incomplete or service unavailable")}</p>
+                      <p>{t("مطابقة الصور", "Image matching")}: {status.matching.imagesConfigured ? t("الإعداد والموافقة مكتملان", "Configured and approved") : t("غير متاحة أو الموافقة غير مكتملة", "Unavailable or approval incomplete")}</p>
+                      {status.matching.provider === "google" && <p>{t("هذه حالة الإعداد؛ فتح اللوحة لا يرسل طلب فحص إلى Gemini.", "This is configuration status; opening the dashboard does not send a Gemini probe.")}</p>}
+                    </>
+                  )}
                   {status.ai && (
                     <>
-                      <h3>{t("إعدادات الذكاء الاصطناعي", "AI configuration")}</h3>
+                      <h3>{t("تحليل الصيانة بالذكاء الاصطناعي", "AI maintenance analysis")}</h3>
+                      {status.ai.model && <p>{t("نموذج تحليل الصيانة", "Maintenance analysis model")}: <bdi>{status.ai.model}</bdi></p>}
                       <p>{t("المزود المحدد", "Selected provider")}: <bdi>{status.ai.provider}</bdi></p>
                       <p>
                         {t("تحليل نص الصيانة", "Maintenance text analysis")}: {status.ai.textConfigured
@@ -76,7 +98,7 @@ export function OperationsStatus() {
                     </>
                   )}
                   <p>{t("استخدام طلبات الذكاء الاصطناعي لهذا التطبيق وحده اليوم، بتوقيت UTC", "This app's AI request usage today (UTC)")}</p>
-                  <ul>{status.quotas.map((quota) => <li key={quota.provider}><bdi>{quota.provider}</bdi>: {quota.used} / {quota.dailyLimit}</li>)}</ul>
+                  <ul>{status.quotas.map((quota) => <li key={quota.provider}><bdi>{quota.provider === "gemini" ? "Gemini Embedding 2" : quota.provider === "openrouter" ? "OpenRouter" : quota.provider}</bdi>: {quota.used} / {quota.dailyLimit}</li>)}</ul>
                   <p>{t("تفصيل مهام المعالجة", "Processing job breakdown")}</p>
                   <ul>{status.jobs.map((job) => <li key={`${job.kind}-${job.state}`}>{kinds[job.kind] ?? t("معالجة أخرى", "Other processing")} · {states[job.state] ?? t("غير معروفة", "Unknown")}: {job.count}</li>)}</ul>
                 </div>

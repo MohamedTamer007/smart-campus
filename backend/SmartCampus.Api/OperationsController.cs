@@ -27,7 +27,8 @@ public sealed class OperationsController(
             (settings.GetSection("AI:" + key).Get<string[]>() ?? []).Length > 0),
         settings.GetValue<bool>("AI:AllowNonSensitiveInference"),
         settings.GetValue<bool>("AI:AllowNonSensitiveImages"),
-        string.Equals(settings["AI:ProviderDataCollection"], "allow", StringComparison.OrdinalIgnoreCase));
+        string.Equals(settings["AI:ProviderDataCollection"], "allow", StringComparison.OrdinalIgnoreCase),
+        AiProviders.SelectedProvider(settings, false) == "openrouter" ? AiProviders.SelectedModel(settings, false) : null);
 
     [HttpGet]
     public async Task<ActionResult<OperationsResponse>> Status(CancellationToken cancellation)
@@ -38,11 +39,16 @@ public sealed class OperationsController(
         var jobs = await db.Jobs.GroupBy(job => new { job.Kind, job.State })
             .Select(group => new JobStateResponse(group.Key.Kind, group.Key.State, group.Count(), group.Max(job => job.Attempts)))
             .ToArrayAsync(cancellation);
-        var used = await db.InferenceUsage.Where(usage => usage.Window == "day" && usage.WindowStart == day && usage.Provider == "openrouter")
-            .Select(usage => usage.Count).SumAsync(cancellation);
+        var usageByProvider = await db.InferenceUsage
+            .Where(usage => usage.Window == "day" && usage.WindowStart == day &&
+                (usage.Provider == "openrouter" || usage.Provider == "gemini"))
+            .GroupBy(usage => usage.Provider)
+            .Select(group => new { Provider = group.Key, Used = group.Sum(usage => usage.Count) })
+            .ToDictionaryAsync(usage => usage.Provider, usage => usage.Used, cancellation);
         var quotas = new[]
         {
-            new ProviderQuotaResponse("openrouter", used, config.GetValue("AI:OpenRouterDailyRequestLimit", 50))
+            new ProviderQuotaResponse("openrouter", usageByProvider.GetValueOrDefault("openrouter"), config.GetValue("AI:OpenRouterDailyRequestLimit", 50)),
+            new ProviderQuotaResponse("gemini", usageByProvider.GetValueOrDefault("gemini"), config.GetValue("AI:GeminiDailyRequestLimit", 50))
         };
 
         var worker = config["Search:Provider"] == "hosted"
@@ -62,6 +68,17 @@ public sealed class OperationsController(
             catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException) { }
         }
 
+        var hosted = config["Search:Provider"] == "hosted";
+        var matchingConfigured = hosted ? RemoteEmbeddings.Configured(config) : worker == "available";
+        var calibrated = RetrievalService.CalibrationApproved(config);
+        var searchMode = !matchingConfigured ? "blocked" : calibrated ? "calibrated"
+            : hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates") ? "suggestions" : "blocked";
+        var matching = new MatchingReadinessResponse(
+            hosted ? "google" : "local", hosted ? RemoteEmbeddings.Model : RetrievalService.Model,
+            hosted ? RemoteEmbeddings.Dimension : null, matchingConfigured,
+            matchingConfigured && (!hosted || (config.GetValue<bool>("Search:ExternalImagesApproved") &&
+                config.GetValue<bool>("Search:GeminiExternalImagesApproved"))), searchMode);
+
         using var process = Process.GetCurrentProcess();
         return new OperationsResponse(
             now,
@@ -70,7 +87,8 @@ public sealed class OperationsController(
             jobs,
             quotas,
             worker,
-            RetrievalService.CalibrationApproved(config),
-            AiReadiness(config));
+            calibrated,
+            AiReadiness(config),
+            matching);
     }
 }

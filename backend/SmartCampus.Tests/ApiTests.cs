@@ -36,7 +36,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
         Assert.Equal(await db.Jobs.CountAsync(), response.GetProperty("jobs").EnumerateArray().Sum(j => j.GetProperty("count").GetInt32()));
-        Assert.Equal(8, response.EnumerateObject().Count());
+        Assert.Equal(9, response.EnumerateObject().Count());
         var ai = response.GetProperty("ai");
         Assert.Equal("openrouter", ai.GetProperty("provider").GetString());
         Assert.False(ai.GetProperty("textConfigured").GetBoolean());
@@ -47,7 +47,16 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.False(ai.GetProperty("providerDataCollectionApproved").GetBoolean());
         Assert.True(response.GetProperty("workingSetBytes").GetInt64() > 0);
         Assert.Contains(response.GetProperty("worker").GetString(), new[] { "available", "unavailable" });
-        var quota = Assert.Single(response.GetProperty("quotas").EnumerateArray());
+        var quotas = response.GetProperty("quotas").EnumerateArray().ToArray();
+        Assert.Equal(2, quotas.Length);
+        var quota = Assert.Single(quotas, row => row.GetProperty("provider").GetString() == "openrouter");
+        var geminiQuota = Assert.Single(quotas, row => row.GetProperty("provider").GetString() == "gemini");
+        Assert.Equal(50, geminiQuota.GetProperty("dailyLimit").GetInt32());
+        var matching = response.GetProperty("matching");
+        Assert.Equal("local", matching.GetProperty("provider").GetString());
+        Assert.Equal(RetrievalService.Model, matching.GetProperty("model").GetString());
+        Assert.Equal("blocked", matching.GetProperty("searchMode").GetString());
+        Assert.Equal("nvidia/nemotron-3.5-super-vl:free", ai.GetProperty("model").GetString());
         Assert.Equal("openrouter", quota.GetProperty("provider").GetString());
         Assert.Equal(50, quota.GetProperty("dailyLimit").GetInt32());
         Assert.DoesNotContain(campus.Email(campus.Student), response.GetRawText());

@@ -673,3 +673,11 @@ Code, security, test and documentation review passed. Found-item inventory lists
 
 - Extended the map editor's disabled-state cursor override to its save-position action. A disabled save button now shows the default arrow rather than the global wait cursor; disabled behavior and enabled button styling are preserved.
 - Reviewed the current remote stylesheet and the scoped selector diff. This CSS-only adjustment adds no tests or dependencies. Automatic frontend/backend checks and deployment run on the release branch; live asset verification follows deployment.
+
+
+## 16 November 2026 — Gemini-aware operational status
+
+- The admin-only operations API now returns the actual selected retrieval model/provider, hosted vector dimension, text/image configuration gates and configured search mode (calibrated, uncalibrated suggestions or blocked). Hosted matching uses the same `RemoteEmbeddings.Configured` checks as retrieval; no external AI probe is issued by viewing status.
+- Daily app usage is grouped independently for OpenRouter and Gemini using the existing UTC day counters and configured limits. Maintenance analysis also exposes its selected model identifier. The bilingual status card displays Gemini Embedding 2 separately from maintenance AI and preserves the distinction between configuration and live provider health. Keys, endpoints and user payloads are not returned.
+- In an isolated source directory, `dotnet build backend/SmartCampus.slnx --configuration Release` passed with zero warnings/errors. `npm test -- tests/protected-forms.test.tsx -t 'operational counts|provider collection policy|older operations response'`: 3 passed; `npm run typecheck` and `npm run lint`: passed. The existing API summary regression now checks both provider quotas and matching/model fields. PostgreSQL integration execution is delegated to CI because no local `SMART_CAMPUS_TEST_DB` is configured.
+- Security and code review: existing administrator authorization is retained, counters use parameterized EF queries, the response uses explicit non-secret fields, no hosted schema/configuration or inference approval is changed. Automatic CI/deployment and public asset checks follow publication.
