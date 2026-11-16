@@ -13,6 +13,7 @@ public sealed record EmbeddingResponse(string Model, string Revision, int Dimens
 
 public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFactory clients, IConfiguration config, PrivateMedia media, RemoteEmbeddings remote)
 {
+    private sealed record CandidateThresholds(double? Approved, double? Text, double? Image);
     public const string Model = "google/siglip2-base-patch16-224";
     public const string Revision = "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2";
     private bool Hosted => config["Search:Provider"] == "hosted";
@@ -56,6 +57,9 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         // This does not approve a threshold or establish a match/ownership probability.
         if (threshold is null && !(Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates")))
             throw new RuleException("search_calibration_required", 503);
+        var thresholds = new CandidateThresholds(threshold,
+            threshold is null ? SuggestionMinimumScore("Search:SuggestionTextMinimumScore", 0.75) : null,
+            threshold is null && photo is not null ? SuggestionMinimumScore("Search:SuggestionImageMinimumScore", 0.90) : null);
         if (Hosted && await HasVisibleUnindexedItems(actor, photo is not null))
             throw new RuleException("search_index_pending", 503);
         EmbeddingResponse? image = null;
@@ -68,7 +72,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         }
         var text = await EmbedText(description);
         if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
-        var candidates = await Candidates(actor, text, image, threshold);
+        var candidates = await Candidates(actor, text, image, thresholds);
         if (candidates.Length > 0)
         {
             // Repeated searches should not grow an unbounded set of identical
@@ -209,7 +213,17 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         await command.ExecuteNonQueryAsync();
     }
 
-    private async Task<Guid[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, double? threshold)
+    private double SuggestionMinimumScore(string key, double fallback)
+    {
+        var configured = config[key];
+        if (configured is null) return fallback;
+        if (!double.TryParse(configured, NumberStyles.Float, CultureInfo.InvariantCulture, out var score) ||
+            !double.IsFinite(score) || score is <= 0 or > 1)
+            throw new RuleException("search_filter_not_configured", 503);
+        return score;
+    }
+
+    private async Task<Guid[]> Candidates(Actor actor, EmbeddingResponse? text, EmbeddingResponse? image, CandidateThresholds thresholds)
     {
         var query = text ?? image ?? throw new RuleException("search_input_required");
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();
@@ -232,8 +246,12 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
                 (COALESCE(0.7*image_text+0.3*finder_text, image_text, finder_text)
                  + COALESCE(image_image, image_text, finder_text))/2
               ELSE COALESCE(0.7*image_text+0.3*finder_text, image_text, finder_text)
-              END AS score FROM ranked)
-            SELECT "ItemId" FROM scored WHERE score IS NOT NULL AND (@threshold IS NULL OR score>=@threshold) ORDER BY score DESC,"ItemId" LIMIT 5
+              END AS score, finder_text, image_image FROM ranked)
+            SELECT "ItemId" FROM scored
+            WHERE score IS NOT NULL AND (@threshold IS NULL OR score>=@threshold)
+              AND (@textfloor IS NULL OR finder_text>=@textfloor)
+              AND (@imagefloor IS NULL OR image_image>=@imagefloor)
+            ORDER BY score DESC,"ItemId" LIMIT 5
             """;
         command.Parameters.AddWithValue("text", Vector(query.Vector));
         command.Parameters.AddWithValue("image", Vector((image ?? query).Vector));
@@ -244,7 +262,11 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         command.Parameters.AddWithValue("dimension", query.Dimension);
         command.Parameters.AddWithValue("user", actor.Id);
         command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
-        command.Parameters.AddWithValue("threshold", NpgsqlTypes.NpgsqlDbType.Double, (object?)threshold ?? DBNull.Value);
+        command.Parameters.AddWithValue("threshold", NpgsqlTypes.NpgsqlDbType.Double, (object?)thresholds.Approved ?? DBNull.Value);
+        // Image embeddings share a high background similarity across unrelated objects.
+        // Require independent description evidence before ranking/granting suggestions.
+        command.Parameters.AddWithValue("textfloor", NpgsqlTypes.NpgsqlDbType.Double, (object?)thresholds.Text ?? DBNull.Value);
+        command.Parameters.AddWithValue("imagefloor", NpgsqlTypes.NpgsqlDbType.Double, (object?)thresholds.Image ?? DBNull.Value);
         var candidates = new List<Guid>();
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync()) candidates.Add(reader.GetGuid(0));

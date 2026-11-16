@@ -274,13 +274,16 @@ it("rejects a blank search before sending an API request", async () => {
   expect(search).not.toHaveBeenCalled();
 });
 
-it("shows service failure separately from an empty search result", async () => {
+it.each([
+  ["search_calibration_required", /quality is safely approved/i],
+  ["search_filter_not_configured", /result filters are misconfigured/i],
+])("shows %s separately from an empty search result", async (code, message) => {
   const actor: Account = { id: "search-form-failure-test", name: "Member", email: "", role: "user" };
-  const search = vi.spyOn(lostFound, "search").mockRejectedValue(new ServiceError("unavailable", "search_calibration_required"));
+  const search = vi.spyOn(lostFound, "search").mockRejectedValue(new ServiceError("unavailable", code));
   renderForActor(actor, <SearchItems />);
   await userEvent.type(await screen.findByLabelText(/^Description of the lost item/), "Black umbrella with a wooden handle");
   await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
-  expect((await screen.findByRole("alert")).textContent).toMatch(/quality is safely approved/i);
+  expect((await screen.findByRole("alert")).textContent).toMatch(message);
   expect(screen.queryByText(/No qualifying results appeared/i)).toBeNull();
   expect(search).toHaveBeenCalledOnce();
 });

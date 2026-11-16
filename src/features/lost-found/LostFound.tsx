@@ -294,6 +294,7 @@ export function SearchItems() {
       "Matching is paused by the server configuration. This search was not sent to an external provider. Ask the site administrator to enable matching after required approvals are complete.",
     ],
     search_calibration_required: ["البحث متوقف حتى اعتماد جودة المطابقة بأمان.", "Search is unavailable until matching quality is safely approved."],
+    search_filter_not_configured: ["البحث متوقف بسبب إعدادات فلترة النتائج. تواصل مع مسؤول الموقع.", "Search is paused because the result filters are misconfigured. Contact the site administrator."],
     search_index_pending: ["تجري فهرسة بعض الأغراض. حاول مرة أخرى بعد اكتمالها.", "Some items are still being indexed. Try again after indexing completes."],
     search_external_images_not_approved: ["البحث بالصورة غير متاح حاليًا.", "Image search is currently unavailable."],
     search_provider_unavailable: ["تعذرت خدمة المطابقة. لم يُعتبر ذلك عدم وجود غرض مطابق.", "Matching service failed. This does not mean there is no matching item."],

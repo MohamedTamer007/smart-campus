@@ -158,15 +158,17 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         Assert.Equal("search_calibration_required", disabledOptIn.Code);
         Assert.Equal(4, boundary.Calls); // both disabled forms block before provider use
 
-        // The synthetic vectors rank Blue above Red; exposing both here tests candidate ordering,
-        // not retrieval precision or a production-quality threshold.
+        // Suggestion mode must not pad a relevant result with unrelated inventory.
         config["Search:AllowUncalibratedCandidates"] = "true";
         var candidates = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null));
-        Assert.Equal(new[] { blue, red }, candidates.GetProperty("itemIds").EnumerateArray()
+        Assert.Equal(new[] { blue }, candidates.GetProperty("itemIds").EnumerateArray()
             .Select(value => value.GetGuid()).ToArray());
         Assert.False(candidates.GetProperty("calibrated").GetBoolean());
         Assert.Equal(JsonValueKind.Null, candidates.GetProperty("calibration").ValueKind);
         Assert.Equal(4, boundary.Calls); // the query embedding is cached; no automatic resend occurs
+        var absentSuggestions = JsonSerializer.SerializeToElement(await retrieval.Search("Green unrelated object", null));
+        Assert.Empty(absentSuggestions.GetProperty("itemIds").EnumerateArray());
+        Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == red && g.UserId == campus.Other));
 
         // A valid reviewed threshold continues to filter candidates even while opt-in is enabled.
         config["Search:CalibrationApproval"] = "TEST ONLY — not a real score approval";

@@ -19,6 +19,8 @@
   },
   "Search": {
     "AllowUncalibratedCandidates": true,
+    "SuggestionTextMinimumScore": 0.75,
+    "SuggestionImageMinimumScore": 0.90,
     "ProviderDataCollection": "deny",
     "ExternalProcessingApproved": false,
     "ExternalImagesApproved": false,
