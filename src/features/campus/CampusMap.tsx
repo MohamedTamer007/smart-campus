@@ -332,11 +332,11 @@ export function CampusMap() {
         <section className="panel campus-explorer-outside">
           <h2>{t("مرافق قريبة خارج حدود الحرم", "Nearby facilities outside the campus boundary")}</h2>
           <p>{t(
-            "تذكر صفحة الجامعة أن المكتبة المركزية وفندق الطلاب الذكور يقعان على بُعد نحو 150 مترًا خارج الحرم الرئيسي. لم أضع لهما دبوسًا لأن المصدر لا يحدد إحداثيات دقيقة لهما.",
-            "The university profile places the central library and male students hotel about 150 metres outside the main campus. They are not pinned because the source does not provide exact coordinates.",
+            "يذكر دليل الطالب الجامعي 2022/2023 أن المكتبة المركزية وفندق الطلاب الذكور يقعان خارج الحرم الرئيسي بحوالي 150 مترًا. لم أضع لهما دبوسًا لأن الدليل لا يحدد إحداثيات دقيقة لهما.",
+            "The 2022/23 university student guide places the central library and male students hotel about 150 metres outside the main campus. They are not pinned because the guide does not provide exact coordinates.",
           )}</p>
           <a href={UNIVERSITY_PROFILE} target="_blank" rel="noreferrer">
-            {t("نبذة الجامعة — الموقع الرسمي", "University profile — official website")}
+            {t("دليل الطالب الجامعي 2022/2023 — صفحة 7", "University student guide 2022/23 — page 7")}
           </a>
         </section>
 
