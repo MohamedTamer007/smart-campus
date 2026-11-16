@@ -355,7 +355,12 @@ export function AdminOverview() {
                 <MetricDistribution title={t("الأولوية المعتمدة", "Staff-confirmed priority")} values={stats.priorities ?? {}} t={t} />
                 <MetricDistribution title={t("الخطورة المعتمدة", "Staff-confirmed risk")} values={stats.risks ?? {}} t={t} />
               </div>
-              <div className="split">
+              <div className="admin-dashboard-insights">
+                <section className="panel">
+                  <h2>{t("الاتجاه الأسبوعي للبلاغات", "Weekly report trend")}</h2>
+                  {(stats.weeklyTrend ?? []).map(w => <p key={w.weekOf}><bdi>{w.weekOf}</bdi> · {w.count}</p>)}
+                </section>
+                <OperationsStatus />
                 <section className="panel campus-map-panel">
                   <h2>{t("مخطط مواقع البلاغات", "Report location map")}</h2>
                   <p>{t("صورة جوية للحرم؛ تظهر عليها المباني وأعداد البلاغات، ويمكن تحديد مواقع المباني بالنقر على الصورة.", "Aerial campus photo with building locations and report counts. Click the photo to place buildings.")}</p>
@@ -445,16 +450,11 @@ export function AdminOverview() {
                   <h3>{t("مواقع غير موضوعة على المخطط", "Locations not placed on the map")}</h3>
                   {(stats.unplacedBuildings ?? []).length ? (stats.unplacedBuildings ?? []).map(b => <p key={b.id}>{t(b.ar, b.en)} · {b.count}</p>) : <p>{t("جميع المباني ذات الصلة موضوعة.", "All relevant buildings are placed.")}</p>}
                 </section>
-                <section className="panel">
-                  <h2>{t("الاتجاه الأسبوعي للبلاغات", "Weekly report trend")}</h2>
-                  {(stats.weeklyTrend ?? []).map(w => <p key={w.weekOf}><bdi>{w.weekOf}</bdi> · {w.count}</p>)}
-                </section>
               </div>
             </>
           );
         }}
       </AsyncView>
-      <OperationsStatus />
     </Page>
   );
 }

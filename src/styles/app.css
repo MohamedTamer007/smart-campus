@@ -1026,6 +1026,15 @@ button:hover:enabled {
 .admin-stats strong {
   font-size: 1.7rem;
 }
+.admin-dashboard-insights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+.admin-dashboard-insights > .panel {
+  margin-bottom: 0;
+}
 .campus-map-panel {
   grid-column: 1 / -1;
 }
@@ -1124,6 +1133,9 @@ button:hover:enabled {
 @media (max-width: 760px) {
   .admin-stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .admin-dashboard-insights {
+    grid-template-columns: 1fr;
   }
 }
 
