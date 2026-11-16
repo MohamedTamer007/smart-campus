@@ -63,11 +63,12 @@ describe("lost-and-found frontend boundary", () => {
       return new Response(JSON.stringify(body), { status: 200 });
     }));
     try {
-      const result = await lostFound.search(guestAccount, "Silver watch with red dial");
+      const result = await lostFound.search(guestAccount, "  Silver watch with red dial  ");
       expect(result.items.map(item => item.id)).toEqual(["watch", "phone"]);
       expect(result.similarities?.watch).toMatchObject({ score: 0.821, textScore: 0.782, imageScore: 0.86 });
       expect(result.similarities?.phone.score).toBe(0.7455);
       expect(result.calibrated).toBe(false);
+      expect(result.queryDescription).toBe("Silver watch with red dial");
     } finally { vi.unstubAllGlobals(); }
   });
 

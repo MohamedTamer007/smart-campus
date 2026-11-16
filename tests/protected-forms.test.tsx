@@ -250,7 +250,7 @@ it.each([true, false])("renders returned matches with server scores only when av
     expect(screen.getByText("82.1%")).toBeTruthy();
     expect(screen.getByText("78.2%")).toBeTruthy();
     expect(screen.getByText("86%")).toBeTruthy();
-  } else expect(screen.queryByText(/Similarity score:/)).toBeNull();
+  } else expect(screen.queryByText(/Combined AI similarity:/)).toBeNull();
   expect(screen.getByText(/not a match probability or proof of ownership/)).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Potential matches" })).toBeNull();
   expect(search).toHaveBeenCalledWith(actor, "Blue thermos, star sticker", image);
@@ -284,6 +284,25 @@ it("shows measured similarity in Arabic and explains uploader and custody exclus
   expect(screen.getByText(/ليست احتمال صحة المطابقة أو إثبات الملكية/)).toBeTruthy();
   expect(screen.getByText(/يستثني الأغراض التي سجّلتها بنفسك أو الموجودة بعهدتك/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "معثوراتي" }).getAttribute("href")).toBe("/found");
+});
+
+it.each([
+  ["ايفون 17", true],
+  ["ايفون ١٧", false],
+] as const)("separates literal description equality from lower AI relevance for %s", async (query, identical) => {
+  const actor: Account = { id: "literal-search-match", name: "Member", email: "", role: "user" };
+  const item: FoundItem = { id: "iphone-match", description: "ايفون 17", place: "Hall", date: "2026-11-16",
+    storage: null, uploaderId: "finder", custodianId: "finder", state: "available", createdAt: "2026-11-16", version: 1 };
+  vi.spyOn(lostFound, "search").mockResolvedValue({ items: [item], calibrated: false, queryDescription: query,
+    similarities: { "iphone-match": { score: 0.8744, textScore: 0.7488, imageScore: 1 } } });
+  renderForActor(actor, <SearchItems />);
+  await userEvent.type(await screen.findByLabelText(/^Description of the lost item/), query);
+  await userEvent.click(screen.getByRole("button", { name: /^Search$/ }));
+  expect(await screen.findByText("87.4%")).toBeTruthy();
+  expect(screen.getByText("74.9%")).toBeTruthy();
+  expect(screen.getByText(/Description-to-content relevance:/)).toBeTruthy();
+  expect(screen.queryByText(/Exact text match:/) !== null).toBe(identical);
+  expect(screen.getAllByText("100%")).toHaveLength(identical ? 2 : 1);
 });
 
 it("rejects a blank search before sending an API request", async () => {

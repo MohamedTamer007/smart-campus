@@ -43,6 +43,7 @@ export interface SearchResult {
   items: FoundItem[];
   calibrated: boolean;
   similarities?: Record<string, SearchSimilarity>;
+  queryDescription?: string;
 }
 export type ClaimStatus =
   "pending" | "approved" | "rejected" | "delivered" | "closed" | "cancelled";
@@ -149,6 +150,7 @@ export const lostFound: LostFoundService = {
       items: await Promise.all(response.itemIds.map(id => lostFound.detail(actor, id))),
       calibrated: response.calibrated === true,
       similarities,
+      queryDescription: description.trim(),
     };
   },
   detail: async (_actor, id) => withPhoto(await api<FoundItem & { canClaim: boolean }>(`/found/${id}`)),
