@@ -123,7 +123,7 @@ it("shows the admin map editor to an account with an additional administrator gr
     workingSetBytes: 64 * 1024 * 1024, worker: "hosted_blocked", calibrationApproved: false, quotas: [], jobs: [] });
   const actor: Account = { id: "admin-extra", name: "Administrator", email: "", role: "user", roles: ["admin"] };
   renderForActor(actor, <AdminOverview />);
-  expect(await screen.findByRole("button", { name: "Set building position on the schematic" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Set building position on the photo" })).toBeTruthy();
 });
 
 it("requires a selected account before requesting a permission change", async () => {

@@ -71,7 +71,7 @@ it("lets an administrator place a building with arrow keys and saves the selecte
     </MemoryRouter>,
   );
 
-  const mapControl = await screen.findByRole("button", { name: "Set building position on the schematic" });
+  const mapControl = await screen.findByRole("button", { name: "Set building position on the photo" });
   await user.selectOptions(screen.getByLabelText("Building to position"), "building-a");
   expect((mapControl as HTMLButtonElement).disabled).toBe(false);
 
