@@ -158,17 +158,18 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
         Assert.Equal("search_calibration_required", disabledOptIn.Code);
         Assert.Equal(4, boundary.Calls); // both disabled forms block before provider use
 
-        // Suggestion mode must not pad a relevant result with unrelated inventory.
+        // Suggestion mode ranks the bounded eligible inventory; scores are not calibrated acceptance.
         config["Search:AllowUncalibratedCandidates"] = "true";
-        var candidates = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null));
-        Assert.Equal(new[] { blue }, candidates.GetProperty("itemIds").EnumerateArray()
+        var candidates = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Equal(new[] { blue, red }, candidates.GetProperty("itemIds").EnumerateArray()
             .Select(value => value.GetGuid()).ToArray());
         Assert.False(candidates.GetProperty("calibrated").GetBoolean());
         Assert.Equal(JsonValueKind.Null, candidates.GetProperty("calibration").ValueKind);
         Assert.Equal(4, boundary.Calls); // the query embedding is cached; no automatic resend occurs
-        var absentSuggestions = JsonSerializer.SerializeToElement(await retrieval.Search("Green unrelated object", null));
-        Assert.Empty(absentSuggestions.GetProperty("itemIds").EnumerateArray());
-        Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == red && g.UserId == campus.Other));
+        var ranked = candidates.GetProperty("candidates").EnumerateArray().ToArray();
+        Assert.Equal(1, ranked[0].GetProperty("score").GetDouble(), 6);
+        Assert.Equal(0, ranked[1].GetProperty("score").GetDouble(), 6);
+        Assert.Equal(JsonValueKind.Null, ranked[0].GetProperty("imageScore").ValueKind);
 
         // A valid reviewed threshold continues to filter candidates even while opt-in is enabled.
         config["Search:CalibrationApproval"] = "TEST ONLY — not a real score approval";

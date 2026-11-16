@@ -50,6 +50,35 @@ describe("lost-and-found frontend boundary", () => {
     expect(currentCustodian(incoming, actor)).toBe(false);
     expect(departmentStats([incoming, held], [claim], actor)).toEqual({ held: 1, incoming: 1, pendingClaims: 1 });
   });
+
+  it("keeps backend similarity scores attached to item IDs and does not derive them from rank", async () => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async request => {
+      const path = String(request);
+      const body = path.endsWith("/csrf") ? { token: "synthetic-csrf" }
+        : path.endsWith("/found/search") ? { itemIds: ["watch", "phone"], calibrated: false, candidates: [
+          { itemId: "phone", score: 0.7455, textScore: 0.711, imageScore: 0.78 },
+          { itemId: "watch", score: 0.821, textScore: 0.782, imageScore: 0.86 },
+        ] }
+          : { id: path.split("/").at(-1), description: "Synthetic item", mediaUrl: null };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }));
+    try {
+      const result = await lostFound.search(guestAccount, "Silver watch with red dial");
+      expect(result.items.map(item => item.id)).toEqual(["watch", "phone"]);
+      expect(result.similarities?.watch).toMatchObject({ score: 0.821, textScore: 0.782, imageScore: 0.86 });
+      expect(result.similarities?.phone.score).toBe(0.7455);
+      expect(result.calibrated).toBe(false);
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it.each([null, 1.01, -1.01])("rejects malformed or out-of-range server similarity %s", async score => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async request => new Response(JSON.stringify(
+      String(request).endsWith("/csrf") ? { token: "synthetic-csrf" }
+        : { itemIds: ["watch"], candidates: [{ itemId: "watch", score, textScore: 0.8, imageScore: null }] },
+    ), { status: 200 })));
+    try { await expect(lostFound.search(guestAccount, "Silver watch")).rejects.toMatchObject({ code: "unavailable" }); }
+    finally { vi.unstubAllGlobals(); }
+  });
   it("counts custody for an account with a granted secretariat role and a primary user role", () => {
     const actor: Account = { id: "staff", name: "", email: "", role: "user", roles: ["secretariat"],
       departments: [{ id: "scope-1", code: "secretariat" }] };

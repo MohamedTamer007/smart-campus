@@ -124,6 +124,8 @@ The place-found field is required. Unlike the maintenance-location rule, the dis
 
 **SEARCH-04 - Agreed:** a similarity result is a potential match, not an ownership certificate or automatic recovery approval. Do not show invented confidence percentages. A qualified match does not make the finder's private phone public.
 
+**Owner amendment — 16 November 2026:** display the actual backend similarity score as a percentage, with available description/photo components. Label it as a computed similarity score, not a calibrated probability or proof of ownership. Do not fabricate scores when none are supplied.
+
 **SEARCH-05 - Baseline:** distinguish loading, no suitable matches, invalid input and service failure. A provider failure must not be labelled 'no matching item exists'. Allow the user to revise the description and retry. Do not promise a fixed search duration.
 
 **SEARCH-06 - Baseline:** enforce authenticated access to result details and return only records the requester may view under the search policy. Do not depend on unguessable IDs or a hidden frontend list. Delivered/closed items cannot be offered as available recovery candidates.

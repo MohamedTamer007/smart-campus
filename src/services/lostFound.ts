@@ -34,9 +34,15 @@ export interface FoundItem extends Omit<FoundInput, "storage"> {
   canReceive?: boolean;
   canCancelHandover?: boolean;
 }
+export interface SearchSimilarity {
+  score: number;
+  textScore: number | null;
+  imageScore: number | null;
+}
 export interface SearchResult {
   items: FoundItem[];
   calibrated: boolean;
+  similarities?: Record<string, SearchSimilarity>;
 }
 export type ClaimStatus =
   "pending" | "approved" | "rejected" | "delivered" | "closed" | "cancelled";
@@ -131,10 +137,18 @@ export const lostFound: LostFoundService = {
   register: async (_actor, input) => withPhoto(await api<FoundItem>("/found", { method: "POST", body: form({ ...input,
     destination: input.destination ? await departmentId(input.destination) : undefined }) })),
   search: async (actor, description, photo) => {
-    const response = await api<{ itemIds: string[]; calibrated?: boolean }>("/found/search", { method: "POST", body: form({ description, photo }) });
+    const response = await api<{ itemIds: string[]; calibrated?: boolean; candidates?: (SearchSimilarity & { itemId: string })[] }>("/found/search", { method: "POST", body: form({ description, photo }) });
+    const similarities: Record<string, SearchSimilarity> = Object.create(null);
+    for (const candidate of response.candidates ?? []) {
+      if (!Number.isFinite(candidate.score) || [candidate.score, candidate.textScore, candidate.imageScore]
+        .some(score => score !== null && (!Number.isFinite(score) || score < -1 || score > 1)))
+        throw new ServiceError("unavailable");
+      if (response.itemIds.includes(candidate.itemId)) similarities[candidate.itemId] = candidate;
+    }
     return {
       items: await Promise.all(response.itemIds.map(id => lostFound.detail(actor, id))),
       calibrated: response.calibrated === true,
+      similarities,
     };
   },
   detail: async (_actor, id) => withPhoto(await api<FoundItem & { canClaim: boolean }>(`/found/${id}`)),

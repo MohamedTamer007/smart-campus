@@ -17,6 +17,8 @@ namespace SmartCampus.Tests;
 
 public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     private sealed class SyntheticEncoder : HttpMessageHandler, IHttpClientFactory, IInferenceBudget
     {
         public HttpClient CreateClient(string name) => new(this, disposeHandler: false);
@@ -33,9 +35,9 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
     }
 
     [DatabaseFact]
-    public async Task Suggestions_require_independent_text_and_photo_evidence_and_only_grant_accepted_items()
+    public async Task Suggestions_keep_cross_photo_candidates_and_report_actual_scores_without_claiming_calibration()
     {
-        // Regression: a watch query previously included unrelated inventory such as phones.
+        // Regression: separate unreviewed floors hid an eligible watch photographed differently.
         using var uploader = await campus.Login(campus.Student);
         var watch = await campus.Item(uploader);
         var phone = await campus.Item(uploader);
@@ -60,47 +62,54 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
         await retrieval.Index(watch);
         await retrieval.Index(phone);
 
-        // The query's text and red image both use axis 1. These controlled cosine
-        // scores reproduce high image similarity without corresponding text evidence.
-        await SetSimilarity(db, watch, "description", 0.85f);
-        await SetSimilarity(db, watch, "image", 0.95f);
-        await SetSimilarity(db, phone, "description", 0.65f);
-        await SetSimilarity(db, phone, "image", 0.99f);
+        // Controlled vectors simulate a different photo: neither modality reaches
+        // the superseded 0.75/0.90 floors, but the watch is the closest candidate.
+        await SetSimilarity(db, watch, "description", 0.60f);
+        await SetSimilarity(db, watch, "image", 0.86f);
+        await SetSimilarity(db, phone, "description", 0.55f);
+        await SetSimilarity(db, phone, "image", 0.78f);
         using var photo = new MemoryStream(Picture(SKColors.Red, 9));
         var file = new FormFile(photo, 0, photo.Length, "photo", "synthetic-watch.png");
-        var response = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file));
-        Assert.Equal(watch, Assert.Single(response.GetProperty("itemIds").EnumerateArray()).GetGuid());
+        var response = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file), JsonOptions);
+        Assert.Equal(new[] { watch, phone }, response.GetProperty("itemIds").EnumerateArray().Select(id => id.GetGuid()).ToArray());
+        var candidates = response.GetProperty("candidates").EnumerateArray().ToArray();
+        Assert.Equal(watch, candidates[0].GetProperty("itemId").GetGuid());
+        Assert.Equal(0.821, candidates[0].GetProperty("score").GetDouble(), 5);
+        Assert.Equal(0.782, candidates[0].GetProperty("textScore").GetDouble(), 5);
+        Assert.Equal(0.86, candidates[0].GetProperty("imageScore").GetDouble(), 5);
+        Assert.Equal(0.7455, candidates[1].GetProperty("score").GetDouble(), 5);
         Assert.False(response.GetProperty("calibrated").GetBoolean());
         Assert.Equal(JsonValueKind.Null, response.GetProperty("calibration").ValueKind);
-        Assert.True(await db.SearchGrants.AnyAsync(g => g.ItemId == watch && g.UserId == campus.Other));
-        Assert.False(await db.SearchGrants.AnyAsync(g => g.ItemId == phone && g.UserId == campus.Other));
+        Assert.Equal(2, await db.SearchGrants.CountAsync(g => g.UserId == campus.Other));
 
-        // Passing text cannot compensate for a weak photo, either.
-        await SetSimilarity(db, watch, "image", 0.85f);
-        var rejectedPhoto = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file));
-        Assert.Empty(rejectedPhoto.GetProperty("itemIds").EnumerateArray());
-        var textOnly = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", null));
-        Assert.Equal(watch, Assert.Single(textOnly.GetProperty("itemIds").EnumerateArray()).GetGuid());
+        var textOnly = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", null), JsonOptions);
+        var firstText = textOnly.GetProperty("candidates")[0];
+        Assert.Equal(watch, firstText.GetProperty("itemId").GetGuid());
+        Assert.Equal(0.782, firstText.GetProperty("score").GetDouble(), 5);
+        Assert.Equal(JsonValueKind.Null, firstText.GetProperty("imageScore").ValueKind);
 
-        // A below-floor description must also produce an honest empty result.
-        await SetSimilarity(db, watch, "description", 0.74f);
-        var absent = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", null));
-        Assert.Empty(absent.GetProperty("itemIds").EnumerateArray());
-        await SetSimilarity(db, watch, "description", 0.75f);
-        var boundary = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", null));
-        Assert.Equal(watch, Assert.Single(boundary.GetProperty("itemIds").EnumerateArray()).GetGuid());
+        // The uploader's own inventory remains excluded; no search grants bypass custody.
+        var ownerPrincipal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, campus.Student.ToString())], "test"));
+        var ownerAccess = new Access(db, new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = ownerPrincipal } },
+            scope.ServiceProvider.GetRequiredService<UserManager<CampusUser>>(), scope.ServiceProvider.GetRequiredService<ReleasePolicy>());
+        var ownerRetrieval = new RetrievalService(db, ownerAccess, encoder, config, scope.ServiceProvider.GetRequiredService<PrivateMedia>(),
+            new RemoteEmbeddings(encoder, config, encoder));
+        var ownerResponse = JsonSerializer.SerializeToElement(await ownerRetrieval.Search("Red watch query", file), JsonOptions);
+        Assert.Empty(ownerResponse.GetProperty("itemIds").EnumerateArray());
+        Assert.Empty(ownerResponse.GetProperty("candidates").EnumerateArray());
+        Assert.False(await db.SearchGrants.AnyAsync(g => g.UserId == campus.Student));
 
-        foreach (var key in new[] { "Search:SuggestionTextMinimumScore", "Search:SuggestionImageMinimumScore" })
-        {
-            foreach (var invalid in new[] { "NaN", "Infinity", "0", "-0.1", "1.1", "invalid" })
-            {
-                config[key] = invalid;
-                var error = await Assert.ThrowsAsync<RuleException>(() => retrieval.Search("Red watch query", file));
-                Assert.Equal("search_filter_not_configured", error.Code);
-                Assert.Equal(503, error.Status);
-            }
-            config[key] = null;
-        }
+        // Reviewed thresholds still filter the same overall score.
+        config["Search:CalibrationApproval"] = "SYNTHETIC ONLY - not retrieval quality evidence";
+        config["Search:CalibrationRevision"] = RemoteEmbeddings.Revision(config);
+        config["Search:MultimodalMinimumScore"] = "0.8";
+        var reviewed = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file), JsonOptions);
+        Assert.Equal(watch, Assert.Single(reviewed.GetProperty("itemIds").EnumerateArray()).GetGuid());
+        Assert.True(reviewed.GetProperty("calibrated").GetBoolean());
+        config["Search:MultimodalMinimumScore"] = "0.85";
+        var rejected = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file), JsonOptions);
+        Assert.Empty(rejected.GetProperty("itemIds").EnumerateArray());
+        Assert.Empty(rejected.GetProperty("candidates").EnumerateArray());
     }
 
     private static async Task SetSimilarity(CampusDb db, Guid item, string kind, float similarity)

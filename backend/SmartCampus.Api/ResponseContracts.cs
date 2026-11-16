@@ -1,3 +1,5 @@
+using SmartCampus.Infrastructure;
+
 namespace SmartCampus.Api;
 
 public sealed record PageResponse<T>(T[] Items);
@@ -24,7 +26,7 @@ public sealed record ClaimDetailResponse(ClaimResponse Claim, FoundResponse Item
 public sealed record ScopeResponse(Guid Id, string Code);
 public sealed record AccountResponse(Guid Id, string Name, string Email, string[] Roles, ScopeResponse[] Departments,
     string Role, string? Department, string Language, bool IsDemo = false);
-public sealed record SearchResponse(Guid[] ItemIds, string RankingVersion, string? Calibration, bool Calibrated);
+public sealed record SearchResponse(Guid[] ItemIds, string RankingVersion, string? Calibration, bool Calibrated, RetrievalCandidate[] Candidates);
 public sealed record JobStateResponse(string Kind, string State, int Count, int MaximumAttempts);
 public sealed record ProviderQuotaResponse(string Provider, int Used, int DailyLimit);
 public sealed record AiReadinessResponse(string Provider, bool TextConfigured, bool ImagesConfigured,

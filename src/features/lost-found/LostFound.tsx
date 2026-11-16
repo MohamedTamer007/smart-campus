@@ -20,6 +20,7 @@ import {
   type Department,
   type FoundItem,
   type SearchResult,
+  type SearchSimilarity,
   type Claim,
   type ClaimStatus,
 } from "../../services/lostFound";
@@ -97,8 +98,10 @@ function departmentName(id: Department, t: (ar: string, en: string) => string) {
     ? t("الأمن", "Security")
     : id === "secretariat" ? t("السكرتارية", "Secretariat") : id;
 }
-function FoundCard({ item }: { item: FoundItem }) {
-  const { t } = useApp();
+function FoundCard({ item, similarity }: { item: FoundItem; similarity?: SearchSimilarity }) {
+  const { t, language } = useApp();
+  const percent = new Intl.NumberFormat(language === "ar" ? "ar-EG" : "en-GB", { style: "percent", maximumFractionDigits: 1 });
+  const displayScore = (score: number) => percent.format(Math.max(0, Math.min(1, score)));
   return (
     <Link className="record-card found-card" to={`/found/${item.id}`}>
       <Photo file={item.photo} src={item.mediaUrl} />
@@ -114,6 +117,13 @@ function FoundCard({ item }: { item: FoundItem }) {
           </span>
         </div>
         <h3>{item.description}</h3>
+        {similarity && <div>
+          <strong>{t("درجة التشابه", "Similarity score")}: <bdi>{displayScore(similarity.score)}</bdi></strong>
+          <p>
+            {similarity.textScore !== null && <span>{t("الوصف", "Description")}: <bdi>{displayScore(similarity.textScore)}</bdi></span>}
+            {similarity.imageScore !== null && <span> · {t("الصورة", "Photo")}: <bdi>{displayScore(similarity.imageScore)}</bdi></span>}
+          </p>
+        </div>}
         <p>
           {item.place} · <bdi>{item.date}</bdi>
         </p>
@@ -294,7 +304,6 @@ export function SearchItems() {
       "Matching is paused by the server configuration. This search was not sent to an external provider. Ask the site administrator to enable matching after required approvals are complete.",
     ],
     search_calibration_required: ["البحث متوقف حتى اعتماد جودة المطابقة بأمان.", "Search is unavailable until matching quality is safely approved."],
-    search_filter_not_configured: ["البحث متوقف بسبب إعدادات فلترة النتائج. تواصل مع مسؤول الموقع.", "Search is paused because the result filters are misconfigured. Contact the site administrator."],
     search_index_pending: ["تجري فهرسة بعض الأغراض. حاول مرة أخرى بعد اكتمالها.", "Some items are still being indexed. Try again after indexing completes."],
     search_external_images_not_approved: ["البحث بالصورة غير متاح حاليًا.", "Image search is currently unavailable."],
     search_provider_unavailable: ["تعذرت خدمة المطابقة. لم يُعتبر ذلك عدم وجود غرض مطابق.", "Matching service failed. This does not mean there is no matching item."],
@@ -329,15 +338,17 @@ export function SearchItems() {
           </Field>
           <ImageField photo={photo} onChange={(file) => { setPhoto(file); setMatches(null); setFailure(null); }} label={t("صورة سابقة للغرض — اختيارية", "Previous photo of the item — optional")} />
           <Feedback>{t("لا تكشف المطابقة المحتملة ملكية الغرض. لا تعرض الخدمة إلا النتائج المؤهلة التي يسمح لك النظام برؤيتها.", "A potential match does not prove ownership. The service only shows qualifying results you are authorized to view.")}</Feedback>
+          <p>{t("البحث يستثني الأغراض التي سجّلتها بنفسك أو الموجودة بعهدتك، وكذلك المحجوزة والمسلّمة. يمكنك مراجعة أغراضك في ", "Search excludes items you registered or hold in custody, as well as reserved and delivered items. Review your items in ")}<Link to="/found">{t("معثوراتي", "My found items")}</Link>.</p>
           <button className="button primary" disabled={pending || failure === "search_provider_not_configured" || failure === "search_calibration_required"}>{pending ? t("جارٍ البحث…", "Searching…") : t("ابحث", "Search")}</button>
         </form>
         {failure && <Feedback kind="error">{failureText[failure] ? t(...failureText[failure]) : t("تعذر إكمال البحث. حاول لاحقًا.", "Search could not be completed. Try again later.")}</Feedback>}
         {matches !== null && !matches.calibrated && <Feedback>{t("هذه اقتراحات مرتبة بالتشابه دون معايرة معتمدة؛ قد تتضمن أغراضًا غير مرتبطة ببحثك. لا تثبت المطابقة أو الملكية، ويظل الاسترداد خاضعًا لمراجعة الحائز.", "These are similarity-ranked suggestions without approved calibration; unrelated items may appear. They do not establish a match or ownership. Recovery still requires the custodian’s review.")}</Feedback>}
+        {matches !== null && matches.items.length > 0 && <p>{t("النسبة درجة تشابه محسوبة من الوصف والصورة المتاحة، وليست احتمال صحة المطابقة أو إثبات الملكية.", "The percentage is a computed similarity score from the available description and photo, not a match probability or proof of ownership.")}</p>}
         {matches !== null && (matches.items.length === 0
           ? <Feedback>{t("لم تظهر نتائج مؤهلة لهذا البحث. هذا لا يثبت أن الغرض غير موجود؛ يمكنك تعديل الوصف أو الصورة والمحاولة مرة أخرى.", "No qualifying results appeared for this search. This does not prove the item is absent; revise the description or photo and try again.")}</Feedback>
           : <section className="search-results" aria-live="polite" aria-labelledby="search-results-heading">
             <h2 id="search-results-heading">{matches.calibrated ? t("مطابقات محتملة", "Potential matches") : t("اقتراحات مشابهة", "Similar suggestions")}</h2>
-            <div className="record-list">{matches.items.map((item) => <FoundCard key={item.id} item={item} />)}</div>
+            <div className="record-list">{matches.items.map((item) => <FoundCard key={item.id} item={item} similarity={matches.similarities?.[item.id]} />)}</div>
           </section>)}
       </div>
     </Page>
