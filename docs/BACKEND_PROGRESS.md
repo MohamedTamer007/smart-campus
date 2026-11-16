@@ -657,6 +657,13 @@ Code, security, test and documentation review passed. Found-item inventory lists
 
 ## 16 November 2026 — Bilingual maintenance AI explanations
 
-- Maintenance assessment suggestions now require separate bounded Arabic and English explanations from the provider, persist both values, and return them under the existing staff-only assessment detail gate. Existing English explanation data is backfilled into the English field; Arabic UI shows a localized availability note for older records that have no Arabic explanation.
+- Maintenance assessment suggestions now require separate bounded Arabic and English explanations from the provider, persist both values, and return them under the existing staff-only assessment detail gate. Existing single-language explanation data remains readable; Arabic UI shows a localized availability note for older records that have no Arabic explanation.
 - The detail view selects the explanation matching the current interface language and translates the supported `urgent` and `normal` priorities. Existing taxonomy validation, staff privacy boundary, and rendered-text escaping remain in place; report content continues to be treated as untrusted evidence.
 - Both bounded explanations are stored in the existing assessment text column, so this change does not require a database migration. Older records remain readable and show a localized note where Arabic text is unavailable. CI will run frontend and backend suites on the commit; no manual test command or live AI inference was run for this change.
+
+
+## 16 November 2026 — Provider fixture repair and map cursor
+
+- Fixed the bilingual assertions in `OpenRouter_text_classification_uses_pinned_free_model_without_paid_fallback` to match its existing shared provider fixture (`صناعي` / `Synthetic`). Both language assertions remain enabled. CI on the preceding commit failed only this expectation; its PostgreSQL backend suite passed after correction.
+- Commit `6f1c2926afab4a27a2dc8f451fc340cdaad87874` deployed successfully in [run 43958792358](https://github.com/MohamedTamer007/smart-campus/actions/runs/43958792358): 17 frontend test files passed, backend 157 passed / 76 skipped on the Windows runner, build and WebDeploy succeeded. An independent `Invoke-WebRequest https://smartcampus.tryasp.net/health/live` returned HTTP 200 with `status=live`.
+- The map position selector now uses the default arrow cursor while disabled before building selection, overriding the global disabled-button wait cursor. Its enabled crosshair behavior and building-selection requirement are preserved. This stylesheet change is covered by the automatic build and deployment checks on the new commit.

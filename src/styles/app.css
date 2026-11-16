@@ -1081,6 +1081,7 @@ button:hover:enabled {
   outline: 3px solid var(--blue);
   outline-offset: 3px;
 }
+.map-editor-canvas-button:disabled { cursor: default; }
 .map-editor-canvas-button:not(:disabled) { cursor: crosshair; }
 .map-editor-canvas-button .campus-map-stage { margin: 0; }
 .map-editor.no-print {
