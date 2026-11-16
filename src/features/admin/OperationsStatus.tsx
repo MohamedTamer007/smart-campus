@@ -27,7 +27,7 @@ export function OperationsStatus() {
           const workerStatus = status.worker === "available"
             ? t("متاحة", "Available")
             : status.worker === "hosted_configured"
-              ? t("الإعداد مكتمل", "Configured")
+              ? t("الإعداد مكتمل؛ الجاهزية غير مفحوصة", "Configured; readiness is not checked")
               : status.worker === "hosted_blocked"
                 ? t("غير جاهزة؛ إعدادات الخدمة ناقصة", "Not ready; service setup is incomplete")
                 : t("غير متاحة", "Unavailable");
