@@ -138,8 +138,6 @@ public sealed class Assessment : Record
     public string? Priority { get; set; }
     public string? Risk { get; set; }
     public string? Explanation { get; set; }
-    public string? ExplanationAr { get; set; }
-    public string? ExplanationEn { get; set; }
     public string? Model { get; set; }
     public string? FailureCode { get; set; }
     public Guid? ReviewedBy { get; set; }

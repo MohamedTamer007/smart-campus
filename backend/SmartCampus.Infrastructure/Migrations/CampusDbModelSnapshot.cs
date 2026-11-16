@@ -316,14 +316,6 @@ namespace SmartCampus.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<string>("ExplanationAr")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("ExplanationEn")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
                     b.Property<string>("FailureCode")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
