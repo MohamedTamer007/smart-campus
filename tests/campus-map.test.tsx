@@ -2,11 +2,12 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppProvider } from "../src/app/context";
+import { MemoryRouter } from "react-router-dom";
 import { CampusMap } from "../src/features/campus/CampusMap";
 
 function renderMap() {
   localStorage.setItem("smart-campus-language", "en");
-  render(<AppProvider><CampusMap /></AppProvider>);
+  render(<MemoryRouter><AppProvider><CampusMap /></AppProvider></MemoryRouter>);
 }
 
 beforeEach(() => {

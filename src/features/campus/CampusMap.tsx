@@ -21,6 +21,9 @@ type CampusPlace = {
   sourceUrl: string;
   sourceAr: string;
   sourceEn: string;
+  mapSourceUrl?: string;
+  mapSourceAr?: string;
+  mapSourceEn?: string;
 };
 
 const CAMPUS_PLACES: CampusPlace[] = [
@@ -41,27 +44,33 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "playgrounds",
     ar: "الملاعب الرياضية",
     en: "Sports Fields",
-    x: 54,
-    y: 24,
+    x: 43.9,
+    y: 30.6,
     sourceEra: "2024",
     detailAr: "الملاعب موضحة في الجزء الشمالي الأوسط من مخطط الحرم الجامعي الرسمي.",
     detailEn: "The sports fields are identified in the north-central part of the official campus plan.",
     sourceUrl: DENTISTRY_GUIDE + "#page=10",
     sourceAr: "دليل طب الأسنان 2024/2025 — خريطة الحرم، صفحة 9",
     sourceEn: "Dentistry guide 2024/25 — campus map, page 9",
+    mapSourceUrl: "https://mapcarta.com/W1224226240",
+    mapSourceAr: "إحداثيات مجمع الملاعب — OpenStreetMap / Mapcarta",
+    mapSourceEn: "Playground coordinates — OpenStreetMap / Mapcarta",
   },
   {
     id: "hospital",
     ar: "المستشفى الجامعي",
     en: "University Hospital",
-    x: 83,
-    y: 31,
+    x: 75,
+    y: 13.4,
     sourceEra: "2024",
     detailAr: "المستشفى محدد في خريطة الحرم الرسمية. ويذكر دليل طب الأسنان 2024/2025 أن كلية طب الأسنان تقع داخل مبنى المستشفى.",
     detailEn: "The hospital is identified on the official campus map. The 2024/25 Dentistry Guide states that the Faculty of Dentistry is located inside the hospital building.",
     sourceUrl: DENTISTRY_GUIDE + "#page=6",
     sourceAr: "دليل طب الأسنان 2024/2025 — موقع الكلية",
     sourceEn: "Dentistry guide 2024/25 — faculty location",
+    mapSourceUrl: "https://mapcarta.com/W1225193484",
+    mapSourceAr: "إحداثيات المستشفى — OpenStreetMap / Mapcarta",
+    mapSourceEn: "Hospital coordinates — OpenStreetMap / Mapcarta",
   },
   {
     id: "administration",
@@ -147,7 +156,7 @@ const TILE_COLUMNS = 8;
 const TILE_ROWS = 5;
 const TILE_ZOOM = 19;
 const TILE_START_X = 307212;
-const TILE_START_Y = 216345;
+const TILE_START_Y = 216344;
 const TILE_BASE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/";
 
 const MAP_TILES = Array.from({ length: TILE_COLUMNS * TILE_ROWS }, (_, index) => ({
@@ -312,6 +321,11 @@ export function CampusMap() {
             <a href={selectedPlace.sourceUrl} target="_blank" rel="noreferrer">
               {t(selectedPlace.sourceAr, selectedPlace.sourceEn)}
             </a>
+            {selectedPlace.mapSourceUrl && (
+              <a href={selectedPlace.mapSourceUrl} target="_blank" rel="noreferrer">
+                {t(selectedPlace.mapSourceAr ?? "", selectedPlace.mapSourceEn ?? "")}
+              </a>
+            )}
           </section>
         )}
 

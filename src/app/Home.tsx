@@ -67,7 +67,7 @@ export function Home() {
       <section className="campus-map-promo panel">
         <div>
           <span className="tag">{t("خريطة تفاعلية للحرم", "Interactive campus map")}</span>
-          <h2>{t("اعرف مكان كل مبنى", "Find your way around campus")}</h2>
+          <h3>{t("اعرف مكان كل مبنى", "Find your way around campus")}</h3>
           <p>{t(
             "استكشف مباني ومرافق جامعة 6 أكتوبر على صورة أقمار صناعية، واختر أي علامة لعرض اسم المكان ومصدره.",
             "Explore October 6 University buildings on satellite imagery. Select a marker to see the place name and its source.",
