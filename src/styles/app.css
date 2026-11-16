@@ -330,6 +330,15 @@ main {
   font-weight: 700;
   margin-top: 18px;
 }
+.verify-resend-toggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--blue);
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .home-note {
   display: flex;
   justify-content: center;
