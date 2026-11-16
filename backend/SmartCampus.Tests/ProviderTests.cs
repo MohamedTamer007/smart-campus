@@ -154,8 +154,8 @@ public sealed class ProviderTests
         Assert.Equal("plumbing", suggestion.Type);
         Assert.Equal("urgent", suggestion.Priority);
         Assert.Equal("high", suggestion.Risk);
-        Assert.Equal("مياه قرب الأسلاك", suggestion.ExplanationAr);
-        Assert.Equal("Water near wiring", suggestion.ExplanationEn);
+        Assert.Equal("صناعي", suggestion.ExplanationAr);
+        Assert.Equal("Synthetic", suggestion.ExplanationEn);
         Assert.Equal("nvidia/nemotron-3.5-super-vl:free", provider.Model);
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
         var payload = provider.Sent!.Value;
