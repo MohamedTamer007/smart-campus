@@ -9,7 +9,7 @@
   "AI": {
     "AllowNonSensitiveInference": false,
     "AllowNonSensitiveImages": false,
-    "AllowItemPhotoDescription": true,
+    "AllowItemPhotoDescription": false,
     "DescribeDailyRequestLimit": 100,
     "DescribeRequestsPerMinute": 10,
     "GeminiFreeTierOnly": false,

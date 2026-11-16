@@ -25,7 +25,8 @@ public sealed class LostFoundController(LostFoundService service, RetrievalServi
     /// <summary>AI-drafted description for the register form; the finder edits it freely.</summary>
     [HttpPost("describe"), RequestSizeLimit(6000000)]
     public Task<object> Describe([FromForm] DescribeForm input, CancellationToken cancellation) =>
-        describer.Preview(input.Photo ?? throw new RuleException("image_required"), input.Language, cancellation);
+        describer.Preview(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? throw new RuleException("forbidden", 403),
+            input.Photo ?? throw new RuleException("image_required"), input.Language, cancellation);
     [HttpGet, ProducesResponseType<PageResponse<FoundResponse>>(200)] public async Task<object> List(int page = 1, int pageSize = 50) => new { items = await service.List(Math.Max(1, page), Math.Clamp(pageSize, 1, 100)) };
     [HttpGet("{id:guid}"), ProducesResponseType<FoundResponse>(200)] public Task<object> Detail(Guid id) => service.Detail(id);
     [HttpPost, RequestSizeLimit(6000000), ProducesResponseType<FoundResponse>(200)] public Task<object> Register([FromForm] FoundForm input) => service.Register(

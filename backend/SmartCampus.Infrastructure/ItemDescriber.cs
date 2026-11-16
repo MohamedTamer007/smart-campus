@@ -14,6 +14,22 @@ public sealed class ItemDescriptionCache
     public ItemDescription? Get(string key) =>
         entries.TryGetValue(key, out var entry) && entry.Expires > DateTimeOffset.UtcNow ? entry.Value : null;
 
+    private readonly ConcurrentDictionary<string, List<DateTimeOffset>> previews = new();
+
+    /// <summary>Per-user allowance for photo previews so one account cannot spend the shared daily quota.</summary>
+    public bool TryTakePreview(string user, int limit, TimeSpan window)
+    {
+        var list = previews.GetOrAdd(user, _ => []);
+        lock (list)
+        {
+            var now = DateTimeOffset.UtcNow;
+            list.RemoveAll(t => now - t > window);
+            if (list.Count >= limit) return false;
+            list.Add(now);
+            return true;
+        }
+    }
+
     public void Set(string key, ItemDescription value)
     {
         if (entries.Count >= 200)
@@ -43,9 +59,10 @@ public sealed class ItemDescriber(CampusDb db, PrivateMedia media, AiProviders p
     }
 
     /// <summary>Suggestion shown to the finder while filling in the form.</summary>
-    public async Task<object> Preview(IFormFile photo, string? language, CancellationToken cancellation)
+    public async Task<object> Preview(string user, IFormFile photo, string? language, CancellationToken cancellation)
     {
         if (photo.Length is <= 0 or > CampusImageNormalizer.MaximumUploadBytes) throw new RuleException("invalid_upload");
+        if (!cache.TryTakePreview(user, 10, TimeSpan.FromHours(1))) throw new RuleException("rate_limited", 429);
         using var bytes = new MemoryStream();
         await photo.CopyToAsync(bytes, cancellation);
         var description = await Describe(bytes.ToArray(), cancellation);
@@ -76,7 +93,10 @@ public sealed class ItemDescriber(CampusDb db, PrivateMedia media, AiProviders p
             // Re-embed with the AI text (version 2 forces a refresh of the stored vector).
             await QueueIndex(item.Id, 2, cancellation);
         }
-        catch (RuleException exception) when (Permanent.Contains(exception.Code) || job.Attempts >= 3)
+        // A spent quota or a rate limit must never hold the item (and, through "index pending",
+        // every search) hostage: index it from the finder's text and skip the AI reading.
+        catch (RuleException exception) when (Permanent.Contains(exception.Code) || job.Attempts >= 3 ||
+            exception.Code is "ai_quota_exhausted" or "ai_rate_limited")
         {
             GiveUp(item.Id, item);
         }

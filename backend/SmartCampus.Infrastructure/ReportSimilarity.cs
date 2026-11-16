@@ -21,6 +21,10 @@ public sealed class ReportSimilarity(CampusDb db, RemoteEmbeddings remote, IConf
         var report = await db.Reports.AsNoTracking().SingleOrDefaultAsync(r => r.Id == reportId);
         if (report is null || report.CancelledAt.HasValue) return;
         if (!Enabled(config)) throw new RuleException("search_provider_not_configured", 503);
+        // Same privacy gate as AI triage: staff must have confirmed this version's text is non-sensitive.
+        var reviewed = await db.Assessments.AsNoTracking().AnyAsync(a => a.ReportId == report.Id &&
+            a.InputVersion == report.ContentVersion && a.ReviewedBy != null && a.ReviewedAt != null);
+        if (!reviewed) throw new RuleException("ai_input_review_required", 503);
         var embedding = await remote.Passage(report.Description + " | " + report.Details);
         RemoteEmbeddings.Validate(embedding, config);
         var connection = (NpgsqlConnection)db.Database.GetDbConnection();

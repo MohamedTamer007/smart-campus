@@ -61,6 +61,23 @@ public sealed class ItemDescriptionTests
     }
 
     [Fact]
+    public void Previews_are_limited_per_user_and_window()
+    {
+        var cache = new ItemDescriptionCache();
+        for (var i = 0; i < 3; i++) Assert.True(cache.TryTakePreview("a", 3, TimeSpan.FromHours(1)));
+        Assert.False(cache.TryTakePreview("a", 3, TimeSpan.FromHours(1)));
+        Assert.True(cache.TryTakePreview("b", 3, TimeSpan.FromHours(1)));
+        Assert.True(cache.TryTakePreview("a", 3, TimeSpan.Zero));
+    }
+
+    [Fact]
+    public void Photo_descriptions_stay_off_unless_the_operator_enables_them()
+    {
+        var defaults = new ConfigurationBuilder().AddJsonFile(Path.Combine(AppContext.BaseDirectory, "smartcampus.defaults.json"), optional: true).Build();
+        Assert.False(defaults.GetValue<bool>("AI:AllowItemPhotoDescription"));
+    }
+
+    [Fact]
     public void Passage_adds_the_internal_text_but_keeps_the_finder_text()
     {
         var plain = new FoundItem { Description = "Silver watch" };

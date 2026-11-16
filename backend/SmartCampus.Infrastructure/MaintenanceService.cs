@@ -148,6 +148,11 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         }
         assessment.ReviewedBy = actor.Id;
         assessment.ReviewedAt = DateTimeOffset.UtcNow;
+        // Report text may only leave the site after staff confirmed it is non-sensitive, so the
+        // optional repeat-detection vector is queued here, not when the report is created.
+        var vectorKey = $"reportvec:{id}:{report.ContentVersion}";
+        if (ReportSimilarity.Enabled(config) && !await db.Jobs.AnyAsync(j => j.Key == vectorKey))
+            db.Jobs.Add(new() { Kind = "reportvec", EntityId = id, InputVersion = report.ContentVersion, Key = vectorKey });
         assessment.State = "pending";
         assessment.FailureCode = null;
         job.State = "pending";
@@ -285,8 +290,5 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
     {
         db.Assessments.Add(new() { ReportId = report.Id, InputVersion = report.ContentVersion });
         db.Jobs.Add(new() { Kind = "maintenance", EntityId = report.Id, InputVersion = report.ContentVersion, Key = $"maintenance:{report.Id}:{report.ContentVersion}" });
-        // Optional text vector for spotting repeated problems; failure only means the dashboard uses text rules.
-        if (ReportSimilarity.Enabled(config))
-            db.Jobs.Add(new() { Kind = "reportvec", EntityId = report.Id, InputVersion = report.ContentVersion, Key = $"reportvec:{report.Id}:{report.ContentVersion}" });
     }
 }
