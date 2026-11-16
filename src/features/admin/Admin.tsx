@@ -372,13 +372,13 @@ export function AdminOverview() {
                   {hasRole(account, "admin") && <div className="map-editor no-print">
                     {mapSaveFailed && <Feedback kind="error">{t("تعذر حفظ الموضع؛ أعد تحميل اللوحة ثم حاول مجددًا.", "The position could not be saved. Reload the dashboard and try again.")}</Feedback>}
                     <div className="map-editor-controls">
-                    <Field label={t("مبنى لتحديد موضعه", "Building to position")}>
-                      <select value={buildingId} onChange={event => { setBuildingId(event.target.value); setMapDraft(null); }}>
-                        <option value="">{t("اختر مبنى", "Choose a building")}</option>
-                        {mapBuildings.map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
-                      </select>
-                    </Field>
-                    <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر الصورة، أو استخدم الأسهم بعد التركيز عليها. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the photo, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
+                      <Field label={t("مبنى لتحديد موضعه", "Building to position")}>
+                        <select value={buildingId} onChange={event => { setBuildingId(event.target.value); setMapDraft(null); }}>
+                          <option value="">{t("اختر مبنى", "Choose a building")}</option>
+                          {mapBuildings.map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
+                        </select>
+                      </Field>
+                      <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر الصورة، أو استخدم الأسهم بعد التركيز عليها. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the photo, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
                     </div>
                     <button
                       type="button"
