@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { App } from "../src/app/App";
 import { auth } from "../src/services/auth";
 import type { Account } from "../src/services/contracts";
+import { accountService } from "../src/services/frontend";
 
 afterEach(() => {
   cleanup();
@@ -14,6 +15,7 @@ afterEach(() => {
 
 function renderApp(account: Account) {
   vi.spyOn(auth, "me").mockResolvedValue(account);
+  vi.spyOn(accountService, "hasUnreadNotifications").mockResolvedValue(false);
   render(
     <MemoryRouter initialEntries={["/"]}>
       <App />
@@ -32,6 +34,13 @@ it("shows work queue and admin navigation for additional authorized roles", asyn
 
   expect(await screen.findByRole("link", { name: "لوحة العمل" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "الإدارة" })).toBeTruthy();
+});
+
+it("omits the redundant maintenance switch for a single work queue", async () => {
+  renderApp({ id: "maintenance", name: "Staff", email: "", role: "maintenance" });
+  await userEvent.click(await screen.findByRole("link", { name: "لوحة العمل" }));
+  expect(await screen.findByRole("heading", { name: "بلاغات الصيانة" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "الصيانة" })).toBeNull();
 });
 
 it("does not show staff or admin navigation for an ordinary user", async () => {

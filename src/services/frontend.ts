@@ -17,6 +17,7 @@ interface AccountService {
     newPassword: string,
   ): Promise<void>;
   notifications(account: Account): Promise<Notification[]>;
+  hasUnreadNotifications(account: Account): Promise<boolean>;
   markRead(account: Account, id: string): Promise<void>;
 }
 export const accountService: AccountService = {
@@ -24,7 +25,11 @@ export const accountService: AccountService = {
   changePassword: (_account, currentPassword, newPassword) => api<void>("/auth/password", json("POST", { currentPassword, newPassword })),
   notifications: async () => (await pages<Notification & { kind: string }>("/notifications")).map(notification => ({ ...notification,
     ar: notificationText(notification.kind)[0], en: notificationText(notification.kind)[1] })),
-  markRead: (_account, id) => api<void>(`/notifications/${id}/read`, json("POST", {})),
+  hasUnreadNotifications: async () => (await api<{ hasUnread: boolean }>("/notifications/unread")).hasUnread,
+  markRead: async (_account, id) => {
+    await api<void>(`/notifications/${id}/read`, json("POST", {}));
+    window.dispatchEvent(new Event("smart-campus-notifications-changed"));
+  },
 };
 function notificationText(kind: string): [string, string] {
   const labels: Record<string, [string, string]> = {

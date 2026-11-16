@@ -35,3 +35,6 @@ public sealed record AiReadinessResponse(string Provider, bool TextConfigured, b
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
     JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,
     AiReadinessResponse Ai);
+
+/// <summary>Whether the current recipient has any unread notifications.</summary>
+public sealed record NotificationStatusResponse(bool HasUnread);

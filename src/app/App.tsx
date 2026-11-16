@@ -38,10 +38,10 @@ function StaffQueues() {
   const maintenanceAccess = hasRole(account, "admin") || hasRole(account, "maintenance");
   const custodyAccess = hasRole(account, "department") || hasRole(account, "secretariat");
   const [view, setView] = useState(maintenanceAccess ? "maintenance" : "custody");
-  return <><div className="actions">
-    {maintenanceAccess && <button className="button" onClick={() => setView("maintenance")}>{t("الصيانة", "Maintenance")}</button>}
-    {custodyAccess && <button className="button" onClick={() => setView("custody")}>{t("العهدة والمعثورات", "Custody and found items")}</button>}
-  </div>{view === "maintenance" ? <MaintenanceList staff /> : <FoundList department />}</>;
+  return <>{maintenanceAccess && custodyAccess && <div className="actions">
+    <button className="button" onClick={() => setView("maintenance")}>{t("الصيانة", "Maintenance")}</button>
+    <button className="button" onClick={() => setView("custody")}>{t("العهدة والمعثورات", "Custody and found items")}</button>
+  </div>}{view === "maintenance" ? <MaintenanceList staff /> : <FoundList department />}</>;
 }
 function Shell() {
   const {
@@ -51,6 +51,7 @@ function Shell() {
     account,
     sessionExpired,
     sessionUnavailable,
+    hasUnreadNotifications,
     updateAccount,
   } = useApp();
   const navigate = useNavigate();
@@ -100,10 +101,11 @@ function Shell() {
           </button>
           <Link
             to="/notifications"
-            aria-label={t("الإشعارات", "Notifications")}
-            className="icon-link"
+            aria-label={hasUnreadNotifications ? t("الإشعارات، توجد إشعارات غير مقروءة", "Notifications, unread notifications") : t("الإشعارات", "Notifications")}
+            className="icon-link notification-bell"
           >
             <Icon name="bell" />
+            {hasUnreadNotifications && <span className="notification-dot" aria-hidden="true" />}
           </Link>
           <Link
             to={account.role === "guest" ? "/login" : "/settings"}
@@ -289,7 +291,10 @@ function Shell() {
       <nav className="mobile-bottom-nav" aria-label={t("تنقل الهاتف", "Mobile navigation")}>
         <NavLink to="/" end><Icon name="home" /><span>{t("الرئيسية", "Home")}</span></NavLink>
         <NavLink to="/requests"><Icon name="document" /><span>{t("طلباتي", "Requests")}</span></NavLink>
-        <NavLink to="/notifications"><Icon name="bell" /><span>{t("الإشعارات", "Alerts")}</span></NavLink>
+        <NavLink to="/notifications" aria-label={hasUnreadNotifications ? t("الإشعارات، توجد إشعارات غير مقروءة", "Notifications, unread notifications") : t("الإشعارات", "Alerts")}>
+          <span className="notification-bell"><Icon name="bell" />{hasUnreadNotifications && <span className="notification-dot" aria-hidden="true" />}</span>
+          <span>{t("الإشعارات", "Alerts")}</span>
+        </NavLink>
         <NavLink to={account.role === "guest" ? "/login" : "/settings"}><Icon name="user" /><span>{t("حسابي", "Account")}</span></NavLink>
       </nav>
       <footer>

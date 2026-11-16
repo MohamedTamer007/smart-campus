@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { auth } from "../services/auth";
+import { accountService } from "../services/frontend";
+import { verified } from "../services/contracts";
 import { ServiceError } from "../services/contracts";
 import {
   createContext,
@@ -25,6 +27,7 @@ interface AppContext {
   expireSession: () => void;
   sessionExpired: boolean;
   sessionUnavailable: boolean;
+  hasUnreadNotifications: boolean;
 }
 const Context = createContext<AppContext | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -35,6 +38,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [sessionUnavailable, setSessionUnavailable] = useState(false);
   const sessionGeneration = useRef(0);
+  const [notificationStatus, setNotificationStatus] = useState({ accountId: "", hasUnread: false });
   const navigate = useNavigate();
   const expireSession = useCallback(() => {
     sessionGeneration.current++;
@@ -65,6 +69,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
   }, [language]);
+  useEffect(() => {
+    if (!verified(account)) return;
+    let active = true;
+    let request = 0;
+    const generation = sessionGeneration.current;
+    async function refresh() {
+      if (document.visibilityState === "hidden") return;
+      const currentRequest = ++request;
+      try {
+        const hasUnread = await accountService.hasUnreadNotifications(account);
+        if (active && currentRequest === request && generation === sessionGeneration.current)
+          setNotificationStatus({ accountId: account.id, hasUnread });
+      } catch (error) {
+        if (!(error instanceof ServiceError)) console.error("Notification status refresh failed");
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("smart-campus-notifications-changed", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("smart-campus-notifications-changed", refresh);
+    };
+  }, [account]);
   function changeLanguage() {
     const next = language === "ar" ? "en" : "ar";
     setLanguage(next);
@@ -85,6 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         },
         sessionExpired,
         sessionUnavailable,
+        hasUnreadNotifications: verified(account) && notificationStatus.accountId === account.id && notificationStatus.hasUnread,
         expireSession,
       }}
     >

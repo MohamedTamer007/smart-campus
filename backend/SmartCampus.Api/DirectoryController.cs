@@ -75,6 +75,13 @@ public sealed class MediaController(CampusDb db, Access access, PrivateMedia med
 [ApiController, Authorize, Route("api/v1/notifications")]
 public sealed class NotificationsController(CampusDb db, Access access) : ControllerBase
 {
+    [HttpGet("unread")]
+    public async Task<NotificationStatusResponse> Unread(CancellationToken cancellationToken)
+    {
+        var actor = await access.Current();
+        return new(await db.Notifications.AnyAsync(n => n.RecipientId == actor.Id && n.ReadAt == null, cancellationToken));
+    }
+
     [HttpGet]
     public async Task<object> List(int page = 1, int pageSize = 50)
     {

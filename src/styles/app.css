@@ -1067,3 +1067,18 @@ button:hover:enabled {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+}
+.notification-dot {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 0;
+  width: 9px;
+  height: 9px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #c62828;
+}
