@@ -368,9 +368,9 @@ export function AdminOverview() {
                     <img className="campus-map-image" src="/campus-map.jpg" alt="" />
                     <svg className="campus-map-overlay" viewBox="0 0 100 52.58" role="img" aria-label={t("مواقع المباني وأعداد البلاغات على صورة الحرم", "Building locations and report counts on the campus photo")}>
                       {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <g key={b.id} transform={`translate(${b.x} ${b.y! * 52.58 / 56})`}>
-                        <circle r="2.5" fill="#144caa" stroke="white" strokeWidth=".8" />
-                        <text y="-3.5" textAnchor="middle" fontSize="2.1" fill="#fff" stroke="#142b54" strokeWidth=".35" paintOrder="stroke">{t(b.ar, b.en)}</text>
-                        <text y="5.5" textAnchor="middle" fontSize="2.3" fontWeight="700" fill="#fff" stroke="#c44300" strokeWidth=".35" paintOrder="stroke">{b.count}</text>
+                        <circle r="1.4" fill="#144caa" stroke="white" strokeWidth=".45" />
+                        <text y="-3.5" textAnchor="middle" fontSize="1.5" fill="#fff" stroke="#142b54" strokeWidth=".2" paintOrder="stroke">{t(b.ar, b.en)}</text>
+                        <text y="5.5" textAnchor="middle" fontSize="1.7" fontWeight="700" fill="#fff" stroke="#c44300" strokeWidth=".2" paintOrder="stroke">{b.count}</text>
                       </g>)}
                     </svg>
                   </div>
@@ -422,7 +422,7 @@ export function AdminOverview() {
                       <div className="campus-map-stage map-editor-canvas">
                         <img className="campus-map-image" src="/campus-map.jpg" alt="" />
                         <svg className="campus-map-overlay" viewBox="0 0 100 52.58" aria-hidden="true">
-                          {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y! * 52.58 / 56} r="2" fill="#144caa" stroke="white" strokeWidth=".7" />)}
+                          {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y! * 52.58 / 56} r="1.4" fill="#144caa" stroke="white" strokeWidth=".45" />)}
                           {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y * 52.58 / 56} r="2.8" fill="#c44300" stroke="white" strokeWidth=".7" />}
                         </svg>
                       </div>
