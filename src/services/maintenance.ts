@@ -16,8 +16,10 @@ const maintenanceValueLabels: Record<string, [string, string]> = {
   safety: ["سلامة", "Safety"],
   other: ["أخرى", "Other"],
   low: ["منخفضة", "Low"],
+  normal: ["عادية", "Normal"],
   medium: ["متوسطة", "Medium"],
   high: ["مرتفعة", "High"],
+  urgent: ["عاجلة", "Urgent"],
 };
 
 export function maintenanceValueLabel(value: string | null | undefined, t: Translate): string {
@@ -56,7 +58,7 @@ export interface MaintenanceReport extends MaintenanceInput {
   createdAt: string;
   assignee: string;
   history: MaintenanceEvent[];
-  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null; explanation?: string | null; inputReviewed?: boolean } | null;
+  assessment?: { state?: string; type: string | null; priority: string | null; risk: string | null; explanation?: string | null; explanationAr?: string | null; explanationEn?: string | null; inputReviewed?: boolean } | null;
   decision?: OperationalDecision | null;
   mediaUrl?: string | null;
   reference?: string;

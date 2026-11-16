@@ -104,6 +104,8 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         var assessment = assessmentRecord is null ? null : new { state = assessmentRecord.State, type = assessmentRecord.FaultType,
             priority = assessmentRecord.Priority, risk = assessmentRecord.Risk,
             explanation = includeAiExplanation ? assessmentRecord.Explanation : null,
+            explanationAr = includeAiExplanation ? assessmentRecord.ExplanationAr : null,
+            explanationEn = includeAiExplanation ? assessmentRecord.ExplanationEn : null,
             inputReviewed = assessmentRecord.ReviewedAt.HasValue };
         var attachment = related.Media[report.Id].Select(m => (Guid?)m.Id).FirstOrDefault();
         var locationRecords = related.Locations;

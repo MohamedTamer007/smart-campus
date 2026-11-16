@@ -491,6 +491,11 @@ function Detail({
   const loadLocations = useCallback(() => maintenance.locations(account), [account]);
   const owner = report.ownerId === account.id;
   const staff = !!report.canViewAssessment || !!report.canUpdate;
+  const assessmentExplanation = language === "ar"
+    ? report.assessment?.explanationAr ?? (report.assessment?.explanation
+      ? t("التفسير العربي غير متوفر لهذا التحليل السابق.", "Arabic explanation is unavailable for this older analysis.")
+      : null)
+    : report.assessment?.explanationEn ?? report.assessment?.explanation;
   if (editing)
     return (
       <div className="panel">
@@ -597,7 +602,7 @@ function Detail({
                   <div><dt>{t("الأولوية المقترحة", "Suggested priority")}</dt><dd>{maintenanceValueLabel(report.assessment.priority, t)}</dd></div>
                   <div><dt>{t("الخطورة المقترحة", "Suggested risk")}</dt><dd>{maintenanceValueLabel(report.assessment.risk, t)}</dd></div>
                 </dl>
-                {report.assessment.explanation && <p>{report.assessment.explanation}</p>}
+                {assessmentExplanation && <p>{assessmentExplanation}</p>}
               </div>
             )}
             {report.assessment?.state === "pending" && <Feedback>{t("التحليل قيد التنفيذ. حدّث بيانات البلاغ بعد قليل.", "Analysis is queued. Refresh the report shortly.")}</Feedback>}

@@ -23,7 +23,7 @@ public sealed class AssessmentPrivacyTests(CampusFixture campus) : IClassFixture
             Requests++;
             Payload = await request.Content!.ReadAsStringAsync(cancellationToken);
             if (duringRequest is not null) await duringRequest();
-            return new(HttpStatusCode.OK) { Content = new StringContent("""{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic suggestion\"}"}}]}""", Encoding.UTF8, "application/json") };
+            return new(HttpStatusCode.OK) { Content = new StringContent("""{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation_ar\":\"اقتراح صناعي\",\"explanation_en\":\"Synthetic suggestion\"}"}}]}""", Encoding.UTF8, "application/json") };
         }
     }
     private WebApplicationFactory<Program> Configured() => campus.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, config) =>
@@ -105,6 +105,8 @@ public sealed class AssessmentPrivacyTests(CampusFixture campus) : IClassFixture
         var staffView = await CampusFixture.Response(await staff.GetAsync($"/api/v1/maintenance/{id}"));
         Assert.Equal("completed", staffView.GetProperty("assessment").GetProperty("state").GetString());
         Assert.Equal("Synthetic suggestion", staffView.GetProperty("assessment").GetProperty("explanation").GetString());
+        Assert.Equal("اقتراح صناعي", staffView.GetProperty("assessment").GetProperty("explanationAr").GetString());
+        Assert.Equal("Synthetic suggestion", staffView.GetProperty("assessment").GetProperty("explanationEn").GetString());
         Assert.Equal(System.Text.Json.JsonValueKind.Null, staffView.GetProperty("decision").GetProperty("type").ValueKind);
         Assert.Equal("submitted", staffView.GetProperty("status").GetString());
     }

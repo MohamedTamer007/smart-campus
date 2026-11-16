@@ -278,7 +278,8 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
             var bytes = input.ImageDataUrl is null ? null : ImageBytes(input.ImageDataUrl);
             var suggestion = await new AiProviders(clients, maintenanceSettings, budget).Assess(input.Text!, cancellation, bytes);
             timer.Stop();
-            return StepOutput.Create(new { suggestion.Type, suggestion.Priority, suggestion.Risk, suggestion.Explanation },
+            return StepOutput.Create(new { suggestion.Type, suggestion.Priority, suggestion.Risk, suggestion.Explanation,
+                    explanationAr = suggestion.ExplanationAr, explanationEn = suggestion.ExplanationEn },
                 AiProviders.SelectedModel(maintenanceSettings, bytes is not null), timer.ElapsedMilliseconds);
         }
         var settings = GeminiEmbeddingSettings();

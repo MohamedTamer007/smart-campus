@@ -413,7 +413,7 @@ it("requires explicit text approval before staff can enqueue AI analysis", async
 it("sends an image only after separate opt-in and displays AI suggestions apart from staff decisions", async () => {
   const actor: Account = { id: "ai-staff-image-test", name: "Staff", email: "", role: "maintenance" };
   const report: MaintenanceReport = { id: "reviewed-image-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 8, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canUpdate: true, canReviewAiInput: true, canReviewAiImage: true, decision: { type: "staff-confirmed", priority: "low", risk: "low" } };
-  vi.spyOn(maintenance, "detail").mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, version: 9, assessment: { state: "completed", type: "plumbing", priority: "medium", risk: "high", explanation: "Synthetic explanation." } });
+  vi.spyOn(maintenance, "detail").mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, version: 9, assessment: { state: "completed", type: "plumbing", priority: "medium", risk: "high", explanation: "Synthetic explanation.", explanationAr: "تفسير صناعي.", explanationEn: "Synthetic explanation." } });
   const review = vi.spyOn(maintenance, "reviewAi").mockResolvedValue(report);
   renderForActor(actor, <MaintenanceDetail />);
   await userEvent.click(await screen.findByLabelText(/I confirm the description contains no personal or confidential data/));
@@ -423,7 +423,19 @@ it("sends an image only after separate opt-in and displays AI suggestions apart 
   expect(await screen.findByText("AI suggestion — staff review required")).toBeTruthy();
   expect(screen.getByText("Suggested fault type").nextElementSibling?.textContent).toBe("Plumbing");
   expect(screen.getByText("Synthetic explanation.")).toBeTruthy();
+  expect(screen.queryByText("تفسير صناعي.")).toBeNull();
   expect((screen.getByLabelText("Operational fault type") as HTMLInputElement).value).toBe("staff-confirmed");
+});
+
+it("shows the Arabic AI explanation in the Arabic interface", async () => {
+  const actor: Account = { id: "ai-staff-arabic-test", name: "Staff", email: "", role: "maintenance" };
+  const report: MaintenanceReport = { id: "arabic-ai-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 1, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true,
+    assessment: { state: "completed", type: "electrical", priority: "urgent", risk: "high", explanation: "English legacy explanation.", explanationAr: "تلف ظاهر قرب اللوحة الكهربائية.", explanationEn: "Visible damage near the electrical panel." } };
+  vi.spyOn(maintenance, "detail").mockResolvedValue(report);
+  renderForActor(actor, <MaintenanceDetail />, "ar");
+  expect(await screen.findByText("تلف ظاهر قرب اللوحة الكهربائية.")).toBeTruthy();
+  expect(screen.queryByText("Visible damage near the electrical panel.")).toBeNull();
+  expect(screen.getByText("الأولوية المقترحة").nextElementSibling?.textContent).toBe("عاجلة");
 });
 
 it("does not offer AI submission when the server blocks external processing", async () => {

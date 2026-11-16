@@ -48,7 +48,7 @@ public sealed class AiEvaluationTests(CampusFixture campus) : IClassFixture<Camp
         }
 
         private static string ClassificationResponse() =>
-            """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"medium\",\"risk\":\"medium\",\"explanation\":\"Synthetic test output\"}"}}]}""";
+            """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"medium\",\"risk\":\"medium\",\"explanation_ar\":\"مخرجات اختبارية\",\"explanation_en\":\"Synthetic test output\"}"}}]}""";
 
         private static string EmbeddingResponse()
         {

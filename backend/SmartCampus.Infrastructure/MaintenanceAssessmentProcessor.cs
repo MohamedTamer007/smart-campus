@@ -34,7 +34,9 @@ public sealed class MaintenanceAssessmentProcessor(CampusDb db, PrivateMedia med
         assessment.FaultType = suggestion.Type;
         assessment.Priority = suggestion.Priority;
         assessment.Risk = suggestion.Risk;
-        assessment.Explanation = suggestion.Explanation;
+        assessment.Explanation = suggestion.ExplanationEn;
+        assessment.ExplanationAr = suggestion.ExplanationAr;
+        assessment.ExplanationEn = suggestion.ExplanationEn;
         assessment.Model = AiProviders.SelectedModel(config, image is not null);
     }
 }
