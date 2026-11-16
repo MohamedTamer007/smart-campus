@@ -31,10 +31,12 @@ public sealed record JobStateResponse(string Kind, string State, int Count, int 
 public sealed record ProviderQuotaResponse(string Provider, int Used, int DailyLimit);
 public sealed record AiReadinessResponse(string Provider, bool TextConfigured, bool ImagesConfigured,
     bool TaxonomyConfigured, bool TextTransferEnabled, bool ImageTransferEnabled,
-    bool ProviderDataCollectionApproved);
+    bool ProviderDataCollectionApproved, string? Model);
+public sealed record MatchingReadinessResponse(string Provider, string Model, int? Dimension,
+    bool Configured, bool ImagesConfigured, string SearchMode);
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
     JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,
-    AiReadinessResponse Ai);
+    AiReadinessResponse Ai, MatchingReadinessResponse Matching);
 
 /// <summary>Whether the current recipient has any unread notifications.</summary>
 public sealed record NotificationStatusResponse(bool HasUnread);

@@ -136,7 +136,7 @@ public sealed class ProviderTests
     [Fact]
     public async Task Valid_provider_envelope_returns_only_validated_suggestions()
     {
-        const string body = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Water near wiring\"}"}}]}""";
+        const string body = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation_ar\":\"مياه قرب الأسلاك\",\"explanation_en\":\"Water near wiring\"}"}}]}""";
         using var provider = new ProviderBoundary(HttpStatusCode.OK, body);
         var suggestion = await new AiProviders(provider, Config(), new AvailableTestBudget()).Assess("Synthetic leak", CancellationToken.None);
         Assert.Equal("plumbing", suggestion.Type);
@@ -154,6 +154,8 @@ public sealed class ProviderTests
         Assert.Equal("plumbing", suggestion.Type);
         Assert.Equal("urgent", suggestion.Priority);
         Assert.Equal("high", suggestion.Risk);
+        Assert.Equal("صناعي", suggestion.ExplanationAr);
+        Assert.Equal("Synthetic", suggestion.ExplanationEn);
         Assert.Equal("nvidia/nemotron-3.5-super-vl:free", provider.Model);
         Assert.Equal("https://openrouter.ai/api/v1/chat/completions", provider.Destination!.ToString());
         var payload = provider.Sent!.Value;
@@ -190,7 +192,7 @@ public sealed class ProviderTests
     [Fact]
     public async Task OpenRouter_text_classification_rejects_a_non_free_response_model()
     {
-        const string paidModelResponse = """{"model":"nvidia/nemotron-3.5-super-vl","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
+        const string paidModelResponse = """{"model":"nvidia/nemotron-3.5-super-vl","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation_ar\":\"صناعي\",\"explanation_en\":\"Synthetic\"}"}}]}""";
         using var provider = new ProviderBoundary(HttpStatusCode.OK, paidModelResponse);
 
         var failure = await Assert.ThrowsAsync<RuleException>(() => new AiProviders(provider, Config(), new AvailableTestBudget())
@@ -348,7 +350,7 @@ public sealed class ProviderTests
         Assert.Equal(0, provider.Requests);
     }
 
-    private const string ValidEnvelope = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Synthetic\"}"}}]}""";
+    private const string ValidEnvelope = """{"model":"nvidia/nemotron-3.5-super-vl:free","choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation_ar\":\"صناعي\",\"explanation_en\":\"Synthetic\"}"}}]}""";
 
     private static IConfiguration AutoConfig()
     {
@@ -368,7 +370,7 @@ public sealed class ProviderTests
             model = "nvidia/nemotron-3.5-super-vl:free",
             choices = new[] { new {
                 finish_reason = "stop",
-                message = new { content = "```json\n{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"TEST ONLY\"}\n```" }
+                message = new { content = "```json\n{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation_ar\":\"اختبار فقط\",\"explanation_en\":\"TEST ONLY\"}\n```" }
             }}
         });
         using var provider = new ProviderBoundary(HttpStatusCode.OK, envelope);

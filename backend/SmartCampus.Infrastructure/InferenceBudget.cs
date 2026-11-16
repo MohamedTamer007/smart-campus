@@ -19,7 +19,7 @@ public sealed class InferenceBudget(CampusDb db, IConfiguration config, TimeProv
         // Found-item photo descriptions get their own counters so uploads can never
         // use up the quota that maintenance triage depends on.
         var prefix = provider switch { "gemini" => "Gemini", "openrouter-describe" => "Describe", _ => "OpenRouter" };
-        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", provider == "openrouter-describe" ? 100 : 50);
+        var daily = config.GetValue($"AI:{prefix}DailyRequestLimit", provider switch { "gemini" => 1000, "openrouter-describe" => 100, _ => 50 });
         var perMinute = config.GetValue($"AI:{prefix}RequestsPerMinute", provider switch { "gemini" => 10, "openrouter-describe" => 10, _ => 20 });
         if (daily <= 0 || perMinute <= 0) throw new RuleException("ai_quota_not_configured", 503);
         var now = clock.GetUtcNow().ToUniversalTime();

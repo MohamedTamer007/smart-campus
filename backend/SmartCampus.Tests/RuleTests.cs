@@ -40,14 +40,14 @@ public sealed class RuleTests
         Assert.Throws<RuleException>(() => AiProviders.Parse("{}", ["plumbing"], ["normal"], ["low"]));
         var envelope = """{"choices":[{"finish_reason":"length","message":{"content":"{}"}}]}""";
         Assert.Throws<RuleException>(() => AiProviders.Parse(envelope, ["plumbing"], ["normal"], ["low"]));
-        envelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"invented\",\"priority\":\"normal\",\"risk\":\"low\",\"explanation\":\"Evidence\"}"}}]}""";
+        envelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"invented\",\"priority\":\"normal\",\"risk\":\"low\",\"explanation_ar\":\"دليل\",\"explanation_en\":\"Evidence\"}"}}]}""";
         Assert.Throws<RuleException>(() => AiProviders.Parse(envelope, ["plumbing"], ["normal"], ["low"]));
     }
 
     [Fact]
     public void Valid_AI_output_preserves_priority_and_risk_separately()
     {
-        var envelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation\":\"Water near electricity\"}"}}]}""";
+        var envelope = """{"choices":[{"finish_reason":"stop","message":{"content":"{\"type\":\"plumbing\",\"priority\":\"urgent\",\"risk\":\"high\",\"explanation_ar\":\"مياه قرب الكهرباء\",\"explanation_en\":\"Water near electricity\"}"}}]}""";
         var suggestion = AiProviders.Parse(envelope, ["plumbing"], ["urgent"], ["high"]);
         Assert.Equal("urgent", suggestion.Priority);
         Assert.Equal("high", suggestion.Risk);

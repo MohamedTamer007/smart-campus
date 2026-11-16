@@ -278,7 +278,8 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
             var bytes = input.ImageDataUrl is null ? null : ImageBytes(input.ImageDataUrl);
             var suggestion = await new AiProviders(clients, maintenanceSettings, budget).Assess(input.Text!, cancellation, bytes);
             timer.Stop();
-            return StepOutput.Create(new { suggestion.Type, suggestion.Priority, suggestion.Risk, suggestion.Explanation },
+            return StepOutput.Create(new { suggestion.Type, suggestion.Priority, suggestion.Risk, suggestion.Explanation,
+                    explanationAr = suggestion.ExplanationAr, explanationEn = suggestion.ExplanationEn },
                 AiProviders.SelectedModel(maintenanceSettings, bytes is not null), timer.ElapsedMilliseconds);
         }
         var settings = GeminiEmbeddingSettings();
@@ -322,7 +323,7 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         var values = new Dictionary<string, string?> {
             ["AI:GeminiKey"] = apiKey,
             ["AI:GeminiFreeTierOnly"] = "true",
-            ["AI:GeminiDailyRequestLimit"] = config["AI:GeminiDailyRequestLimit"] ?? "50",
+            ["AI:GeminiDailyRequestLimit"] = config["AI:GeminiDailyRequestLimit"] ?? "1000",
             ["AI:GeminiRequestsPerMinute"] = config["AI:GeminiRequestsPerMinute"] ?? "10",
             ["Search:Provider"] = "hosted",
             ["Search:ExternalProcessingApproved"] = "true",
@@ -377,7 +378,7 @@ public sealed class AiEvaluationController(CampusDb db, Access access, IConfigur
         var day = new DateTimeOffset(now.Year, now.Month, now.Day, 0, 0, 0, TimeSpan.Zero);
         var minute = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, TimeSpan.Zero);
         var gemini = provider == "gemini";
-        var dailyLimit = config.GetValue(gemini ? "AI:GeminiDailyRequestLimit" : "AI:OpenRouterDailyRequestLimit", 50);
+        var dailyLimit = config.GetValue(gemini ? "AI:GeminiDailyRequestLimit" : "AI:OpenRouterDailyRequestLimit", gemini ? 1000 : 50);
         var minuteLimit = config.GetValue(gemini ? "AI:GeminiRequestsPerMinute" : "AI:OpenRouterRequestsPerMinute", gemini ? 10 : 20);
         var entries = await db.InferenceUsage.Where(x => x.Provider == provider && (x.WindowStart == day || x.WindowStart == minute))
             .ToArrayAsync(cancellation);

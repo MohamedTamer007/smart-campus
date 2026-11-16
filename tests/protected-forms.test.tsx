@@ -88,6 +88,10 @@ it("renders API operational counts and truthful worker unavailability", async ()
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
   expect(await screen.findByText(/Matching service: Unavailable/)).toBeTruthy();
   expect(screen.getByText(/Calibration approval: Not approved/)).toBeTruthy();
+  expect(screen.getByText(/Background jobs: Pending 2/)).toBeTruthy();
+  const details = screen.getByText("Service and processing details");
+  expect(details.closest("details")?.hasAttribute("open")).toBe(false);
+  await userEvent.click(details);
   expect(screen.getByText(/Provider data-collection policy approval: Denied by default/)).toBeTruthy();
   expect(screen.getByText(/Maintenance processing/).closest("li")?.textContent).toContain("2");
   expect(screen.getByText(/7 \/ 50/)).toBeTruthy();
@@ -95,12 +99,20 @@ it("renders API operational counts and truthful worker unavailability", async ()
 
 it("shows when the provider collection policy is explicitly approved", async () => {
   vi.spyOn(adminServices, "operations").mockResolvedValue({ sampledAt: "2026-11-09T12:00:00Z", deployment: "test-only",
-    workingSetBytes: 64 * 1024 * 1024, worker: "hosted_blocked", calibrationApproved: false,
+    workingSetBytes: 64 * 1024 * 1024, worker: "hosted_configured", calibrationApproved: false,
     ai: { provider: "openrouter", textConfigured: true, imagesConfigured: false, taxonomyConfigured: true,
       textTransferEnabled: true, imageTransferEnabled: false, providerDataCollectionApproved: true },
-    quotas: [], jobs: [] });
+    matching: { provider: "google", model: "gemini-embedding-2", dimension: 768, configured: true,
+      imagesConfigured: true, searchMode: "suggestions" },
+    quotas: [{ provider: "gemini", used: 12, dailyLimit: 50 }], jobs: [] });
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
+  await userEvent.click(await screen.findByText("Service and processing details"));
   expect(await screen.findByText(/Provider data-collection policy approval: Allowed only for approved non-sensitive inputs/)).toBeTruthy();
+  expect(screen.getByText(/Lost-and-found matching model:/).textContent).toContain("gemini-embedding-2");
+  expect(screen.getByText(/Configured search mode: Similarity suggestions without approved calibration/)).toBeTruthy();
+  expect(screen.getByText(/Image matching: Configured and approved/)).toBeTruthy();
+  expect(screen.getByText(/Gemini Embedding 2/).closest("li")?.textContent).toContain("12 / 50");
+  expect(screen.getByText(/opening the dashboard does not send a Gemini probe/)).toBeTruthy();
 });
 
 it("does not infer provider collection approval from an older operations response", async () => {
@@ -109,6 +121,7 @@ it("does not infer provider collection approval from an older operations respons
     ai: { provider: "openrouter", textConfigured: false, imagesConfigured: false, taxonomyConfigured: true,
       textTransferEnabled: false, imageTransferEnabled: false }, quotas: [], jobs: [] });
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
+  await userEvent.click(await screen.findByText("Service and processing details"));
   expect(await screen.findByText(/Provider data-collection policy approval: Approval status unavailable/)).toBeTruthy();
 });
 
@@ -449,7 +462,7 @@ it("requires explicit text approval before staff can enqueue AI analysis", async
 it("sends an image only after separate opt-in and displays AI suggestions apart from staff decisions", async () => {
   const actor: Account = { id: "ai-staff-image-test", name: "Staff", email: "", role: "maintenance" };
   const report: MaintenanceReport = { id: "reviewed-image-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 8, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true, canUpdate: true, canReviewAiInput: true, canReviewAiImage: true, decision: { type: "staff-confirmed", priority: "low", risk: "low" } };
-  vi.spyOn(maintenance, "detail").mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, version: 9, assessment: { state: "completed", type: "plumbing", priority: "medium", risk: "high", explanation: "Synthetic explanation." } });
+  vi.spyOn(maintenance, "detail").mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, version: 9, assessment: { state: "completed", type: "plumbing", priority: "medium", risk: "high", explanation: "Synthetic explanation.", explanationAr: "تفسير صناعي.", explanationEn: "Synthetic explanation." } });
   const review = vi.spyOn(maintenance, "reviewAi").mockResolvedValue(report);
   renderForActor(actor, <MaintenanceDetail />);
   await userEvent.click(await screen.findByLabelText(/I confirm the description contains no personal or confidential data/));
@@ -459,7 +472,19 @@ it("sends an image only after separate opt-in and displays AI suggestions apart 
   expect(await screen.findByText("AI suggestion — staff review required")).toBeTruthy();
   expect(screen.getByText("Suggested fault type").nextElementSibling?.textContent).toBe("Plumbing");
   expect(screen.getByText("Synthetic explanation.")).toBeTruthy();
+  expect(screen.queryByText("تفسير صناعي.")).toBeNull();
   expect((screen.getByLabelText("Operational fault type") as HTMLInputElement).value).toBe("staff-confirmed");
+});
+
+it("shows the Arabic AI explanation in the Arabic interface", async () => {
+  const actor: Account = { id: "ai-staff-arabic-test", name: "Staff", email: "", role: "maintenance" };
+  const report: MaintenanceReport = { id: "arabic-ai-report", ownerId: "other", description: "Synthetic fault", faculty: "f", building: "b", floor: "0", details: "Room", status: "submitted", version: 1, createdAt: "2025-01-01T12:00:00Z", assignee: "", history: [], canViewAssessment: true,
+    assessment: { state: "completed", type: "electrical", priority: "urgent", risk: "high", explanation: "English legacy explanation.", explanationAr: "تلف ظاهر قرب اللوحة الكهربائية.", explanationEn: "Visible damage near the electrical panel." } };
+  vi.spyOn(maintenance, "detail").mockResolvedValue(report);
+  renderForActor(actor, <MaintenanceDetail />, "ar");
+  expect(await screen.findByText("تلف ظاهر قرب اللوحة الكهربائية.")).toBeTruthy();
+  expect(screen.queryByText("Visible damage near the electrical panel.")).toBeNull();
+  expect(screen.getByText("الأولوية المقترحة").nextElementSibling?.textContent).toBe("عاجلة");
 });
 
 it("does not offer AI submission when the server blocks external processing", async () => {

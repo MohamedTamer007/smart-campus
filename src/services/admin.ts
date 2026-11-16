@@ -94,6 +94,14 @@ export interface OperationsSnapshot {
   quotas: { provider: string; used: number; dailyLimit: number }[];
   worker: "available" | "unavailable" | "hosted_configured" | "hosted_blocked";
   calibrationApproved: boolean;
+  matching?: {
+    provider: string;
+    model: string;
+    dimension: number | null;
+    configured: boolean;
+    imagesConfigured: boolean;
+    searchMode: "calibrated" | "suggestions" | "blocked";
+  };
   // Optional while an older API build is still deployed.
   ai?: {
     provider: string;
@@ -103,6 +111,7 @@ export interface OperationsSnapshot {
     textTransferEnabled: boolean;
     imageTransferEnabled: boolean;
     providerDataCollectionApproved?: boolean;
+    model?: string | null;
   };
 }
 export const operations = () => api<OperationsSnapshot>("/admin/operations");
