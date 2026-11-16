@@ -50,7 +50,50 @@ test("recovery and password reset never report a false success", async ({ page }
   await expect(page.getByRole("alert")).toContainText("temporarily unavailable");
   await expect(page.getByRole("link", { name: "Request a new link" })).toHaveAttribute("href", "/recover");
   await page.goto("/verify");
-  await page.getByRole("textbox", { name: /^University email/ }).fill("student@o6u.edu.eg");
-  await page.getByRole("button", { name: "Resend verification link" }).click();
+  await page.getByRole("button", { name: "Didn't get the email? Resend verification link" }).click();
+  await page.getByRole("textbox", { name: /^University email/ }).last().fill("student@o6u.edu.eg");
+  await page.getByRole("button", { name: "Resend verification link", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("temporarily unavailable");
+});
+
+test("verified users see confirmed status instead of another verification request", async ({ page }) => {
+  const email = "student@o6u.edu.eg";
+  const password = "test-example-password";
+  await page.route("**/api/v1/auth/me", route => route.fulfill({
+    status: 401, contentType: "application/json", body: JSON.stringify({ code: "expired" }),
+  }));
+  await page.route("**/api/v1/auth/csrf", route => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ token: "csrf-test" }),
+  }));
+  await page.route("**/api/v1/auth/login", route => {
+    expect(route.request().postDataJSON()).toEqual({ email, password });
+    return route.fulfill({
+      status: 200, contentType: "application/json",
+      body: JSON.stringify({ id: "verified-student", email, name: "Student", role: "user" }),
+    });
+  });
+
+  await page.goto("/verify");
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.locator('form').filter({ has: page.getByRole("button", { name: "Check verification status" }) })
+    .locator('input[name="email"]').fill(email);
+  await page.locator('form').filter({ has: page.getByRole("button", { name: "Check verification status" }) })
+    .locator('input[name="password"]').fill(password);
+  await page.getByRole("button", { name: "Check verification status" }).click();
+
+  await expect(page.getByText(/Your account is already verified/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go to my account" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Check verification status" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Resend verification link/ })).toHaveCount(0);
+});
+
+test("a signed-in verified user never gets a resend prompt on the verification page", async ({ page }) => {
+  await page.route("**/api/v1/auth/me", route => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ id: "verified-student", email: "student@o6u.edu.eg", name: "Student", role: "user" }),
+  }));
+  await page.goto("/verify");
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(page.getByText(/Your account is already verified/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Resend verification link/ })).toHaveCount(0);
 });
