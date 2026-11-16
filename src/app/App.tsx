@@ -31,7 +31,6 @@ import { auth } from "../services/auth";
 import { hasRole, guestAccount } from "../services/contracts";
 import { BrandMark, Icon } from "../components/Icon";
 import { Home } from "./Home";
-import { CampusMap } from "../features/campus/CampusMap";
 import { Feedback, Page } from "../components/ui";
 import { useState } from "react";
 function StaffQueues() {
@@ -76,9 +75,6 @@ function Shell() {
         <nav id="primary-navigation" className={mobileMenuOpen ? "mobile-open" : undefined} aria-label={t("التنقل الرئيسي", "Main navigation")}>
           <NavLink to="/" end onClick={() => setMobileMenuOpen(false)}>
             {t("الرئيسية", "Home")}
-          </NavLink>
-          <NavLink to="/campus-map" onClick={() => setMobileMenuOpen(false)}>
-            {t("خريطة الجامعة", "Campus map")}
           </NavLink>
           <NavLink to="/requests" onClick={() => setMobileMenuOpen(false)}>{t("طلباتي", "My requests")}</NavLink>
           {workQueueAccess && <NavLink to="/staff" onClick={() => setMobileMenuOpen(false)}>{t("لوحة العمل", "Work queue")}</NavLink>}
@@ -138,7 +134,6 @@ function Shell() {
         )}
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/campus-map" element={<CampusMap />} />
           <Route
             path="/maintenance/new"
             element={

@@ -124,7 +124,7 @@ app.Use(async (context, next) => {
     context.Response.Headers.XContentTypeOptions = "nosniff";
     context.Response.Headers.XFrameOptions = "DENY";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
-    context.Response.Headers.ContentSecurityPolicy = "default-src 'self'; img-src 'self' data: blob: https://server.arcgisonline.com; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'";
+    context.Response.Headers.ContentSecurityPolicy = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'";
     if (context.Request.Path.StartsWithSegments("/api")) context.Response.Headers.CacheControl = "no-store";
     try { await next(); }
     catch (Exception exception) when (exception is RuleException or DbUpdateConcurrencyException or DbUpdateException or AntiforgeryValidationException)
