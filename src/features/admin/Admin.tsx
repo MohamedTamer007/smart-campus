@@ -358,7 +358,13 @@ export function AdminOverview() {
               <div className="split">
                 <section className="panel campus-map-panel">
                   <h2>{t("مخطط مواقع البلاغات", "Report location map")}</h2>
-                  <p>{t("مخطط توضيحي غير جغرافي؛ الأسماء والأعداد من بيانات النظام، وتُحفظ مواضع المباني يدويًا.", "Schematic, not geographic. Names and counts come from records; building positions are set manually.")}</p>
+                  <p>{t(
+                    "هذا المخطط مخصص لإحصاءات البلاغات حسب المواقع المسجلة في النظام. لعرض خريطة الحرم بالأقمار الصناعية وأسماء المباني الموثقة، افتح خريطة الجامعة.",
+                    "This schematic is for report statistics using locations recorded in the system. Open the campus map for satellite imagery and building names verified from university guides.",
+                  )}</p>
+                  <Link className="button secondary" to="/campus-map">
+                    {t("فتح خريطة الجامعة", "Open campus map")}
+                  </Link>
                   <svg className="campus-map" viewBox="0 0 100 56" role="img" aria-label={t("مخطط مباني الحرم وعدد البلاغات", "Campus building schematic and report counts")}>
                     <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
                     {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <g key={b.id} transform={`translate(${b.x} ${b.y})`}>

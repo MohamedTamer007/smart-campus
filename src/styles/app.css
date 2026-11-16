@@ -1150,7 +1150,7 @@ button:hover:enabled {
 .campus-explorer-viewport {
   position: relative;
   width: 100%;
-  aspect-ratio: 8 / 5;
+  aspect-ratio: 9 / 5;
   overflow: hidden;
   border: 1px solid #b7c8d8;
   border-radius: 10px;
@@ -1174,7 +1174,7 @@ button:hover:enabled {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   grid-template-rows: repeat(5, minmax(0, 1fr));
   background: #cbd9c5;
 }

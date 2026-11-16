@@ -7,7 +7,7 @@ const DENTISTRY_GUIDE = "https://o6u.edu.eg/uploads/1%20dent/Departments/-%D8%AF
 const ISCS_GUIDE = "https://o6u.edu.eg/uploads/IsCS/updates2023/Student%20Guide%281%29.pdf?FactId=14&id=920";
 const ENGINEERING_GUIDE = "https://o6u.edu.eg/uploads/h/%D8%AF%D9%84%D9%8A%D9%84%20%D8%A7%D9%84%D8%B7%D8%A7%D9%84%D8%A8%202022.pdf";
 const STUDENT_SUPPORT = "https://o6u.edu.eg/dpages.aspx?FactId=21&id=3431";
-const UNIVERSITY_PROFILE = "https://o6u.edu.eg/dpagesuni.aspx?FactId=0&id=667";
+const UNIVERSITY_PROFILE = "https://o6u.edu.eg/uploads/Hotel/%D8%AF%D9%84%D9%8A%D9%84%20%D8%A7%D9%84%D8%B7%D8%A7%D9%84%D8%A8%20%D8%A7%D9%84%D8%B9%D8%A7%D9%85%20%D8%A7%D9%84%D8%AC%D8%A7%D9%85%D8%B9%D9%8A%202022-2023%20%281%29.pdf?FactId=21&id=3085#page=7";
 
 type CampusPlace = {
   id: string;
@@ -31,7 +31,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "hotel",
     ar: "فندق الطالبات",
     en: "Female Students Hotel",
-    x: 17,
+    x: 26,
     y: 25,
     sourceEra: "2024",
     detailAr: "يظهر في خريطة الجامعة باسم الفندق الجامعي. وتؤكد صفحة خدمات الطلاب أن فندق الطالبات يقع داخل الحرم الجامعي.",
@@ -44,7 +44,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "playgrounds",
     ar: "الملاعب الرياضية",
     en: "Sports Fields",
-    x: 43.9,
+    x: 50.1,
     y: 30.6,
     sourceEra: "2024",
     detailAr: "الملاعب موضحة في الجزء الشمالي الأوسط من مخطط الحرم الجامعي الرسمي.",
@@ -60,7 +60,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "hospital",
     ar: "المستشفى الجامعي",
     en: "University Hospital",
-    x: 75,
+    x: 77.8,
     y: 13.4,
     sourceEra: "2024",
     detailAr: "المستشفى محدد في خريطة الحرم الرسمية. ويذكر دليل طب الأسنان 2024/2025 أن كلية طب الأسنان تقع داخل مبنى المستشفى.",
@@ -76,7 +76,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "administration",
     ar: "المبنى الإداري",
     en: "Administrative Building",
-    x: 17,
+    x: 26,
     y: 66,
     sourceEra: "2024",
     detailAr: "موضع المبنى الإداري ظاهر في الجزء الأوسط الغربي من خريطة الجامعة المنشورة في دليل 2024/2025.",
@@ -89,7 +89,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "iscs",
     ar: "كلية نظم المعلومات وعلوم الحاسب",
     en: "Faculty of Information Systems & Computer Science",
-    x: 82,
+    x: 84,
     y: 55,
     sourceEra: "older",
     detailAr: "الاسم ظاهر على مخطط كلية نظم المعلومات وعلوم الحاسب المنشور في دليل 2021/2022. موضع العلامة تقريبي من المخطط القديم، وليس إحداثية مبنى مؤكدة.",
@@ -102,7 +102,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "educational-compound",
     ar: "المجمع التعليمي",
     en: "Educational Compound",
-    x: 17,
+    x: 26,
     y: 87,
     sourceEra: "older",
     detailAr: "المجمع التعليمي مسمى في مخطط كلية نظم المعلومات وعلوم الحاسب. لا تفصل المصادر الرسمية المتاحة كل كلية داخله إلى مبنى مستقل.",
@@ -115,7 +115,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "pharmacy",
     ar: "مبنى الصيدلة",
     en: "Pharmacy Building",
-    x: 43,
+    x: 49.3,
     y: 87,
     sourceEra: "older",
     detailAr: "مبنى الصيدلة مسمى في المخطط الرسمي المنشور بدليل كلية نظم المعلومات وعلوم الحاسب 2021/2022. موضع العلامة تقريبي.",
@@ -128,7 +128,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "engineering",
     ar: "مبنى الهندسة (مبنى 1)",
     en: "Engineering Building (Building 1)",
-    x: 64,
+    x: 68,
     y: 87,
     sourceEra: "older",
     detailAr: "مخطط كلية الهندسة يسمي مبنى الهندسة، ويذكر الدليل أن كلية الهندسة تشغل المبنى رقم 1 بالحرم الجامعي.",
@@ -141,7 +141,7 @@ const CAMPUS_PLACES: CampusPlace[] = [
     id: "mosque",
     ar: "مسجد الجامعة",
     en: "University Mosque",
-    x: 26,
+    x: 34.2,
     y: 61,
     sourceEra: "older",
     detailAr: "يظهر مسجد الجامعة ضمن المعالم المسماة في مخطط الحرم المنشور بدليل كلية الهندسة 2022. موضع العلامة تقريبي.",
@@ -152,10 +152,10 @@ const CAMPUS_PLACES: CampusPlace[] = [
   },
 ];
 
-const TILE_COLUMNS = 8;
+const TILE_COLUMNS = 9;
 const TILE_ROWS = 5;
 const TILE_ZOOM = 19;
-const TILE_START_X = 307212;
+const TILE_START_X = 307211;
 const TILE_START_Y = 216344;
 const TILE_BASE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/";
 
@@ -342,8 +342,8 @@ export function CampusMap() {
 
         <Feedback>
           {t(
-            "الخريطة لا تحتاج إلى إدخال المباني من لوحة الإدارة. أسماء المواقع محمّلة تلقائيًا من أدلة الجامعة. بعض الأسماء مأخوذ من مخطط 2021/2022، لذلك أُشير إليها كمواقع تقريبية؛ ولن نضيف اسم مبنى غير مثبت في مصدر رسمي.",
-            "No buildings need to be entered through the admin panel. Names load automatically from university guides. Some names come from the 2021/22 plan and are marked as approximate; no unverified building name is added.",
+            "الخريطة لا تحتاج إلى إدخال المباني من لوحة الإدارة. دليل الجامعة 2022/2023 يؤكد وجود أربعة مبانٍ تعليمية؛ والمخططات تسمي المجمع التعليمي ومبنى الصيدلة ومبنى الهندسة وكلية نظم المعلومات. لا تفصل المصادر كل كلية إلى مبنى مستقل، لذلك لا نضيف أسماء غير مثبتة.",
+            "No buildings need to be entered through the admin panel. The 2022/23 university guide confirms four educational buildings; published plans name the educational compound, Pharmacy Building, Engineering Building, and Information Systems faculty. The sources do not assign every faculty a separate building, so no unverified names are added.",
           )}
         </Feedback>
       </div>
