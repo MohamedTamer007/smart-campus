@@ -528,6 +528,10 @@ textarea {
   font-size: 0.75rem;
   white-space: nowrap;
 }
+.match-likelihood {
+  max-width: 100%;
+  white-space: normal;
+}
 .list {
   display: grid;
   gap: 14px;

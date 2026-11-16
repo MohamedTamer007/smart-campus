@@ -123,7 +123,7 @@ function FoundCard({ item, similarity, queryDescription }: { item: FoundItem; si
           <strong>{t("تطابق النص حرفيًا", "Exact text match")}: <bdi>{percent.format(1)}</bdi></strong>
         </p>}
         {similarity && <div>
-          <p><span className="tag" title={t("تصنيف مبدئي حسب درجة التشابه، وليس احتمالًا إحصائيًا مُعايرًا أو إثبات ملكية.", "A provisional band based on similarity, not a calibrated probability or proof of ownership.")}>{t("ترجيح التطابق (مبدئي)", "Provisional match likelihood")}: {likelihood}</span></p>
+          <p><span className="tag match-likelihood" title={t("تصنيف مبدئي حسب درجة التشابه، وليس احتمالًا إحصائيًا مُعايرًا أو إثبات ملكية.", "A provisional band based on similarity, not a calibrated probability or proof of ownership.")}>{t("ترجيح التطابق (مبدئي)", "Provisional match likelihood")}: {likelihood}</span></p>
           <strong>{t("تشابه AI المجمّع", "Combined AI similarity")}: <bdi>{displayScore(similarity.score)}</bdi></strong>
           <p>
             {similarity.textScore !== null && <span title={t("تشابه وصف البحث مع صورة الغرض ووصفه المسجّل، وليس نسبة تطابق النصين حرفيًا.", "Search-description similarity to the item image and stored description, not literal text equality.")}>{t("صلة الوصف بالمحتوى", "Description-to-content relevance")}: <bdi>{displayScore(similarity.textScore)}</bdi></span>}
