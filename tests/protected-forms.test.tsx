@@ -90,7 +90,7 @@ it("renders API operational counts and truthful worker unavailability", async ()
   expect(screen.getByText(/Calibration approval: Not approved/)).toBeTruthy();
   expect(screen.getByText(/Background jobs: Pending 2/)).toBeTruthy();
   const details = screen.getByText("Service and processing details");
-  expect(screen.queryByText("AI configuration")).toBeNull();
+  expect(details.closest("details")?.hasAttribute("open")).toBe(false);
   await userEvent.click(details);
   expect(screen.getByText(/Provider data-collection policy approval: Denied by default/)).toBeTruthy();
   expect(screen.getByText(/Maintenance processing/).closest("li")?.textContent).toContain("2");
