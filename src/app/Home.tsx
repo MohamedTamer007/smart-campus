@@ -64,6 +64,19 @@ export function Home() {
           </Link>
         </article>
       </section>
+      <section className="campus-map-promo panel">
+        <div>
+          <span className="tag">{t("خريطة تفاعلية للحرم", "Interactive campus map")}</span>
+          <h2>{t("اعرف مكان كل مبنى", "Find your way around campus")}</h2>
+          <p>{t(
+            "استكشف مباني ومرافق جامعة 6 أكتوبر على صورة أقمار صناعية، واختر أي علامة لعرض اسم المكان ومصدره.",
+            "Explore October 6 University buildings on satellite imagery. Select a marker to see the place name and its source.",
+          )}</p>
+        </div>
+        <Link className="button primary" to="/campus-map">
+          {t("افتح خريطة الجامعة", "Open campus map")} <Icon name="arrow" />
+        </Link>
+      </section>
       <div className="home-note">
         <span className="mini-mark">
           <Icon name="home" />
