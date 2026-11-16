@@ -79,6 +79,18 @@ public sealed class OperationsController(
             matchingConfigured && (!hosted || (config.GetValue<bool>("Search:ExternalImagesApproved") &&
                 config.GetValue<bool>("Search:GeminiExternalImagesApproved"))), searchMode);
 
+        var activity = await db.Audit
+            .Where(row => row.Action == "Service:gemini:success" || row.Action == "Service:gemini:failure" ||
+                row.Action == "Service:maintenance:success" || row.Action == "Service:maintenance:failure" ||
+                row.Action == "Service:email:success" || row.Action == "Service:email:failure")
+            .GroupBy(row => row.Action)
+            .Select(group => new { Action = group.Key, At = group.Max(row => row.CreatedAt) })
+            .ToDictionaryAsync(row => row.Action, row => (DateTimeOffset?)row.At, cancellation);
+        var services = new[] { "maintenance", "gemini", "email" }
+            .Select(service => new ServiceActivityResponse(service,
+                activity.GetValueOrDefault($"Service:{service}:success"),
+                activity.GetValueOrDefault($"Service:{service}:failure"))).ToArray();
+
         using var process = Process.GetCurrentProcess();
         return new OperationsResponse(
             now,
@@ -89,6 +101,7 @@ public sealed class OperationsController(
             worker,
             calibrated,
             AiReadiness(config),
-            matching);
+            matching,
+            services);
     }
 }

@@ -1155,3 +1155,36 @@ button:hover:enabled {
   border-radius: 50%;
   background: #c62828;
 }
+
+.map-editor-workspace {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+  min-width: 0;
+}
+.map-zoom-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.map-zoom-controls .button { min-height: 36px; padding: 6px 12px; }
+.map-zoom-controls output { min-width: 50px; text-align: center; }
+.map-zoom-controls button:disabled { cursor: default; }
+.map-editor-viewport {
+  overflow: auto;
+  max-height: 65vh;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.map-editor-viewport .map-editor-canvas-button { max-width: none; margin: 0; }
+.map-editor-viewport .campus-map-stage { border: 0; border-radius: 0; }
+.map-draft-marker { pointer-events: all; cursor: grab; touch-action: none; }
+.map-draft-marker:active { cursor: grabbing; }
+@media (max-width: 540px) {
+  .map-editor-workspace { grid-column: 1; grid-row: auto; }
+}
+
+.service-activity { display: grid; gap: 12px; }
+.service-activity dt { font-weight: 700; }
+.service-activity dd { margin: 4px 0 0; color: var(--muted); }

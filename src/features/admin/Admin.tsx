@@ -1,3 +1,5 @@
+import { formatRecordDate } from "../../services/presentation";
+import { CampusMapEditor } from "./CampusMapEditor";
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "../../app/context";
@@ -167,7 +169,7 @@ export function Requests() {
   );
 }
 export function AdminOverview() {
-  const { t, account } = useApp();
+  const { t, account, language } = useApp();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [scope, setScope] = useState<DashboardScope>("all");
@@ -246,6 +248,9 @@ export function AdminOverview() {
           const mapBuildings = Array.from(new Map(
             [...(stats.unplacedBuildings ?? []), ...(stats.buildings ?? [])].map(building => [building.id, building]),
           ).values());
+          const selectedBuilding = mapBuildings.find(building => building.id === buildingId);
+          const selectedPosition = mapDraft ?? (selectedBuilding?.x != null && selectedBuilding.y != null
+            ? { x: selectedBuilding.x, y: selectedBuilding.y } : null);
           return (
             <>
               <div className="stats admin-stats">
@@ -358,7 +363,7 @@ export function AdminOverview() {
               <div className="admin-dashboard-insights">
                 <section className="panel">
                   <h2>{t("الاتجاه الأسبوعي للبلاغات", "Weekly report trend")}</h2>
-                  {(stats.weeklyTrend ?? []).map(w => <p key={w.weekOf}><bdi>{w.weekOf}</bdi> · {w.count}</p>)}
+                  {(stats.weeklyTrend ?? []).map(w => <p key={w.weekOf}><bdi>{formatRecordDate(w.weekOf, language)}</bdi> · {w.count}</p>)}
                 </section>
                 <OperationsStatus />
                 <section className="panel campus-map-panel">
@@ -383,50 +388,14 @@ export function AdminOverview() {
                           {mapBuildings.map(b => <option key={b.id} value={b.id}>{t(b.ar, b.en)}</option>)}
                         </select>
                       </Field>
-                      <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر الصورة، أو استخدم الأسهم بعد التركيز عليها. يحرّك Shift الموضع خمس خطوات.", "Choose a building and click the photo, or focus it and use the arrow keys. Shift moves the point by five steps.")}</p>
+                      <p id="map-editor-help">{mapDraft ? `${t("الموضع", "Position")}: ${mapDraft.x.toFixed(1)}, ${mapDraft.y.toFixed(1)}` : t("اختر المبنى ثم انقر الصورة أو اسحب علامته. يمكنك التكبير واستخدام الأسهم؛ Shift يحرك الموضع خمس خطوات.", "Choose a building, then click the photo or drag its marker. You can zoom and use arrow keys; Shift moves five steps.")}</p>
                     </div>
-                    <button
-                      type="button"
-                      className="map-editor-canvas-button"
-                      disabled={!buildingId}
-                      aria-label={t("اختيار موضع المبنى على الصورة", "Set building position on the photo")}
-                      aria-describedby="map-editor-help"
-                      onKeyDown={event => {
-                        const movement: Record<string, { x: number; y: number }> = {
-                          ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 },
-                          ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 },
-                        };
-                        const delta = movement[event.key];
-                        if (!delta) return;
-                        event.preventDefault();
-                        const current = mapDraft ?? { x: 50, y: 28 };
-                        const step = event.shiftKey ? 5 : 1;
-                        setMapDraft({
-                          x: Math.max(0, Math.min(100, current.x + delta.x * step)),
-                          y: Math.max(0, Math.min(56, current.y + delta.y * step)),
-                        });
-                      }}
-                      onClick={event => {
-                        if (!buildingId) return;
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        if (rect.width <= 0 || rect.height <= 0) {
-                          setMapDraft({ x: 50, y: 28 });
-                          return;
-                        }
-                        setMapDraft({
-                          x: Math.max(0, Math.min(100, (event.clientX - rect.left) / rect.width * 100)),
-                          y: Math.max(0, Math.min(56, (event.clientY - rect.top) / rect.height * 56)),
-                        });
-                      }}
-                    >
-                      <div className="campus-map-stage map-editor-canvas">
-                        <img className="campus-map-image" src="/campus-map.jpg" alt="" />
-                        <svg className="campus-map-overlay" viewBox="0 0 100 52.58" aria-hidden="true">
-                          {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <circle key={b.id} cx={b.x!} cy={b.y! * 52.58 / 56} r="1.4" fill="#144caa" stroke="white" strokeWidth=".45" />)}
-                          {mapDraft && <circle cx={mapDraft.x} cy={mapDraft.y * 52.58 / 56} r="2.8" fill="#c44300" stroke="white" strokeWidth=".7" />}
-                        </svg>
-                      </div>
-                    </button>
+                    <CampusMapEditor
+                      enabled={!!buildingId}
+                      position={selectedPosition}
+                      buildings={stats.buildings ?? []}
+                      onPosition={setMapDraft}
+                    />
                     <div className="actions">
                       <button className="button" disabled={!buildingId || !mapDraft} onClick={async () => {
                         const target = (stats.unplacedBuildings ?? []).concat(stats.buildings ?? []).find(b => b.id === buildingId);

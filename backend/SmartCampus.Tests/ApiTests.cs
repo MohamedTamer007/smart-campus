@@ -36,7 +36,7 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
         Assert.Equal(await db.Jobs.CountAsync(), response.GetProperty("jobs").EnumerateArray().Sum(j => j.GetProperty("count").GetInt32()));
-        Assert.Equal(9, response.EnumerateObject().Count());
+        Assert.Equal(10, response.EnumerateObject().Count());
         var ai = response.GetProperty("ai");
         Assert.Equal("openrouter", ai.GetProperty("provider").GetString());
         Assert.False(ai.GetProperty("textConfigured").GetBoolean());
@@ -62,6 +62,24 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
         Assert.DoesNotContain(campus.Email(campus.Student), response.GetRawText());
         Assert.DoesNotContain("ProtectedPayload", response.GetRawText());
         Assert.DoesNotContain("Host=", response.GetRawText());
+    }
+
+    [DatabaseFact]
+    public async Task Operational_activity_returns_recorded_outcomes_without_provider_payloads()
+    {
+        var started = DateTimeOffset.UtcNow;
+        var activity = campus.Services.GetRequiredService<ServiceActivity>();
+        await activity.Record("gemini", true);
+        await activity.Record("gemini", false);
+        using var administrator = await campus.Login(campus.Admin);
+        var response = await CampusFixture.Response(await administrator.GetAsync("/api/v1/admin/operations"));
+        var gemini = Assert.Single(response.GetProperty("services").EnumerateArray(),
+            row => row.GetProperty("service").GetString() == "gemini");
+        Assert.InRange(gemini.GetProperty("lastSuccessAt").GetDateTimeOffset(), started, DateTimeOffset.UtcNow);
+        Assert.InRange(gemini.GetProperty("lastFailureAt").GetDateTimeOffset(), started, DateTimeOffset.UtcNow);
+        Assert.Equal(3, gemini.EnumerateObject().Count());
+        Assert.DoesNotContain("ProtectedPayload", response.GetRawText());
+        Assert.DoesNotContain(campus.Email(campus.Admin), response.GetRawText());
     }
 
     [DatabaseFact]

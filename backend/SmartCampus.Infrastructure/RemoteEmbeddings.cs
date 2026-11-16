@@ -14,7 +14,7 @@ namespace SmartCampus.Infrastructure;
 /// The model, endpoint, and 768-dimensional output are pinned here. This class
 /// never logs request bodies, image data, provider responses, or API keys.
 /// </summary>
-public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget, IMemoryCache? cache = null)
+public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget, IMemoryCache? cache = null, ServiceActivity? activity = null)
 {
     public const string Model = "gemini-embedding-2";
     public const int Dimension = 768;
@@ -56,6 +56,21 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
         EmbedContent(new object[] { new { text } }, "text:" + text, cancellation);
 
     private async Task<EmbeddingResponse> EmbedContent(object[] parts, string cacheMaterial, CancellationToken cancellation)
+    {
+        try
+        {
+            var result = await EmbedContentCore(parts, cacheMaterial, cancellation);
+            if (activity is not null) await activity.Record("gemini", true);
+            return result;
+        }
+        catch (RuleException)
+        {
+            if (activity is not null) await activity.Record("gemini", false);
+            throw;
+        }
+    }
+
+    private async Task<EmbeddingResponse> EmbedContentCore(object[] parts, string cacheMaterial, CancellationToken cancellation)
     {
         if (!Configured(config)) throw new RuleException("search_provider_not_configured", 503);
         var revision = Revision(config);

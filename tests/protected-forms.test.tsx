@@ -104,6 +104,7 @@ it("shows when the provider collection policy is explicitly approved", async () 
       textTransferEnabled: true, imageTransferEnabled: false, providerDataCollectionApproved: true },
     matching: { provider: "google", model: "gemini-embedding-2", dimension: 768, configured: true,
       imagesConfigured: true, searchMode: "suggestions" },
+    services: [{ service: "gemini", lastSuccessAt: "2026-11-16T18:00:00Z", lastFailureAt: null }],
     quotas: [{ provider: "gemini", used: 12, dailyLimit: 50 }], jobs: [] });
   renderForActor({ id: "admin-test", name: "Administrator", email: "", role: "admin" }, <OperationsStatus />);
   await userEvent.click(await screen.findByText("Service and processing details"));
@@ -111,7 +112,9 @@ it("shows when the provider collection policy is explicitly approved", async () 
   expect(screen.getByText(/Lost-and-found matching model:/).textContent).toContain("gemini-embedding-2");
   expect(screen.getByText(/Configured search mode: Similarity suggestions without approved calibration/)).toBeTruthy();
   expect(screen.getByText(/Image matching: Configured and approved/)).toBeTruthy();
-  expect(screen.getByText(/Gemini Embedding 2/).closest("li")?.textContent).toContain("12 / 50");
+  expect(screen.getByText("12 / 50", { exact: false, selector: "li" })).toBeTruthy();
+  expect(screen.getByText(/Last success:/).querySelector("time")?.getAttribute("datetime")).toBe("2026-11-16T18:00:00Z");
+  expect(screen.getByText(/Last failure: No record yet/)).toBeTruthy();
   expect(screen.getByText(/opening the dashboard does not send a Gemini probe/)).toBeTruthy();
 });
 

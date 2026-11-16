@@ -12,7 +12,7 @@ public sealed record AiSuggestion(string Type, string Priority, string Risk, str
     public string Explanation => ExplanationEn;
 }
 
-public sealed class AiProviders(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget)
+public sealed class AiProviders(IHttpClientFactory clients, IConfiguration config, IInferenceBudget budget, ServiceActivity? activity = null)
 {
     public static bool Configured(IConfiguration configuration)
     {
@@ -46,6 +46,21 @@ public sealed class AiProviders(IHttpClientFactory clients, IConfiguration confi
             : throw new RuleException("ai_not_configured", 503);
 
     public async Task<AiSuggestion> Assess(string description, CancellationToken cancellation, byte[]? image = null)
+    {
+        try
+        {
+            var result = await AssessCore(description, cancellation, image);
+            if (activity is not null) await activity.Record("maintenance", true);
+            return result;
+        }
+        catch (RuleException)
+        {
+            if (activity is not null) await activity.Record("maintenance", false);
+            throw;
+        }
+    }
+
+    private async Task<AiSuggestion> AssessCore(string description, CancellationToken cancellation, byte[]? image)
     {
         if (!Configured(config)) throw new RuleException("ai_not_configured", 503);
         if (image is not null && !CanReviewImage(config)) throw new RuleException("ai_images_not_permitted", 503);
