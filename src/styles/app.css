@@ -1026,6 +1026,9 @@ button:hover:enabled {
 .admin-stats strong {
   font-size: 1.7rem;
 }
+.campus-map-panel {
+  grid-column: 1 / -1;
+}
 .campus-map-stage {
   position: relative;
   width: 100%;
