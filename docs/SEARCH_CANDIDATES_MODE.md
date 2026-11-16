@@ -22,6 +22,18 @@ The client captures the submitted description (with the normal outer-whitespace 
 
 Uncalibrated responses still contain `calibrated: false` and `calibration: null`; the interface warns that unrelated items can appear and that the percentage is not a match probability. The owner explicitly requested score display; the earlier prohibition on invented confidence percentages still applies. A high score cannot prove identity, distinguish every brand/color, or authorize recovery.
 
+## Provisional match-likelihood labels
+
+At the owner's request, search cards also show High / Medium / Low (مرتفع / متوسط / منخفض). These are descriptive bands of the **overall raw similarity score**, not learned or calibrated probabilities of the same item or ownership:
+
+| Overall similarity | Display band |
+|---|---|
+| At least 0.85 | High / مرتفع |
+| At least 0.70 and below 0.85 | Medium / متوسط |
+| Below 0.70 | Low / منخفض |
+
+These provisional display boundaries are not independently validated quality thresholds. They do not filter results, change ranking, alter grants or claims, or establish the calibrated No-Match criterion. The original unrounded score determines the band; rounded percentages do not move a boundary. A literal text match at 100% does not promote a lower AI score. Missing AI scores produce no invented band. The UI explicitly labels the classification provisional and distinguishes it from statistical probability and proof of ownership. Representative labeled real examples remain required before claiming validated probability or quality.
+
 ## Eligibility and test accounts
 
 Search excludes records uploaded by the requester, held personally or in the requester's department custody scope, and items no longer available (reserved or delivered). These rules are unchanged. An uploader searching with their own account will not find their own watch even using identical pixels. The page explains this and links to `/found` (My found items). A real acceptance case must use a second verified, eligible requester account, with an available, fully indexed item held by someone else.

@@ -250,8 +250,11 @@ it.each([true, false])("renders returned matches with server scores only when av
     expect(screen.getByText("82.1%")).toBeTruthy();
     expect(screen.getByText("78.2%")).toBeTruthy();
     expect(screen.getByText("86%")).toBeTruthy();
-  } else expect(screen.queryByText(/Combined AI similarity:/)).toBeNull();
-  expect(screen.getByText(/not a match probability or proof of ownership/)).toBeTruthy();
+  } else {
+    expect(screen.queryByText(/Combined AI similarity:/)).toBeNull();
+    expect(screen.queryByText(/Provisional match likelihood:/)).toBeNull();
+  }
+  expect(screen.getByText(/not a calibrated probability or proof of ownership/)).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Potential matches" })).toBeNull();
   expect(search).toHaveBeenCalledWith(actor, "Blue thermos, star sticker", image);
 });
@@ -281,7 +284,7 @@ it("shows measured similarity in Arabic and explains uploader and custody exclus
   await userEvent.type(await screen.findByLabelText(/^وصف الغرض المفقود/), "ساعة فضي من جوة أحمر نوعها كاسيو");
   await userEvent.click(screen.getByRole("button", { name: "ابحث" }));
   expect(await screen.findByText(/٨٢٫١/)).toBeTruthy();
-  expect(screen.getByText(/ليست احتمال صحة المطابقة أو إثبات الملكية/)).toBeTruthy();
+  expect(screen.getByText(/ليس احتمالًا مُعايرًا أو إثبات ملكية/)).toBeTruthy();
   expect(screen.getByText(/يستثني الأغراض التي سجّلتها بنفسك أو الموجودة بعهدتك/)).toBeTruthy();
   expect(screen.getByRole("link", { name: "معثوراتي" }).getAttribute("href")).toBe("/found");
 });
@@ -303,6 +306,31 @@ it.each([
   expect(screen.getByText(/Description-to-content relevance:/)).toBeTruthy();
   expect(screen.queryByText(/Exact text match:/) !== null).toBe(identical);
   expect(screen.getAllByText("100%")).toHaveLength(identical ? 2 : 1);
+});
+
+it.each([
+  ["en", 0.85, "High"],
+  ["en", 0.8499, "Medium"],
+  ["en", 0.70, "Medium"],
+  ["en", 0.6999, "Low"],
+  ["en", -0.10, "Low"],
+  ["ar", 0.90, "مرتفع"],
+  ["ar", 0.75, "متوسط"],
+  ["ar", 0.40, "منخفض"],
+] as const)("shows a provisional %s likelihood band for overall similarity %s", async (language, score, label) => {
+  const actor: Account = { id: "match-likelihood-test", name: "Member", email: "", role: "user" };
+  const item: FoundItem = { id: "ranked-item", description: "Recorded item", place: "Hall", date: "2026-11-16",
+    storage: null, uploaderId: "finder", custodianId: "finder", state: "available", createdAt: "2026-11-16", version: 1 };
+  vi.spyOn(lostFound, "search").mockResolvedValue({ items: [item], calibrated: false, queryDescription: "Recorded item",
+    similarities: { "ranked-item": { score, textScore: score, imageScore: null } } });
+  renderForActor(actor, <SearchItems />, language);
+  await userEvent.type(await screen.findByLabelText(language === "ar" ? /^وصف الغرض المفقود/ : /^Description of the lost item/), "Recorded item");
+  await userEvent.click(screen.getByRole("button", { name: language === "ar" ? "ابحث" : /^Search$/ }));
+  const title = language === "ar" ? "ترجيح التطابق (مبدئي)" : "Provisional match likelihood";
+  expect(await screen.findByText(`${title}: ${label}`)).toBeTruthy();
+  expect(screen.getByText(language === "ar" ? /ليس احتمالًا مُعايرًا أو إثبات ملكية/ : /not a calibrated probability or proof of ownership/)).toBeTruthy();
+  // Identical text must not promote a low overall AI score to a higher likelihood band.
+  expect(screen.getByText(language === "ar" ? /تطابق النص حرفيًا:/ : /Exact text match:/)).toBeTruthy();
 });
 
 it("rejects a blank search before sending an API request", async () => {

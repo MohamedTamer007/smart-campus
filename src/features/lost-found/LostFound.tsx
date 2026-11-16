@@ -102,6 +102,8 @@ function FoundCard({ item, similarity, queryDescription }: { item: FoundItem; si
   const { t, language } = useApp();
   const percent = new Intl.NumberFormat(language === "ar" ? "ar-EG" : "en-GB", { style: "percent", maximumFractionDigits: 1 });
   const displayScore = (score: number) => percent.format(Math.max(0, Math.min(1, score)));
+  const likelihood = similarity && (similarity.score >= 0.85 ? t("مرتفع", "High")
+    : similarity.score >= 0.70 ? t("متوسط", "Medium") : t("منخفض", "Low"));
   return (
     <Link className="record-card found-card" to={`/found/${item.id}`}>
       <Photo file={item.photo} src={item.mediaUrl} />
@@ -121,6 +123,7 @@ function FoundCard({ item, similarity, queryDescription }: { item: FoundItem; si
           <strong>{t("تطابق النص حرفيًا", "Exact text match")}: <bdi>{percent.format(1)}</bdi></strong>
         </p>}
         {similarity && <div>
+          <p><span className="tag" title={t("تصنيف مبدئي حسب درجة التشابه، وليس احتمالًا إحصائيًا مُعايرًا أو إثبات ملكية.", "A provisional band based on similarity, not a calibrated probability or proof of ownership.")}>{t("ترجيح التطابق (مبدئي)", "Provisional match likelihood")}: {likelihood}</span></p>
           <strong>{t("تشابه AI المجمّع", "Combined AI similarity")}: <bdi>{displayScore(similarity.score)}</bdi></strong>
           <p>
             {similarity.textScore !== null && <span title={t("تشابه وصف البحث مع صورة الغرض ووصفه المسجّل، وليس نسبة تطابق النصين حرفيًا.", "Search-description similarity to the item image and stored description, not literal text equality.")}>{t("صلة الوصف بالمحتوى", "Description-to-content relevance")}: <bdi>{displayScore(similarity.textScore)}</bdi></span>}
@@ -346,7 +349,7 @@ export function SearchItems() {
         </form>
         {failure && <Feedback kind="error">{failureText[failure] ? t(...failureText[failure]) : t("تعذر إكمال البحث. حاول لاحقًا.", "Search could not be completed. Try again later.")}</Feedback>}
         {matches !== null && !matches.calibrated && <Feedback>{t("هذه اقتراحات مرتبة بالتشابه دون معايرة معتمدة؛ قد تتضمن أغراضًا غير مرتبطة ببحثك. لا تثبت المطابقة أو الملكية، ويظل الاسترداد خاضعًا لمراجعة الحائز.", "These are similarity-ranked suggestions without approved calibration; unrelated items may appear. They do not establish a match or ownership. Recovery still requires the custodian’s review.")}</Feedback>}
-        {matches !== null && matches.items.length > 0 && <p>{t("تطابق النص حرفيًا مستقل عن درجة AI؛ ودرجة AI ليست احتمال صحة المطابقة أو إثبات الملكية.", "Exact text equality is separate from AI similarity; the AI score is not a match probability or proof of ownership.")}</p>}
+        {matches !== null && matches.items.length > 0 && <p>{t("ترجيح التطابق تصنيف مبدئي حسب التشابه، وليس احتمالًا مُعايرًا أو إثبات ملكية. تطابق النص حرفيًا مستقل عن درجة AI.", "Match likelihood is a provisional similarity band, not a calibrated probability or proof of ownership. Exact text equality is separate from AI similarity.")}</p>}
         {matches !== null && (matches.items.length === 0
           ? <Feedback>{t("لم تظهر نتائج مؤهلة لهذا البحث. هذا لا يثبت أن الغرض غير موجود؛ يمكنك تعديل الوصف أو الصورة والمحاولة مرة أخرى.", "No qualifying results appeared for this search. This does not prove the item is absent; revise the description or photo and try again.")}</Feedback>
           : <section className="search-results" aria-live="polite" aria-labelledby="search-results-heading">
