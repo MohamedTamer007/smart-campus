@@ -359,14 +359,7 @@ export function AdminOverview() {
                 <section className="panel campus-map-panel">
                   <h2>{t("مخطط مواقع البلاغات", "Report location map")}</h2>
                   <p>{t("مخطط توضيحي غير جغرافي؛ الأسماء والأعداد من بيانات النظام، وتُحفظ مواضع المباني يدويًا.", "Schematic, not geographic. Names and counts come from records; building positions are set manually.")}</p>
-                  <svg className="campus-map" viewBox="0 0 100 56" role="img" aria-label={t("مخطط مباني الحرم وعدد البلاغات", "Campus building schematic and report counts")}>
-                    <path d="M2 27 Q20 19 34 29 T66 27 T98 30 M5 46 Q22 36 40 44 T75 43 T98 46 M25 4 Q33 15 28 27 T31 52 M70 4 Q63 17 71 29 T68 52" fill="none" stroke="#dce5ef" strokeWidth="2" />
-                    {(stats.buildings ?? []).filter(b => b.x != null && b.y != null).map(b => <g key={b.id} transform={`translate(${b.x} ${b.y})`}>
-                      <circle r="2.5" fill="#144caa" stroke="white" strokeWidth=".8" />
-                      <text y="-3.5" textAnchor="middle" fontSize="2.5" fill="#142b54">{t(b.ar, b.en)}</text>
-                      <text y="5.5" textAnchor="middle" fontSize="2.7" fontWeight="700" fill="#c44300">{b.count}</text>
-                    </g>)}
-                  </svg>
+                  <img className="campus-map-image" src="/campus-map.png" alt={t("صورة جوية لمباني الحرم الجامعي", "Aerial photograph of the campus buildings")} />
                   {hasRole(account, "admin") && <div className="map-editor no-print">
                     {mapSaveFailed && <Feedback kind="error">{t("تعذر حفظ الموضع؛ أعد تحميل اللوحة ثم حاول مجددًا.", "The position could not be saved. Reload the dashboard and try again.")}</Feedback>}
                     <Field label={t("مبنى لتحديد موضعه", "Building to position")}>

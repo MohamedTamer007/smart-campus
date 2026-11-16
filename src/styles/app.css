@@ -1035,6 +1035,14 @@ button:hover:enabled {
   border-radius: 12px;
   background: #f8fbff;
 }
+.campus-map-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 12px 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
 .campus-map text {
   font-family: "Noto Sans Arabic", Tahoma, Arial, sans-serif;
 }
