@@ -193,7 +193,7 @@ export function Verification() {
             {!resent && (
               <button
                 type="button"
-                className="text-link"
+                className="text-link verify-resend-toggle"
                 aria-expanded={showResend}
                 onClick={() => setShowResend(value => !value)}
               >
