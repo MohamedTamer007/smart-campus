@@ -94,6 +94,7 @@ export interface OperationsSnapshot {
   quotas: { provider: string; used: number; dailyLimit: number }[];
   worker: "available" | "unavailable" | "hosted_configured" | "hosted_blocked";
   calibrationApproved: boolean;
+  services?: { service: string; lastSuccessAt: string | null; lastFailureAt: string | null }[];
   matching?: {
     provider: string;
     model: string;

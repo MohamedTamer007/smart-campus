@@ -1,3 +1,4 @@
+import { formatRecordDate } from "../../services/presentation";
 import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
 import { operations } from "../../services/admin";
@@ -56,6 +57,21 @@ export function OperationsStatus() {
               <details>
                 <summary>{t("تفاصيل الخدمات والمعالجة", "Service and processing details")}</summary>
                 <div>
+                  {status.services && (
+                    <>
+                      <h3>{t("آخر نشاط مسجل للخدمات", "Latest recorded service activity")}</h3>
+                      <p className="muted">{t("سجل العمليات منذ تفعيل التسجيل؛ آخر نجاح لا يضمن استمرار الاتصال الآن.", "Operations recorded since activity logging was enabled; a past success does not guarantee current connectivity.")}</p>
+                      <dl className="service-activity">
+                        {status.services.map(service => (
+                          <div key={service.service}>
+                            <dt>{service.service === "gemini" ? "Gemini Embedding 2" : service.service === "maintenance" ? t("تحليل الصيانة", "Maintenance analysis") : t("إرسال البريد", "Email delivery")}</dt>
+                            <dd>{t("آخر نجاح", "Last success")}: {service.lastSuccessAt ? <time dateTime={service.lastSuccessAt}>{formatRecordDate(service.lastSuccessAt, language, true)}</time> : t("لا يوجد سجل بعد", "No record yet")}</dd>
+                            <dd>{t("آخر فشل", "Last failure")}: {service.lastFailureAt ? <time dateTime={service.lastFailureAt}>{formatRecordDate(service.lastFailureAt, language, true)}</time> : t("لا يوجد سجل بعد", "No record yet")}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </>
+                  )}
                   {status.matching && (
                     <>
                       <h3>{t("مطابقة المفقودات والمعثورات", "Lost-and-found matching")}</h3>

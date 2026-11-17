@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { AppProvider, useApp } from "../src/app/context";
@@ -81,4 +81,60 @@ it("lets an administrator place a building with arrow keys and saves the selecte
 
   await user.click(screen.getByRole("button", { name: "Save position" }));
   await waitFor(() => expect(adminService.saveBuildingPosition).toHaveBeenCalledWith("building-a", 55, 23, 7));
+});
+
+it("keeps clicked and dragged building positions aligned with a zoomed photo", async () => {
+  const user = userEvent.setup();
+  render(<MemoryRouter><AppProvider><Session><AdminOverview /></Session></AppProvider></MemoryRouter>);
+  const canvas = await screen.findByRole("button", { name: "Set building position on the photo" }) as HTMLButtonElement;
+  expect(canvas.disabled).toBe(true);
+  await user.selectOptions(screen.getByLabelText("Building to position"), "building-a");
+  await user.click(screen.getByRole("button", { name: "Zoom in" }));
+  expect(canvas.style.width).toBe("150%");
+  vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+    left: 100, top: 50, width: 800, height: 400, right: 900, bottom: 450, x: 100, y: 50, toJSON: () => ({})
+  });
+  fireEvent.click(canvas, { clientX: 500, clientY: 250 });
+  expect(await screen.findByText(/Position: 50\.0, 28\.0/)).toBeTruthy();
+  Object.defineProperty(canvas, "setPointerCapture", { value: vi.fn() });
+  Object.defineProperty(canvas, "hasPointerCapture", { value: () => true });
+  Object.defineProperty(canvas, "releasePointerCapture", { value: vi.fn() });
+  const marker = canvas.querySelector("[data-map-marker]")!;
+  fireEvent.pointerDown(marker, { pointerId: 1, button: 0, clientX: 500, clientY: 250 });
+  fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 1000, clientY: 20 });
+  fireEvent.pointerUp(canvas, { pointerId: 1 });
+  fireEvent.click(canvas, { clientX: 500, clientY: 250 });
+  expect(await screen.findByText(/Position: 100\.0, 0\.0/)).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "Reset view" }));
+  expect(canvas.style.width).toBe("100%");
+  await user.click(screen.getByRole("button", { name: "Save position" }));
+  await waitFor(() => expect(adminService.saveBuildingPosition).toHaveBeenCalledWith("building-a", 100, 0, 7));
+});
+
+it.each([
+  { selected: false, pointerType: "mouse" },
+  { selected: true, pointerType: "touch" },
+])("pans a zoomed photo without placing a building ($pointerType, selected=$selected)", async ({ selected, pointerType }) => {
+  const user = userEvent.setup();
+  render(<MemoryRouter><AppProvider><Session><AdminOverview /></Session></AppProvider></MemoryRouter>);
+  const canvas = await screen.findByRole("button", { name: "Set building position on the photo" });
+  if (selected) await user.selectOptions(screen.getByLabelText("Building to position"), "building-a");
+  await user.click(screen.getByRole("button", { name: "Zoom in" }));
+  const viewport = screen.getByRole("region", { name: "Pan the zoomed map" });
+  Object.defineProperty(viewport, "setPointerCapture", { value: vi.fn() });
+  Object.defineProperty(viewport, "hasPointerCapture", { value: () => true });
+  Object.defineProperty(viewport, "releasePointerCapture", { value: vi.fn() });
+  fireEvent.pointerDown(canvas, { pointerId: 2, pointerType, button: 0, clientX: 300, clientY: 300 });
+  if (pointerType === "touch") {
+    fireEvent.pointerMove(viewport, { pointerId: 2, pointerType, clientX: 240, clientY: 250 });
+    fireEvent.lostPointerCapture(canvas, { pointerId: 2, pointerType });
+  }
+  fireEvent.pointerMove(viewport, { pointerId: 2, pointerType, clientX: 180, clientY: 200 });
+  fireEvent.pointerUp(viewport, { pointerId: 2, pointerType });
+  fireEvent.click(canvas, { clientX: 180, clientY: 200 });
+  expect(viewport.scrollLeft).toBe(120);
+  expect(viewport.scrollTop).toBe(100);
+  expect((screen.getByRole("button", { name: "Save position" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(canvas.querySelector("[data-map-marker]")).toBeNull();
+  expect(adminService.saveBuildingPosition).not.toHaveBeenCalled();
 });

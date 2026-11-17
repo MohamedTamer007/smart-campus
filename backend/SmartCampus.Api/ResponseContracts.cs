@@ -34,9 +34,10 @@ public sealed record AiReadinessResponse(string Provider, bool TextConfigured, b
     bool ProviderDataCollectionApproved, string? Model);
 public sealed record MatchingReadinessResponse(string Provider, string Model, int? Dimension,
     bool Configured, bool ImagesConfigured, string SearchMode);
+public sealed record ServiceActivityResponse(string Service, DateTimeOffset? LastSuccessAt, DateTimeOffset? LastFailureAt);
 public sealed record OperationsResponse(DateTimeOffset SampledAt, string Deployment, long WorkingSetBytes,
     JobStateResponse[] Jobs, ProviderQuotaResponse[] Quotas, string Worker, bool CalibrationApproved,
-    AiReadinessResponse Ai, MatchingReadinessResponse Matching);
+    AiReadinessResponse Ai, MatchingReadinessResponse Matching, ServiceActivityResponse[] Services);
 
 /// <summary>Whether the current recipient has any unread notifications.</summary>
 public sealed record NotificationStatusResponse(bool HasUnread);

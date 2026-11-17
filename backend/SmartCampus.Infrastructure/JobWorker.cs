@@ -95,7 +95,11 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
         await transaction.CommitAsync(cancellation);
         try
         {
-            if (job.Kind == "email") await scope.ServiceProvider.GetRequiredService<EmailSender>().Deliver(job.EntityId);
+            if (job.Kind == "email")
+            {
+                await scope.ServiceProvider.GetRequiredService<EmailSender>().Deliver(job.EntityId);
+                await scope.ServiceProvider.GetRequiredService<ServiceActivity>().Record("email", true);
+            }
             else if (job.Kind == "index") await scope.ServiceProvider.GetRequiredService<RetrievalService>().Index(job.EntityId, force: job.InputVersion > 1);
             else if (job.Kind == "reportvec") await scope.ServiceProvider.GetRequiredService<ReportSimilarity>().Index(job.EntityId);
             else if (job.Kind == "describe") await scope.ServiceProvider.GetRequiredService<ItemDescriber>().Process(job, cancellation);
@@ -118,6 +122,7 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
                     ? exception is RuleException rule ? rule.Code : "provider_unavailable"
                     : null;
             }
+            if (job.Kind == "email") await scope.ServiceProvider.GetRequiredService<ServiceActivity>().Record("email", false);
             logger.LogWarning("Job {JobId} returned {State}", job.Id, job.State);
         }
         await db.SaveChangesAsync(cancellation);

@@ -1,3 +1,4 @@
+import { formatRecordDate, recordReference } from "../../services/presentation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../../app/context";
@@ -110,7 +111,7 @@ function FoundCard({ item, similarity, queryDescription }: { item: FoundItem; si
       <Photo file={item.photo} src={item.mediaUrl} />
       <div>
         <div className="record-top">
-          <bdi>{item.id}</bdi>
+          <bdi>{recordReference(item.id, "LF")}</bdi>
           <span className="tag">
             {item.state === "available"
               ? t("متاح", "Available")
@@ -132,7 +133,7 @@ function FoundCard({ item, similarity, queryDescription }: { item: FoundItem; si
           </p>
         </div>}
         <p>
-          {item.place} · <bdi>{item.date}</bdi>
+          {item.place} · <time dateTime={item.date}>{formatRecordDate(item.date, language)}</time>
         </p>
       </div>
     </Link>
@@ -629,14 +630,14 @@ function ItemDetail({
   item: FoundItem;
   changed: () => void;
 }) {
-  const { t, account } = useApp();
+  const { t, account, language } = useApp();
   const navigate = useNavigate();
   const owner = isCustodian(item, account);
   return (
     <>
       <div className="panel">
         <div className="record-top">
-          <bdi>{item.id}</bdi>
+          <bdi>{recordReference(item.id, "LF")}</bdi>
           <span className="tag">
             {item.state === "available"
               ? t("متاح", "Available")
@@ -655,7 +656,7 @@ function ItemDetail({
           <div>
             <dt>{t("تاريخ العثور", "Date found")}</dt>
             <dd>
-              <bdi>{item.date}</bdi>
+              <time dateTime={item.date}>{formatRecordDate(item.date, language)}</time>
             </dd>
           </div>
           {(owner || hasRole(account, "admin")) && <div>
@@ -757,7 +758,7 @@ export function ClaimsList() {
                 >
                   <div className="record-top">
                     <bdi>
-                      {claim.id} · {claim.itemId}
+                      {recordReference(claim.id, "CR")} · {recordReference(claim.itemId, "LF")}
                     </bdi>
                     <ClaimStatusBadge status={claim.status} />
                   </div>
@@ -794,7 +795,7 @@ function ClaimView({
       <div className="panel">
         <div className="record-top">
           <bdi>
-            {claim.id} · {item.id}
+            {recordReference(claim.id, "CR")} · {recordReference(item.id, "LF")}
           </bdi>
           <ClaimStatusBadge status={claim.status} />
         </div>

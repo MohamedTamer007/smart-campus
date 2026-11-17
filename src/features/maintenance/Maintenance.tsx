@@ -1,3 +1,4 @@
+import { formatRecordDate, recordReference } from "../../services/presentation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -39,13 +40,6 @@ const emptyInput = (): MaintenanceInput => ({
 function Status({ value }: { value: MaintenanceStatus }) {
   const { t } = useApp();
   return <span className="tag">{t(...labels[value])}</span>;
-}
-function displayDate(date: string, language: string) {
-  return new Intl.DateTimeFormat(language === "ar" ? "ar-EG" : "en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Africa/Cairo",
-  }).format(new Date(date));
 }
 function PhotoPreview({ photo }: { photo?: File }) {
   const [preview, setPreview] = useState<{ file: File; url: string }>();
@@ -318,7 +312,7 @@ function SyntheticAiCheck() {
 }
 
 export function MaintenanceList({ staff = false }: { staff?: boolean }) {
-  const { t, account } = useApp();
+  const { t, account, language } = useApp();
   const load = useCallback(
     () => maintenance.list(account),
     [account],
@@ -358,12 +352,12 @@ export function MaintenanceList({ staff = false }: { staff?: boolean }) {
                   key={record.id}
                 >
                   <div className="record-top">
-                    <bdi>{record.id}</bdi>
+                    <bdi>{recordReference(record.id, "SC", record.reference)}</bdi>
                     <Status value={record.status} />
                   </div>
                   <h3>{record.description}</h3>
                   <p>
-                    {record.details} · {displayDate(record.createdAt, "en")}
+                    {record.details} · {formatRecordDate(record.createdAt, language, true)}
                   </p>
                 </Link>
               ))}
@@ -523,7 +517,7 @@ function Detail({
       )}
       <div className="panel">
         <div className="record-top">
-          <bdi>{report.reference ?? report.id}</bdi>
+          <bdi>{recordReference(report.id, "SC", report.reference)}</bdi>
           <Status value={report.status} />
         </div>
         <h2>{t("تفاصيل البلاغ", "Report details")}</h2>
@@ -538,7 +532,7 @@ function Detail({
           </div>
           <div>
             <dt>{t("تاريخ الإرسال", "Submitted")}</dt>
-            <dd>{displayDate(report.createdAt, language)}</dd>
+            <dd>{formatRecordDate(report.createdAt, language, true)}</dd>
           </div>
         </dl>
         <PhotoPreview photo={report.photo} />
@@ -577,7 +571,7 @@ function Detail({
             <li key={index}>
               <Status value={event.status} />
               <small>
-                <bdi>{event.actor}</bdi> · {displayDate(event.at, language)}
+                <bdi>{event.actor}</bdi> · {formatRecordDate(event.at, language, true)}
                 {event.assignee &&
                   ` · ${t("مسند إلى", "Assigned to")} ${event.assigneeName || event.assignee}`}{" "}
               </small>

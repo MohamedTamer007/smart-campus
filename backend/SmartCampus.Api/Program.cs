@@ -62,6 +62,7 @@ builder.Services.AddScoped<BrevoEmailTransport>();
 builder.Services.AddScoped<PrivateMedia>();
 builder.Services.AddScoped<MaintenanceService>();
 builder.Services.AddScoped<LostFoundService>();
+builder.Services.AddSingleton<ServiceActivity>();
 builder.Services.AddScoped<AiProviders>();
 builder.Services.AddScoped<MaintenanceAssessmentProcessor>();
 builder.Services.AddSingleton<ItemDescriptionCache>();
