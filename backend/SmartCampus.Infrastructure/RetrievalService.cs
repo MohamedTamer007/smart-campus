@@ -50,12 +50,15 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         // A description is mandatory; a photo only refines it and is never sufficient on its own.
         if (string.IsNullOrWhiteSpace(description)) throw new RuleException("search_input_required");
         description = Rules.Required(description, 2000);
+        var threshold = ApprovedThreshold(config, photo is not null);
         // With no embedding provider (or when it fails) a text-only search still works by keyword.
-        var keywordFallback = config.GetValue("Search:KeywordFallback", true) && photo is null;
+        // Keyword matching has no reviewed threshold, so it is offered only in the owner's explicit
+        // suggestion mode and never replaces an approved calibration threshold.
+        var keywordFallback = config.GetValue("Search:KeywordFallback", true) && photo is null
+            && threshold is null && Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates");
         var keywordOnly = Hosted && !RemoteEmbeddings.Configured(config);
         if (keywordOnly && !keywordFallback)
             throw new RuleException("search_provider_not_configured", 503);
-        var threshold = ApprovedThreshold(config, photo is not null);
         // The site owner may explicitly offer ranked suggestions before calibration.
         // This does not approve a threshold or establish a match/ownership probability.
         if (threshold is null && !(Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates")))

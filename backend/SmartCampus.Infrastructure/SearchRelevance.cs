@@ -144,19 +144,17 @@ public static class SearchRelevance
     /// <summary>
     /// Ranking with no embedding at all: how many of the query's words the item text contains,
     /// then the same detail/place/date signals. Used when no embedding provider is available.
-    /// Items sharing no word and no category with the query are not returned.
+    /// Items sharing no word with the query are not returned.
     /// </summary>
     public static PooledCandidate[] KeywordRank(string query, IReadOnlyList<PooledCandidate> items, RelevanceOptions options)
     {
         var queryTokens = Tokens(query);
-        var wanted = CategoryOf(query);
         var scored = new List<PooledCandidate>();
         foreach (var item in items)
         {
             var overlap = Overlap(queryTokens, Tokens(item.Text + " " + item.Place));
-            var category = string.IsNullOrEmpty(item.AiCategory) || item.AiCategory == "other" ? CategoryOf(item.Text) : item.AiCategory;
-            var sameCategory = wanted is not null && category == wanted;
-            if (overlap <= 0 && !sameCategory) continue;
+            // At least one shared word is required; a matching category alone never lists an item.
+            if (overlap <= 0) continue;
             scored.Add(item with { Candidate = item.Candidate with { Score = 0.35 + 0.45 * overlap, TextScore = null, ImageScore = null } });
         }
         return Select(query, scored, options);
