@@ -50,26 +50,44 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
         // A description is mandatory; a photo only refines it and is never sufficient on its own.
         if (string.IsNullOrWhiteSpace(description)) throw new RuleException("search_input_required");
         description = Rules.Required(description, 2000);
-        if (Hosted && !RemoteEmbeddings.Configured(config))
+        // With no embedding provider (or when it fails) a text-only search still works by keyword.
+        var keywordFallback = config.GetValue("Search:KeywordFallback", true) && photo is null;
+        var keywordOnly = Hosted && !RemoteEmbeddings.Configured(config);
+        if (keywordOnly && !keywordFallback)
             throw new RuleException("search_provider_not_configured", 503);
         var threshold = ApprovedThreshold(config, photo is not null);
         // The site owner may explicitly offer ranked suggestions before calibration.
         // This does not approve a threshold or establish a match/ownership probability.
         if (threshold is null && !(Hosted && config.GetValue<bool>("Search:AllowUncalibratedCandidates")))
             throw new RuleException("search_calibration_required", 503);
-        if (Hosted && await HasVisibleUnindexedItems(actor, photo is not null))
-            throw new RuleException("search_index_pending", 503);
-        EmbeddingResponse? image = null;
-        if (photo is not null)
+        if (!keywordOnly && Hosted && await HasVisibleUnindexedItems(actor, photo is not null))
         {
-            if (photo.Length is <= 0 or > CampusImageNormalizer.MaximumUploadBytes) throw new RuleException("invalid_upload");
-            using var bytes = new MemoryStream();
-            await photo.CopyToAsync(bytes);
-            image = await EmbedImage(bytes.ToArray());
+            if (!keywordFallback) throw new RuleException("search_index_pending", 503);
+            keywordOnly = true;
         }
-        var text = await EmbedText(description);
-        if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
-        var candidates = await Candidates(actor, description, text, image, threshold);
+        RetrievalCandidate[] candidates = [];
+        if (!keywordOnly)
+        {
+            try
+            {
+                EmbeddingResponse? image = null;
+                if (photo is not null)
+                {
+                    if (photo.Length is <= 0 or > CampusImageNormalizer.MaximumUploadBytes) throw new RuleException("invalid_upload");
+                    using var bytes = new MemoryStream();
+                    await photo.CopyToAsync(bytes);
+                    image = await EmbedImage(bytes.ToArray());
+                }
+                var text = await EmbedText(description);
+                if (image is not null && text is not null && image.Dimension != text.Dimension) throw new RuleException("invalid_embedding", 503);
+                candidates = await Candidates(actor, description, text, image, threshold);
+            }
+            catch (RuleException failure) when (keywordFallback && ProviderFailure(failure.Code))
+            {
+                keywordOnly = true;
+            }
+        }
+        if (keywordOnly) candidates = await KeywordCandidates(actor, description);
         var itemIds = candidates.Select(candidate => candidate.ItemId).ToArray();
         if (candidates.Length > 0)
         {
@@ -86,8 +104,37 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
             }
             if (db.ChangeTracker.HasChanges()) await db.SaveChangesAsync();
         }
-        return new { itemIds, candidates, rankingVersion = Hosted ? RemoteEmbeddings.Revision(config) : "siglip2-v1",
-            calibration = threshold.HasValue ? config["Search:CalibrationApproval"] : null, calibrated = threshold.HasValue };
+        return new { itemIds, candidates, mode = keywordOnly ? "keyword" : "semantic",
+            rankingVersion = keywordOnly ? "keyword-v1" : Hosted ? RemoteEmbeddings.Revision(config) : "siglip2-v1",
+            calibration = !keywordOnly && threshold.HasValue ? config["Search:CalibrationApproval"] : null, calibrated = !keywordOnly && threshold.HasValue };
+    }
+
+    // Failures of the embedding provider itself (quota, key, outage); the caller falls back to keyword search.
+    private static bool ProviderFailure(string code) => code is "ai_rate_limited" or "ai_quota_exhausted" or "ai_quota_not_configured"
+        or "ai_key_rejected" or "ai_access_denied" or "search_provider_unavailable" or "search_provider_not_configured"
+        or "invalid_embedding" or "worker_unavailable";
+
+    /// <summary>Keyword-only search over the items this user may see; needs no embedding provider.</summary>
+    private async Task<RetrievalCandidate[]> KeywordCandidates(Actor actor, string description)
+    {
+        var connection = (NpgsqlConnection)db.Database.GetDbConnection();
+        await db.Database.OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT f."Id", f."Description", f."AiDescription", f."AiCategory", f."Place", f."Date" FROM smart_campus."Items" f
+            WHERE f."State"='available' AND f."CustodianId" IS DISTINCT FROM @user AND f."UploaderId"<>@user
+              AND (f."CustodianDepartmentId" IS NULL OR NOT (f."CustodianDepartmentId"=ANY(@scopes)))
+            ORDER BY f."Date" DESC, f."Id" LIMIT 500
+            """;
+        command.Parameters.AddWithValue("user", actor.Id);
+        command.Parameters.AddWithValue("scopes", actor.Roles.Contains("department") ? actor.Scopes : Array.Empty<Guid>());
+        var items = new List<PooledCandidate>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            items.Add(new(new RetrievalCandidate(reader.GetGuid(0), 0, null, null),
+                reader.GetString(1) + " " + (reader.IsDBNull(2) ? "" : reader.GetString(2)),
+                reader.IsDBNull(3) ? null : reader.GetString(3), reader.GetString(4), reader.GetFieldValue<DateOnly>(5)));
+        return SearchRelevance.KeywordRank(description, items, SearchRelevance.OptionsFrom(config)).Select(p => p.Candidate).ToArray();
     }
 
     /// <summary>Text embedded for an item: the finder's description plus the internal AI reading, when present.</summary>
@@ -244,7 +291,7 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
                 (text_score + COALESCE(image_image, text_score))/2
               ELSE text_score END AS score, text_score, image_image FROM signals)
             SELECT s."ItemId", s.score, s.text_score, CASE WHEN @hasimage THEN s.image_image ELSE NULL END,
-              f."Description", f."AiDescription", f."AiCategory" FROM scored s JOIN smart_campus."Items" f ON f."Id"=s."ItemId"
+              f."Description", f."AiDescription", f."AiCategory", f."Place", f."Date" FROM scored s JOIN smart_campus."Items" f ON f."Id"=s."ItemId"
             WHERE s.score IS NOT NULL AND (@threshold IS NULL OR s.score>=@threshold)
             ORDER BY s.score DESC,s."ItemId" LIMIT @pool
             """;
@@ -267,7 +314,8 @@ public sealed class RetrievalService(CampusDb db, Access access, IHttpClientFact
                 reader.IsDBNull(2) ? null : Similarity(reader.GetDouble(2)), reader.IsDBNull(3) ? null : Similarity(reader.GetDouble(3)));
             var finderText = reader.GetString(4);
             var aiText = reader.IsDBNull(5) ? "" : reader.GetString(5);
-            pool.Add(new(candidate, finderText + " " + aiText, reader.IsDBNull(6) ? null : reader.GetString(6)));
+            pool.Add(new(candidate, finderText + " " + aiText, reader.IsDBNull(6) ? null : reader.GetString(6),
+                reader.GetString(7), reader.GetFieldValue<DateOnly>(8)));
         }
         // The nearest-vector pool is tidied with category, keyword and score-gap checks
         // before the final five are returned (see SearchRelevance).

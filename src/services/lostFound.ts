@@ -42,6 +42,8 @@ export interface SearchSimilarity {
 export interface SearchResult {
   items: FoundItem[];
   calibrated: boolean;
+  /** "keyword" when no AI matching service was available and plain word matching was used. */
+  mode?: "semantic" | "keyword";
   similarities?: Record<string, SearchSimilarity>;
   queryDescription?: string;
 }
@@ -153,7 +155,7 @@ export const lostFound: LostFoundService = {
   register: async (_actor, input) => withPhoto(await api<FoundItem>("/found", { method: "POST", body: form({ ...input,
     destination: input.destination ? await departmentId(input.destination) : undefined }) })),
   search: async (actor, description, photo) => {
-    const response = await api<{ itemIds: string[]; calibrated?: boolean; candidates?: (SearchSimilarity & { itemId: string })[] }>("/found/search", { method: "POST", body: form({ description, photo }) });
+    const response = await api<{ itemIds: string[]; calibrated?: boolean; mode?: string; candidates?: (SearchSimilarity & { itemId: string })[] }>("/found/search", { method: "POST", body: form({ description, photo }) });
     const similarities: Record<string, SearchSimilarity> = Object.create(null);
     for (const candidate of response.candidates ?? []) {
       if (!Number.isFinite(candidate.score) || [candidate.score, candidate.textScore, candidate.imageScore]
@@ -164,6 +166,7 @@ export const lostFound: LostFoundService = {
     return {
       items: await Promise.all(response.itemIds.map(id => lostFound.detail(actor, id))),
       calibrated: response.calibrated === true,
+      mode: response.mode === "keyword" ? "keyword" : "semantic",
       similarities,
       queryDescription: description.trim(),
     };

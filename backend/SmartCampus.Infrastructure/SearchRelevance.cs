@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace SmartCampus.Infrastructure;
 
-public sealed record PooledCandidate(RetrievalCandidate Candidate, string Text, string? AiCategory);
+public sealed record PooledCandidate(RetrievalCandidate Candidate, string Text, string? AiCategory, string Place = "", DateOnly? Date = null);
 
 public sealed record RelevanceOptions(bool CategoryGate = true, double Margin = 0.08, double KeywordWeight = 0.1, int Take = 5);
 
@@ -113,6 +113,7 @@ public static class SearchRelevance
     {
         if (pool.Count == 0) return [];
         var queryTokens = Tokens(query);
+        var queryAttributes = SearchAttributes.Extract(query);
         var wanted = options.CategoryGate ? CategoryOf(query) : null;
         var kept = pool.Where(p =>
         {
@@ -122,13 +123,43 @@ public static class SearchRelevance
             return category is null || category == wanted;
         }).ToArray();
         if (kept.Length == 0) return [];
-        var best = kept.Max(p => p.Candidate.Score);
-        return kept
+        // Details (model, colour, brand) and the place/date the query mentions move the score:
+        // up when they agree, sharply down when they clearly disagree.
+        var adjusted = kept.Select(p =>
+        {
+            var delta = SearchAttributes.Adjustment(queryAttributes, SearchAttributes.Extract(p.Text))
+                + SearchAttributes.PlaceBoost(query, p.Place) + SearchAttributes.DateBoost(query, p.Date);
+            var score = Math.Clamp(p.Candidate.Score + delta, 0, 1);
+            return p with { Candidate = p.Candidate with { Score = score } };
+        }).ToArray();
+        var best = adjusted.Max(p => p.Candidate.Score);
+        return adjusted
             .Where(p => best - p.Candidate.Score <= options.Margin)
             .OrderByDescending(p => p.Candidate.Score + options.KeywordWeight * Overlap(queryTokens, Tokens(p.Text)))
             .ThenBy(p => p.Candidate.ItemId)
             .Take(options.Take)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Ranking with no embedding at all: how many of the query's words the item text contains,
+    /// then the same detail/place/date signals. Used when no embedding provider is available.
+    /// Items sharing no word and no category with the query are not returned.
+    /// </summary>
+    public static PooledCandidate[] KeywordRank(string query, IReadOnlyList<PooledCandidate> items, RelevanceOptions options)
+    {
+        var queryTokens = Tokens(query);
+        var wanted = CategoryOf(query);
+        var scored = new List<PooledCandidate>();
+        foreach (var item in items)
+        {
+            var overlap = Overlap(queryTokens, Tokens(item.Text + " " + item.Place));
+            var category = string.IsNullOrEmpty(item.AiCategory) || item.AiCategory == "other" ? CategoryOf(item.Text) : item.AiCategory;
+            var sameCategory = wanted is not null && category == wanted;
+            if (overlap <= 0 && !sameCategory) continue;
+            scored.Add(item with { Candidate = item.Candidate with { Score = 0.35 + 0.45 * overlap, TextScore = null, ImageScore = null } });
+        }
+        return Select(query, scored, options);
     }
 
     public static RelevanceOptions OptionsFrom(IConfiguration config) => new(
