@@ -714,3 +714,10 @@ Code, security, test and documentation review passed. Found-item inventory lists
 - `npm test -- tests/admin-map-accessibility.test.tsx`: 4 passed, including mouse/touch panning without placement and existing marker/keyboard behavior. `npm run typecheck` and `npm run build`: passed. Initial checks raced the unfinished npm install and were repeated after dependencies were installed. Temporary review scripts were moved outside the source tree before the final lint pass.
 - Playwright CLI / Edge at 390×844 verified 400% zoom, mouse and native touch panning by 160 pixels on both axes, unchanged 50.0/28.0 marker coordinates, and keyboard viewport panning. Only the component, scoped CSS, map regression file and this record are published; no API or database changes.
 - Final npm run lint: passed. Source diff whitespace checks: passed.
+
+## Production rollout of AI descriptions, repeat-fault estimates and search relevance — 17 November 2026
+
+- Owner authorized the rollout ("yes do every thing"). PR #15 CI was green (verify and package) before merge; merge commit `530f6cb` on `main`.
+- Applied the reviewed `dotnet ef migrations script` output (only `FoundItemAiDescription` and `ReportEmbeddings`) to production through the Supabase management query endpoint, in transactions. Verified: both migration ids recorded, three new `Items` columns present, `smart_campus_runtime` has INSERT but not DELETE on `ReportEmbeddings`. `ReportEmbeddings` migration was amended before rollout to grant `SELECT, INSERT, UPDATE` to `smart_campus_runtime`.
+- Deployed `main` with `gh workflow run monsterasp-auto-deploy.yml --ref main` (run 44081448810, succeeded); `/health/live` returned 200.
+- Not done: the host setting `AI__AllowItemPhotoDescription=true` (photo descriptions stay off until the owner sets it), the EmailJS template "From Name" change, and hosted behaviour checks with fictional data. Hosted quality of the new search rules and descriptions is unverified.
