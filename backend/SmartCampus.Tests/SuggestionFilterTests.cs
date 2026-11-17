@@ -72,7 +72,7 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
         await SetSimilarity(db, phone, "image", 0.78f);
         using var photo = new MemoryStream(Picture(SKColors.Red, 9));
         var file = new FormFile(photo, 0, photo.Length, "photo", "synthetic-watch.png");
-        var response = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file), JsonOptions);
+        var response = JsonSerializer.SerializeToElement(await retrieval.Search("Watch query", file), JsonOptions);
         Assert.Equal(new[] { watch, phone }, response.GetProperty("itemIds").EnumerateArray().Select(id => id.GetGuid()).ToArray());
         var candidates = response.GetProperty("candidates").EnumerateArray().ToArray();
         Assert.Equal(watch, candidates[0].GetProperty("itemId").GetGuid());
@@ -84,7 +84,7 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
         Assert.Equal(JsonValueKind.Null, response.GetProperty("calibration").ValueKind);
         Assert.Equal(2, await db.SearchGrants.CountAsync(g => g.UserId == campus.Other));
 
-        var textOnly = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", null), JsonOptions);
+        var textOnly = JsonSerializer.SerializeToElement(await retrieval.Search("Watch query", null), JsonOptions);
         var firstText = textOnly.GetProperty("candidates")[0];
         Assert.Equal(watch, firstText.GetProperty("itemId").GetGuid());
         Assert.Equal(0.782, firstText.GetProperty("score").GetDouble(), 5);
@@ -96,7 +96,7 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
             scope.ServiceProvider.GetRequiredService<UserManager<CampusUser>>(), scope.ServiceProvider.GetRequiredService<ReleasePolicy>());
         var ownerRetrieval = new RetrievalService(db, ownerAccess, encoder, config, scope.ServiceProvider.GetRequiredService<PrivateMedia>(),
             new RemoteEmbeddings(encoder, config, encoder));
-        var ownerResponse = JsonSerializer.SerializeToElement(await ownerRetrieval.Search("Red watch query", file), JsonOptions);
+        var ownerResponse = JsonSerializer.SerializeToElement(await ownerRetrieval.Search("Watch query", file), JsonOptions);
         Assert.Empty(ownerResponse.GetProperty("itemIds").EnumerateArray());
         Assert.Empty(ownerResponse.GetProperty("candidates").EnumerateArray());
         Assert.False(await db.SearchGrants.AnyAsync(g => g.UserId == campus.Student));
@@ -105,11 +105,11 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
         config["Search:CalibrationApproval"] = "SYNTHETIC ONLY - not retrieval quality evidence";
         config["Search:CalibrationRevision"] = RemoteEmbeddings.Revision(config);
         config["Search:MultimodalMinimumScore"] = "0.8";
-        var reviewed = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file), JsonOptions);
+        var reviewed = JsonSerializer.SerializeToElement(await retrieval.Search("Watch query", file), JsonOptions);
         Assert.Equal(watch, Assert.Single(reviewed.GetProperty("itemIds").EnumerateArray()).GetGuid());
         Assert.True(reviewed.GetProperty("calibrated").GetBoolean());
         config["Search:MultimodalMinimumScore"] = "0.85";
-        var rejected = JsonSerializer.SerializeToElement(await retrieval.Search("Red watch query", file), JsonOptions);
+        var rejected = JsonSerializer.SerializeToElement(await retrieval.Search("Watch query", file), JsonOptions);
         Assert.Empty(rejected.GetProperty("itemIds").EnumerateArray());
         Assert.Empty(rejected.GetProperty("candidates").EnumerateArray());
     }
