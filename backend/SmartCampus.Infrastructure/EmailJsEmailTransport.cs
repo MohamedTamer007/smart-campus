@@ -14,7 +14,7 @@ public sealed class EmailJsEmailTransport(IHttpClientFactory clients, IConfigura
 {
     private const string Endpoint = "https://api.emailjs.com/api/v1.0/email/send";
 
-    public async Task Send(string recipient, string subject, string link, CancellationToken cancellation = default)
+    public async Task Send(string recipient, string subject, string link, string? name = null, CancellationToken cancellation = default)
     {
         var serviceId = config["Email:EmailJsServiceId"];
         var templateId = config["Email:EmailJsTemplateId"];
@@ -39,7 +39,7 @@ public sealed class EmailJsEmailTransport(IHttpClientFactory clients, IConfigura
             accessToken = privateKey,
             template_params = new
             {
-                to_email = recipient, from_name = "Smart Campus", subject, link,
+                to_email = recipient, to_name = name ?? "", from_name = "Smart Campus", subject, link,
                 title_ar = parts.Title, title_en = parts.EnglishTitle, message_ar = parts.Message, message_en = parts.English,
                 button_ar = parts.Button, button_en = parts.ButtonEnglish, logo_url = parts.LogoUrl
             }
