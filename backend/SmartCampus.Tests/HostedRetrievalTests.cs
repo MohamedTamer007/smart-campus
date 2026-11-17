@@ -160,6 +160,12 @@ public sealed class HostedRetrievalTests(CampusFixture campus) : IClassFixture<C
 
         // Suggestion mode ranks the bounded eligible inventory; scores are not calibrated acceptance.
         config["Search:AllowUncalibratedCandidates"] = "true";
+        // Default relevance tidy-up: the red bag is far below the blue bottle and a different category, so it is hidden.
+        var tidy = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null));
+        Assert.Equal(blue, Assert.Single(tidy.GetProperty("itemIds").EnumerateArray()).GetGuid());
+        // With the tidy-up switched off the raw ranked pool is returned, as before.
+        config["Search:CategoryGate"] = "false";
+        config["Search:RelevanceMargin"] = "1";
         var candidates = JsonSerializer.SerializeToElement(await retrieval.Search("Blue distinctive bottle", null), new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.Equal(new[] { blue, red }, candidates.GetProperty("itemIds").EnumerateArray()
             .Select(value => value.GetGuid()).ToArray());
