@@ -105,7 +105,7 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
             var token = Encode(await users.GeneratePasswordResetTokenAsync(user));
             // IIS rejects oversized URL path segments. Keep the token in the query string.
             await mail.Enqueue(user.Email!, "Smart Campus password reset",
-                $"{Origin()}/reset?userId={user.Id}&token={Uri.EscapeDataString(token)}");
+                $"{Origin()}/reset?userId={user.Id}&token={Uri.EscapeDataString(token)}", user.DisplayName);
         }
         return new { accepted = true };
     }
@@ -205,7 +205,7 @@ public sealed class AuthController(UserManager<CampusUser> users, SignInManager<
     private async Task SendVerification(CampusUser user)
     {
         var token = Encode(await users.GenerateEmailConfirmationTokenAsync(user));
-        await mail.Enqueue(user.Email!, "Verify your Smart Campus email", $"{Origin()}/verify?userId={user.Id}&token={token}");
+        await mail.Enqueue(user.Email!, "Verify your Smart Campus email", $"{Origin()}/verify?userId={user.Id}&token={token}", user.DisplayName);
     }
     private string Origin() => (config["PublicOrigin"] ?? throw new RuleException("email_unavailable", 503)).TrimEnd('/');
     private static string Encode(string token) => WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));

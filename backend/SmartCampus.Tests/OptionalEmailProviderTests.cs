@@ -40,7 +40,7 @@ public sealed class OptionalEmailProviderTests
         using var boundary = new Boundary(HttpStatusCode.OK, "OK");
         const string link = "https://campus.example.test/verify?token=synthetic-secret";
         await new EmailJsEmailTransport(boundary, EmailJsConfig())
-            .Send("student@o6u.edu.eg", "Verify Smart Campus", link);
+            .Send("student@o6u.edu.eg", "Verify Smart Campus", link, "Synthetic Student");
         var request = Assert.Single(boundary.Calls);
         Assert.Equal("https://api.emailjs.com/api/v1.0/email/send", request.Url.ToString());
         using var data = JsonDocument.Parse(request.Body);
@@ -52,6 +52,7 @@ public sealed class OptionalEmailProviderTests
         Assert.Equal("student@o6u.edu.eg", variables.GetProperty("to_email").GetString());
         Assert.Equal("Verify Smart Campus", variables.GetProperty("subject").GetString());
         Assert.Equal("Smart Campus", variables.GetProperty("from_name").GetString());
+        Assert.Equal("Synthetic Student", variables.GetProperty("to_name").GetString());
         Assert.Equal(link, variables.GetProperty("link").GetString());
         Assert.Equal("Verify your email", variables.GetProperty("title_en").GetString());
         Assert.Equal("Verify email", variables.GetProperty("button_en").GetString());

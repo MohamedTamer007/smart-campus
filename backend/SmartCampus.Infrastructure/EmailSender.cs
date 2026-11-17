@@ -13,11 +13,11 @@ namespace SmartCampus.Infrastructure;
 public sealed class EmailSender(IConfiguration config, IHostEnvironment environment, CampusDb db, IDataProtectionProvider protection, ResendEmailTransport resend, EmailJsEmailTransport emailJs, BrevoEmailTransport brevo, ReleasePolicy release)
 {
     private readonly IDataProtector protector = protection.CreateProtector("SmartCampus.OutboundEmail.v1");
-    private sealed record EmailPayload(string Recipient, string Subject, string Link);
-    public async Task Enqueue(string recipient, string subject, string link)
+    private sealed record EmailPayload(string Recipient, string Subject, string Link, string? Name = null);
+    public async Task Enqueue(string recipient, string subject, string link, string? name = null)
     {
         if (environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")) { await Send(recipient, subject, link); return; }
-        var email = new OutboundEmail { ProtectedPayload = protector.Protect(JsonSerializer.Serialize(new EmailPayload(recipient, subject, link))) };
+        var email = new OutboundEmail { ProtectedPayload = protector.Protect(JsonSerializer.Serialize(new EmailPayload(recipient, subject, link, name))) };
         db.OutboundEmails.Add(email);
         db.Jobs.Add(new() { Kind = "email", EntityId = email.Id, Key = "email:" + email.Id });
         await db.SaveChangesAsync();
@@ -55,7 +55,7 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         }
         try
         {
-            email.ProviderMessageId = await Send(payload.Recipient, payload.Subject, payload.Link, "smart-campus/email/" + email.Id.ToString("N"));
+            email.ProviderMessageId = await Send(payload.Recipient, payload.Subject, payload.Link, "smart-campus/email/" + email.Id.ToString("N"), payload.Name);
             email.FailureCode = null;
         }
         catch (Exception exception) when (exception is RuleException or HttpRequestException or TaskCanceledException)
@@ -67,7 +67,7 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         email.ProtectedPayload = "";
     }
 
-    public async Task<string?> Send(string recipient, string subject, string link, string? idempotencyKey = null)
+    public async Task<string?> Send(string recipient, string subject, string link, string? idempotencyKey = null, string? name = null)
     {
         if (config["Email:Provider"] == "resend" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
         {
@@ -75,7 +75,7 @@ public sealed class EmailSender(IConfiguration config, IHostEnvironment environm
         }
         if (config["Email:Provider"] == "emailjs" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
         {
-            await emailJs.Send(recipient, subject, link);
+            await emailJs.Send(recipient, subject, link, name);
             return null; // EmailJS returns acceptance only, not a provider message ID.
         }
         if (config["Email:Provider"] == "brevo" && !(environment.IsDevelopment() && config.GetValue<bool>("Email:LocalSink")))
