@@ -82,6 +82,8 @@ public sealed class CampusDb(DbContextOptions<CampusDb> options) : IdentityDbCon
         model.Entity<FoundItem>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.UploaderId);
         model.Entity<FoundItem>().HasOne<CampusUser>().WithMany().HasForeignKey(x => x.CustodianId);
         model.Entity<FoundItem>().HasOne<Department>().WithMany().HasForeignKey(x => x.CustodianDepartmentId);
+        model.Entity<FoundItem>().Property(x => x.AiCategory).HasMaxLength(40);
+        model.Entity<FoundItem>().Property(x => x.AiStatus).HasMaxLength(20).HasDefaultValue("none");
         model.Entity<FoundItem>().ToTable(t => {
             t.HasCheckConstraint("custodian_xor", "(\"CustodianId\" IS NULL) <> (\"CustodianDepartmentId\" IS NULL)");
             t.HasCheckConstraint("item_state", "\"State\" IN ('available','reserved','delivered')");

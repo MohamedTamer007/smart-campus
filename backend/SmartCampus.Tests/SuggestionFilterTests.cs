@@ -44,7 +44,9 @@ public sealed class SuggestionFilterTests(CampusFixture campus) : IClassFixture<
         using var scope = campus.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
         (await db.Items.FindAsync(watch))!.Description = "Red watch";
-        (await db.Items.FindAsync(phone))!.Description = "Blue phone";
+        // A neutral object: the relevance layer drops items of a *different named category*
+        // (covered in SearchRelevanceTests), so this one stays a cross-photo candidate.
+        (await db.Items.FindAsync(phone))!.Description = "Blue umbrella";
         await db.SaveChangesAsync();
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, campus.Other.ToString())], "test"));
         var access = new Access(db, new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = principal } },

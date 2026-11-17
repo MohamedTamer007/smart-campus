@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SmartCampus.Domain;
 
 namespace SmartCampus.Infrastructure;
@@ -8,7 +9,7 @@ public sealed record FoundInput(string Description, string Place, DateOnly Date,
 public sealed record HandoverInput(int Version, Guid Department, string Office);
 public sealed record ClaimDecision(int Version, string? Phone, string? Place, string? Instructions, string? Reason);
 
-public sealed class LostFoundService(CampusDb db, Access access, Events events, PrivateMedia media)
+public sealed class LostFoundService(CampusDb db, Access access, Events events, PrivateMedia media, IConfiguration config)
 {
     private sealed record ListData(Dictionary<Guid, CustodyHandover> Handovers, Dictionary<Guid, Guid> MediaIds,
         Dictionary<Guid, string> DepartmentCodes, HashSet<Guid> GrantedItems, HashSet<Guid> ActiveClaimItems);
@@ -29,7 +30,14 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
             if (input.Destination.HasValue)
                 db.Handovers.Add(new() { ItemId = found.Id, FromUserId = actor.Id, DepartmentId = input.Destination.Value,
                     Office = Rules.Required(input.Office, 1000) });
-            db.Jobs.Add(new() { Kind = "index", EntityId = found.Id, InputVersion = 1, Key = $"index:{found.Id}:1" });
+            // With photo descriptions enabled the AI reads the photo first and its
+            // completion queues indexing; otherwise index the finder's text right away.
+            if (AiProviders.CanDescribeItems(config))
+            {
+                found.AiStatus = "pending";
+                db.Jobs.Add(new() { Kind = "describe", EntityId = found.Id, InputVersion = 1, Key = $"describe:{found.Id}:1" });
+            }
+            else db.Jobs.Add(new() { Kind = "index", EntityId = found.Id, InputVersion = 1, Key = $"index:{found.Id}:1" });
             events.Audit(actor, "FoundRegistered", found.Id);
             if (input.Destination.HasValue) await NotifyReceiving(input.Destination.Value, found.Id);
             await db.SaveChangesAsync();

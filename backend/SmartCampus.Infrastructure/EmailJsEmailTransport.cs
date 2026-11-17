@@ -39,7 +39,7 @@ public sealed class EmailJsEmailTransport(IHttpClientFactory clients, IConfigura
             accessToken = privateKey,
             template_params = new
             {
-                to_email = recipient, subject, link,
+                to_email = recipient, from_name = "Smart Campus", subject, link,
                 title_ar = parts.Title, title_en = parts.EnglishTitle, message_ar = parts.Message, message_en = parts.English,
                 button_ar = parts.Button, button_en = parts.ButtonEnglish, logo_url = parts.LogoUrl
             }

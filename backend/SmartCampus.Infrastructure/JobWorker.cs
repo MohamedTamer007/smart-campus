@@ -73,6 +73,7 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
         if (job.Attempts >= 3)
         {
             job.State = "unavailable";
+            if (job.Kind == "describe") scope.ServiceProvider.GetRequiredService<ItemDescriber>().GiveUp(job.EntityId);
             if (job.Kind == "maintenance")
             {
                 var exhausted = await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == job.EntityId && a.InputVersion == job.InputVersion, cancellation);
@@ -99,7 +100,9 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
                 await scope.ServiceProvider.GetRequiredService<EmailSender>().Deliver(job.EntityId);
                 await scope.ServiceProvider.GetRequiredService<ServiceActivity>().Record("email", true);
             }
-            else if (job.Kind == "index") await scope.ServiceProvider.GetRequiredService<RetrievalService>().Index(job.EntityId);
+            else if (job.Kind == "index") await scope.ServiceProvider.GetRequiredService<RetrievalService>().Index(job.EntityId, force: job.InputVersion > 1);
+            else if (job.Kind == "reportvec") await scope.ServiceProvider.GetRequiredService<ReportSimilarity>().Index(job.EntityId);
+            else if (job.Kind == "describe") await scope.ServiceProvider.GetRequiredService<ItemDescriber>().Process(job, cancellation);
             else await scope.ServiceProvider.GetRequiredService<MaintenanceAssessmentProcessor>().Process(job, cancellation);
             job.State = "completed";
         }
@@ -108,6 +111,7 @@ public sealed class JobWorker(IServiceScopeFactory scopes, ILogger<JobWorker> lo
             if (exception is RuleException { Code: "ai_quota_exhausted" }) job.Attempts--;
             job.State = job.Attempts >= 3 || exception is RuleException { Code: "ai_not_configured" or "search_provider_not_configured" or "search_external_images_not_approved" or "taxonomy_unavailable" or "ai_quota_not_configured" or "ai_input_review_required" or "email_not_configured" or "email_test_recipient_required" or "email_recipient_not_allowed" or "email_rejected" or "release_restricted" } ? "unavailable" : "pending";
             job.AvailableAt = exception is RuleException { RetryAt: { } retryAt } ? retryAt : DateTimeOffset.UtcNow.AddMinutes(job.Attempts * 2);
+            if (job.Kind == "describe" && job.State == "unavailable") scope.ServiceProvider.GetRequiredService<ItemDescriber>().GiveUp(job.EntityId);
             var assessment = await db.Assessments.SingleOrDefaultAsync(a => a.ReportId == job.EntityId && a.InputVersion == job.InputVersion, cancellation);
             if (assessment is not null)
             {

@@ -134,6 +134,21 @@ interface LostFoundService {
   cancelApproval(actor: Account, id: string, reason: string, version?: number): Promise<Claim>;
   confirmDelivery(actor: Account, id: string, version?: number): Promise<Claim>;
 }
+/**
+ * Asks the server for an AI-drafted description of a found-item photo. The text is
+ * only a suggestion for the finder to edit; any failure (feature off, quota, network)
+ * returns null so the finder simply types the description.
+ */
+export async function describeFoundPhoto(photo: File, language: "ar" | "en"): Promise<string | null> {
+  try {
+    const result = await api<{ description?: string }>("/found/describe", { method: "POST", body: form({ photo, language }) });
+    const description = typeof result.description === "string" ? result.description.trim() : "";
+    return description ? description.slice(0, 4000) : null;
+  } catch {
+    return null;
+  }
+}
+
 export const lostFound: LostFoundService = {
   register: async (_actor, input) => withPhoto(await api<FoundItem>("/found", { method: "POST", body: form({ ...input,
     destination: input.destination ? await departmentId(input.destination) : undefined }) })),

@@ -51,6 +51,7 @@ public sealed class OptionalEmailProviderTests
         var variables = data.RootElement.GetProperty("template_params");
         Assert.Equal("student@o6u.edu.eg", variables.GetProperty("to_email").GetString());
         Assert.Equal("Verify Smart Campus", variables.GetProperty("subject").GetString());
+        Assert.Equal("Smart Campus", variables.GetProperty("from_name").GetString());
         Assert.Equal(link, variables.GetProperty("link").GetString());
         Assert.Equal("Verify your email", variables.GetProperty("title_en").GetString());
         Assert.Equal("Verify email", variables.GetProperty("button_en").GetString());

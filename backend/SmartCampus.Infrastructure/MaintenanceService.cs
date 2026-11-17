@@ -151,6 +151,11 @@ public sealed class MaintenanceService(CampusDb db, Access access, Events events
         }
         assessment.ReviewedBy = actor.Id;
         assessment.ReviewedAt = DateTimeOffset.UtcNow;
+        // Report text may only leave the site after staff confirmed it is non-sensitive, so the
+        // optional repeat-detection vector is queued here, not when the report is created.
+        var vectorKey = $"reportvec:{id}:{report.ContentVersion}";
+        if (ReportSimilarity.Enabled(config) && !await db.Jobs.AnyAsync(j => j.Key == vectorKey))
+            db.Jobs.Add(new() { Kind = "reportvec", EntityId = id, InputVersion = report.ContentVersion, Key = vectorKey });
         assessment.State = "pending";
         assessment.FailureCode = null;
         job.State = "pending";
