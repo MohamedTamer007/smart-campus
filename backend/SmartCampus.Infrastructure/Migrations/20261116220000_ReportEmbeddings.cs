@@ -20,6 +20,9 @@ public sealed class ReportEmbeddings : Migration
                 "ReportId" uuid NOT NULL PRIMARY KEY REFERENCES smart_campus."Reports"("Id") ON DELETE CASCADE,
                 "ContentVersion" integer NOT NULL, "Revision" text NOT NULL,
                 "Vector" %I.vector NOT NULL)', vector_schema);
+              IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'smart_campus_runtime') THEN
+                GRANT SELECT, INSERT, UPDATE ON smart_campus."ReportEmbeddings" TO smart_campus_runtime;
+              END IF;
             END $$;
             """);
     }
