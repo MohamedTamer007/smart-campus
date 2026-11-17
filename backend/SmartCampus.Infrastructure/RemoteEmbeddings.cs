@@ -82,9 +82,31 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
         }
 
         await budget.Reserve("gemini", cancellation);
+        // A rate-limited or rejected key may work with the backup key of the same provider.
+        RuleException? last = null;
+        foreach (var key in LlmChain.Keys(config, "Gemini"))
+        {
+            try
+            {
+                var result = await Request(parts, key, revision, cancellation);
+                embeddingCache.Set(cacheKey, result, new MemoryCacheEntryOptions {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15), Size = 1
+                });
+                return result;
+            }
+            catch (RuleException failure) when (failure.Code is "ai_rate_limited" or "ai_key_rejected" or "ai_access_denied")
+            {
+                last = failure;
+            }
+        }
+        throw last ?? new RuleException("search_provider_not_configured", 503);
+    }
+
+    private async Task<EmbeddingResponse> Request(object[] parts, string key, string revision, CancellationToken cancellation)
+    {
         using var client = clients.CreateClient("retrieval");
         using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint);
-        request.Headers.Add("x-goog-api-key", config["AI:GeminiKey"]);
+        request.Headers.Add("x-goog-api-key", key);
         request.Content = JsonContent.Create(new {
             content = new { parts },
             outputDimensionality = Dimension
@@ -111,9 +133,6 @@ public sealed class RemoteEmbeddings(IHttpClientFactory clients, IConfiguration 
             var vector = values.EnumerateArray().Select(value => value.GetSingle()).ToArray();
             var result = new EmbeddingResponse(Model, revision, vector.Length, vector);
             Validate(result, config);
-            embeddingCache.Set(cacheKey, result, new MemoryCacheEntryOptions {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15), Size = 1
-            });
             return result;
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException or IndexOutOfRangeException or FormatException)

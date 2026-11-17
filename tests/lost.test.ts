@@ -72,6 +72,19 @@ describe("lost-and-found frontend boundary", () => {
     } finally { vi.unstubAllGlobals(); }
   });
 
+  it("passes through whether the server used keyword matching instead of the AI service", async () => {
+    const respond = (mode?: string) => vi.fn<typeof fetch>(async request => new Response(JSON.stringify(
+      String(request).endsWith("/csrf") ? { token: "synthetic-csrf" }
+        : String(request).endsWith("/found/search") ? { itemIds: [], calibrated: false, mode, candidates: [] } : {},
+    ), { status: 200 }));
+    try {
+      vi.stubGlobal("fetch", respond("keyword"));
+      expect((await lostFound.search(guestAccount, "Silver watch")).mode).toBe("keyword");
+      vi.stubGlobal("fetch", respond());
+      expect((await lostFound.search(guestAccount, "Silver watch")).mode).toBe("semantic");
+    } finally { vi.unstubAllGlobals(); }
+  });
+
   it.each([null, 1.01, -1.01])("rejects malformed or out-of-range server similarity %s", async score => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>(async request => new Response(JSON.stringify(
       String(request).endsWith("/csrf") ? { token: "synthetic-csrf" }
