@@ -10,6 +10,7 @@ import { useApp } from "../../app/context";
 import { AsyncView } from "../../components/AsyncView";
 import { ActionForm, Feedback, Field, Page } from "../../components/ui";
 import { ServiceError } from "../../services/contracts";
+import { describeFoundPhoto } from "../../services/lostFound";
 import { validateCampusImage, type ImageUploadError } from "../../services/imageUpload";
 import {
   maintenance,
@@ -165,7 +166,7 @@ function ReportForm({
   report?: MaintenanceReport;
   onSaved?: () => void;
 }) {
-  const { t, account } = useApp();
+  const { t, account, language } = useApp();
   const navigate = useNavigate();
   const key = `${account.id}:${report?.id ?? "new"}`;
   const [values, setValues] = useState<MaintenanceInput>(
@@ -177,6 +178,30 @@ function ReportForm({
       drafts.set(key, value);
       return value;
     });
+  }
+  const [describing, setDescribing] = useState(false);
+  const [suggested, setSuggested] = useState(false);
+  const photoRequest = useRef(0);
+  useEffect(() => () => { photoRequest.current++; }, []);
+  // The AI drafts the fault description from the photo; it never replaces text the
+  // reporter already typed and can be edited freely. Any failure leaves the field as is.
+  async function choosePhoto(photo?: File) {
+    change({ photo });
+    const request = ++photoRequest.current;
+    setSuggested(false);
+    if (!photo) { setDescribing(false); return; }
+    setDescribing(true);
+    const text = await describeFoundPhoto(photo, language, "fault");
+    if (request !== photoRequest.current) return;
+    setDescribing(false);
+    if (!text) return;
+    setValues((previous) => {
+      if (previous.description.trim()) return previous;
+      const value = { ...previous, description: text };
+      drafts.set(key, value);
+      return value;
+    });
+    setSuggested(true);
   }
   const faculty = locations.find((item) => item.id === values.faculty);
   const building = faculty?.buildings.find(
@@ -204,12 +229,20 @@ function ReportForm({
       }
       onSubmit={submit}
     >
-      <Field label={t("وصف العطل", "Fault description")} required>
+      <Field
+        label={t("وصف العطل", "Fault description")}
+        required
+        hint={describing
+          ? t("جارٍ إنشاء وصف مقترح من الصورة…", "Drafting a description from the photo…")
+          : suggested
+            ? t("وصف مقترح من الذكاء الاصطناعي — راجعه وعدّله كما تشاء.", "AI-suggested description — review and edit it as you like.")
+            : undefined}
+      >
         <textarea
           maxLength={4000}
           value={values.description}
           required
-          onChange={(e) => change({ description: e.target.value })}
+          onChange={(e) => { setSuggested(false); change({ description: e.target.value }); }}
         />
       </Field>
       <div className="field-grid">
@@ -268,7 +301,7 @@ function ReportForm({
       </Field>
       <ImageField
         photo={values.photo}
-        onChange={(photo) => change({ photo })}
+        onChange={(photo) => { void choosePhoto(photo); }}
       />
     </ActionForm>
   );

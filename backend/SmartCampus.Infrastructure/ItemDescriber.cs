@@ -49,23 +49,23 @@ public sealed class ItemDescriber(CampusDb db, PrivateMedia media, AiProviders p
     private static readonly string[] Permanent =
         ["ai_not_configured", "ai_key_rejected", "ai_access_denied", "ai_request_rejected", "invalid_ai_response", "ai_images_not_permitted", "ai_quota_not_configured"];
 
-    public async Task<ItemDescription> Describe(byte[] image, CancellationToken cancellation)
+    public async Task<ItemDescription> Describe(byte[] image, CancellationToken cancellation, bool fault = false)
     {
-        var key = Convert.ToHexString(SHA256.HashData(CampusImageNormalizer.ToJpeg(image)));
+        var key = (fault ? "fault:" : "item:") + Convert.ToHexString(SHA256.HashData(CampusImageNormalizer.ToJpeg(image)));
         if (cache.Get(key) is { } cached) return cached;
-        var description = await providers.DescribeItem(image, cancellation);
+        var description = fault ? await providers.DescribeFault(image, cancellation) : await providers.DescribeItem(image, cancellation);
         cache.Set(key, description);
         return description;
     }
 
     /// <summary>Suggestion shown to the finder while filling in the form.</summary>
-    public async Task<object> Preview(string user, IFormFile photo, string? language, CancellationToken cancellation)
+    public async Task<object> Preview(string user, IFormFile photo, string? language, string? kind, CancellationToken cancellation)
     {
         if (photo.Length is <= 0 or > CampusImageNormalizer.MaximumUploadBytes) throw new RuleException("invalid_upload");
-        if (!cache.TryTakePreview(user, 10, TimeSpan.FromHours(1))) throw new RuleException("rate_limited", 429);
+        if (!cache.TryTakePreview(user, 20, TimeSpan.FromHours(1))) throw new RuleException("rate_limited", 429);
         using var bytes = new MemoryStream();
         await photo.CopyToAsync(bytes, cancellation);
-        var description = await Describe(bytes.ToArray(), cancellation);
+        var description = await Describe(bytes.ToArray(), cancellation, kind == "fault");
         return new { description = language == "en" ? description.DescriptionEn : description.DescriptionAr, category = description.Category };
     }
 

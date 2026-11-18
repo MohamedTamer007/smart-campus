@@ -42,6 +42,16 @@ public sealed class ItemDescriptionTests
         Assert.Equal("invalid_ai_response", Assert.Throws<RuleException>(() => AiProviders.ParseItem(Envelope(content))).Code);
 
     [Fact]
+    public void A_fault_description_needs_no_item_fields()
+    {
+        var json = """{"description_en":"Ceiling light panel hanging loose.","description_ar":"لوحة إضاءة السقف متدلية."}""";
+        var fault = AiProviders.ParseItem(Envelope(json));
+        Assert.Equal("other", fault.Category);
+        Assert.Empty(fault.Colors);
+        Assert.Contains("ceiling light", fault.DescriptionEn, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Parser_rejects_a_cut_off_answer() =>
         Assert.Equal("invalid_ai_response", Assert.Throws<RuleException>(() => AiProviders.ParseItem(Envelope("{}", "length"))).Code);
 
