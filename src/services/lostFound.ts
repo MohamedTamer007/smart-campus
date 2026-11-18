@@ -141,9 +141,9 @@ interface LostFoundService {
  * only a suggestion for the finder to edit; any failure (feature off, quota, network)
  * returns null so the finder simply types the description.
  */
-export async function describeFoundPhoto(photo: File, language: "ar" | "en"): Promise<string | null> {
+export async function describeFoundPhoto(photo: File, language: "ar" | "en", kind: "item" | "fault" = "item"): Promise<string | null> {
   try {
-    const result = await api<{ description?: string }>("/found/describe", { method: "POST", body: form({ photo, language }) });
+    const result = await api<{ description?: string }>("/found/describe", { method: "POST", body: form({ photo, language, kind }) });
     const description = typeof result.description === "string" ? result.description.trim() : "";
     return description ? description.slice(0, 4000) : null;
   } catch {

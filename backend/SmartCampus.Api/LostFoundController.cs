@@ -17,7 +17,7 @@ public sealed class FoundForm
 }
 public sealed record ClaimInput(string? Message);
 public sealed class SearchForm { public string? Description { get; set; } public IFormFile? Photo { get; set; } }
-public sealed class DescribeForm { public string? Language { get; set; } public IFormFile? Photo { get; set; } }
+public sealed class DescribeForm { public string? Language { get; set; } public string? Kind { get; set; } public IFormFile? Photo { get; set; } }
 
 [ApiController, Authorize, Route("api/v1/found")]
 public sealed class LostFoundController(LostFoundService service, RetrievalService retrieval, ItemDescriber describer) : ControllerBase
@@ -26,7 +26,7 @@ public sealed class LostFoundController(LostFoundService service, RetrievalServi
     [HttpPost("describe"), RequestSizeLimit(6000000)]
     public Task<object> Describe([FromForm] DescribeForm input, CancellationToken cancellation) =>
         describer.Preview(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? throw new RuleException("forbidden", 403),
-            input.Photo ?? throw new RuleException("image_required"), input.Language, cancellation);
+            input.Photo ?? throw new RuleException("image_required"), input.Language, input.Kind, cancellation);
     [HttpGet, ProducesResponseType<PageResponse<FoundResponse>>(200)] public async Task<object> List(int page = 1, int pageSize = 50) => new { items = await service.List(Math.Max(1, page), Math.Clamp(pageSize, 1, 100)) };
     [HttpGet("{id:guid}"), ProducesResponseType<FoundResponse>(200)] public Task<object> Detail(Guid id) => service.Detail(id);
     [HttpPost, RequestSizeLimit(6000000), ProducesResponseType<FoundResponse>(200)] public Task<object> Register([FromForm] FoundForm input) => service.Register(

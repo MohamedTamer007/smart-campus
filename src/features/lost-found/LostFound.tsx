@@ -331,9 +331,29 @@ export function RegisterFound() {
   );
 }
 export function SearchItems() {
-  const { t, account } = useApp();
+  const { t, account, language } = useApp();
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<File>();
+  const [describing, setDescribing] = useState(false);
+  const [suggested, setSuggested] = useState(false);
+  const photoRequest = useRef(0);
+  const typed = useRef(false);
+  useEffect(() => () => { photoRequest.current++; }, []);
+  // A photo of the lost item is described by the AI and the text goes into the search
+  // box only when it is empty; the owner can edit it before searching.
+  async function choosePhoto(file?: File) {
+    setPhoto(file); setMatches(null); setFailure(null);
+    const request = ++photoRequest.current;
+    setSuggested(false);
+    if (!file) { setDescribing(false); return; }
+    setDescribing(true);
+    const text = await describeFoundPhoto(file, language);
+    if (request !== photoRequest.current) return;
+    setDescribing(false);
+    if (!text) return;
+    setDescription((previous) => (previous.trim() ? previous : text));
+    setSuggested(!typed.current);
+  }
   const [matches, setMatches] = useState<SearchResult | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const { pending, run } = useAction();
@@ -373,10 +393,14 @@ export function SearchItems() {
             }
           });
         }}>
-          <Field label={t("وصف الغرض المفقود", "Description of the lost item")} required hint={t("اذكر اللون أو العلامة أو النوع. لا تكتب بيانات شخصية.", "Include its color, mark, or type. Do not enter personal information.")}>
-            <textarea name="description" required maxLength={2000} rows={4} value={description} onChange={(event) => { setDescription(event.target.value); setMatches(null); setFailure(null); }} />
+          <Field label={t("وصف الغرض المفقود", "Description of the lost item")} required hint={describing
+            ? t("جارٍ إنشاء وصف مقترح من الصورة…", "Drafting a description from the photo…")
+            : suggested
+              ? t("وصف مقترح من الذكاء الاصطناعي — راجعه وعدّله كما تشاء.", "AI-suggested description — review and edit it as you like.")
+              : t("اذكر اللون أو العلامة أو النوع. لا تكتب بيانات شخصية.", "Include its color, mark, or type. Do not enter personal information.")}>
+            <textarea name="description" required maxLength={2000} rows={4} value={description} onChange={(event) => { typed.current = true; setSuggested(false); setDescription(event.target.value); setMatches(null); setFailure(null); }} />
           </Field>
-          <ImageField photo={photo} onChange={(file) => { setPhoto(file); setMatches(null); setFailure(null); }} label={t("صورة سابقة للغرض — اختيارية", "Previous photo of the item — optional")} />
+          <ImageField photo={photo} onChange={(file) => { void choosePhoto(file); }} label={t("صورة سابقة للغرض — اختيارية", "Previous photo of the item — optional")} />
           <Feedback>{t("لا تكشف المطابقة المحتملة ملكية الغرض. لا تعرض الخدمة إلا النتائج المؤهلة التي يسمح لك النظام برؤيتها.", "A potential match does not prove ownership. The service only shows qualifying results you are authorized to view.")}</Feedback>
           <p>{t("البحث يستثني الأغراض التي سجّلتها بنفسك أو الموجودة بعهدتك، وكذلك المحجوزة والمسلّمة. يمكنك مراجعة أغراضك في ", "Search excludes items you registered or hold in custody, as well as reserved and delivered items. Review your items in ")}<Link to="/found">{t("معثوراتي", "My found items")}</Link>.</p>
           <button className="button primary" disabled={pending || failure === "search_provider_not_configured" || failure === "search_calibration_required"}>{pending ? t("جارٍ البحث…", "Searching…") : t("ابحث", "Search")}</button>
