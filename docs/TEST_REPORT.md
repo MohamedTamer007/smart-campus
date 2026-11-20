@@ -1,5 +1,9 @@
 # Current test report — 20 November 2026
 
+## Main CI with offline AI scorer — 20 November 2026
+
+[CI run 44810975550](https://github.com/MohamedTamer007/smart-campus/actions/runs/44810975550) **passed** on commit `a48f36e0a70d8b15036a0c1d53e5c57597ed4da7`, including 280 backend passed/four provider tests skipped, 140 frontend passed, 51 browser regressions, nine integrated browser journeys, and 22 Python script unit tests (including all ten newly added synthetic offline AI scorer cases). NuGet checks and npm installation/production audit passed; npm reported zero vulnerabilities. Source, isolated fixtures and mock-provider boundaries were tested; live Gemini/OpenRouter efficacy, user approval and real-host end-to-end acceptance are **not** established.
+
 ## PR #21 CI — 20 November 2026
 
 [CI run 44781998454](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998454) passed 280 backend tests (four skipped), 140 frontend tests, 51 browser regressions and nine integrated browser journeys. [Windows publish/package run 44781998433](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998433) succeeded. PR #21 merged into main as `eb3c62c2c743ce792a53f311ce97c3751d422437` after the checks. This verifies the tested source and package, not the post-merge hosted deployment, live provider behavior or human acceptance.
