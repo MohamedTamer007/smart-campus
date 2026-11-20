@@ -55,7 +55,7 @@ for (const route of ["/login", "/register"] as const) {
     await expect(page.getByLabel(/البريد الجامعي/)).toBeVisible();
     await expect(page.getByLabel(/^كلمة المرور/)).toBeVisible();
     if (route === "/register") {
-      await expect(page.getByLabel(/تأكيد كلمة المرور/)).toBeVisible();
+      await expect(page.getByLabel(/^تأكيد كلمة المرور\s*\*/)).toBeVisible();
       await expect(page.getByLabel(/^الاسم/)).toBeVisible();
     }
     await page.getByRole("button", { name: "English", exact: true }).click();
