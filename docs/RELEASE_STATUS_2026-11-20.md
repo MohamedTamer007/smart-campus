@@ -3,18 +3,20 @@
 ## Source and deployment identity
 
 - Repository: [MohamedTamer007/smart-campus](https://github.com/MohamedTamer007/smart-campus)
-- Source baseline: main, commit b427e37b958d46d9f9348d63791a5e742cf8068f (18 November 2026).
+- Latest application-source merge: PR #20, main commit 7df00ef18ab16e0781a659b15ce806033513f78c (20 November 2026). The last independently verified hosted upload in this record remains 18 November main commit b427e37b958d46d9f9348d63791a5e742cf8068f.
 - PR #19 merged the editable photo-description draft flow for found-item registration, maintenance reporting and lost-item search.
 - [CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) on PR #19's head commit completed successfully.
 - [Deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) was manually dispatched against the same main commit and completed successfully on 18 November 2026.
 
 The deployment log records: pre-deployment HTTPS liveness passed; WebDeploy dry-run passed; compiled application uploaded; post-deployment HTTPS /health/live passed. This is strong evidence that the named source was built and uploaded. It does not prove all authenticated workflows, email, AI, private media, storage policies, worker continuity or human acceptance.
 
-Open PR #20 proposes changing the MonsterASP push trigger to main and retaining MONSTERASP_AUTO_DEPLOY_DISABLED=true as the emergency disable switch. Its CI and Windows package checks passed on 20 November (280 backend passed, 4 skipped; 139 frontend passed; 51 browser regressions; 9 integrated journeys), but it is not yet merged or deployed at this snapshot. Until merge, the main-branch workflow trigger remains unchanged. After merge, the proposed deployment script preserves hosted configuration/data, excludes local/production secret files, runs a dry-run and refuses to upload if the current public API liveness check fails.
+PR #20 was merged on 20 November as main commit `7df00ef18ab16e0781a659b15ce806033513f78c`. Its [CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) and [Windows package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) passed before the merge (280 backend passed, four skipped; 139 frontend passed; 51 browser regressions; nine integrated journeys). The main-branch automatic deployment workflow now listens for relevant main pushes, retaining `MONSTERASP_AUTO_DEPLOY_DISABLED=true` as its emergency stop. The script preserves hosted configuration/data, excludes secret files and uses dry-run and public pre-deployment liveness checks. These pre-merge successes do not establish that the new main commit was uploaded or that all hosted journeys passed.
 
-## Latest CI results
+## CI results and evidence boundaries
 
-[PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370):
+Latest reviewed application change: [PR #20 CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) passed 280 backend tests (four skipped), 139 frontend tests, 51 existing browser regression cases and nine integrated browser journeys; [Windows package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) passed. This was tested before merging, not against a verified new hosted release.
+
+Historical [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370):
 
 | Check | Recorded result |
 |---|---:|
