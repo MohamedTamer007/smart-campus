@@ -116,7 +116,7 @@ class PublicReleaseProbeTests(unittest.TestCase):
         self.assertEqual(r["anonymous_private_access"], "FAIL")
         self.assertEqual(r["anonymous_private_routes"][probe.PRIVATE_GET_ROUTES[0]]
                          ["http_status"], 200)
-        self.assertNotIn("private", json.dumps(r))
+        self.assertNotIn("do not read", json.dumps(r))
 
     @patch.object(probe, "urlopen")
     def test_private_get_redirect_or_network_error_fails_closed(self, mock):
