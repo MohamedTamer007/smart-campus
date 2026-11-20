@@ -1,4 +1,5 @@
 export const MAX_CAMPUS_IMAGE_BYTES = 5 * 1024 * 1024;
+export const MAX_CAMPUS_IMAGE_PIXELS = 16_000_000;
 
 const signatures: { mime: string; bytes: readonly number[]; webp?: readonly number[] }[] = [
   { mime: "image/jpeg", bytes: [0xff, 0xd8, 0xff] },
@@ -7,6 +8,21 @@ const signatures: { mime: string; bytes: readonly number[]; webp?: readonly numb
 ];
 
 export type ImageUploadError = "empty" | "too_large" | "invalid_image" | "type_mismatch";
+
+type ImageDimensions = { width: number; height: number };
+
+async function decodedDimensions(file: File): Promise<ImageDimensions | null | undefined> {
+  // Modern browsers expose createImageBitmap. If unavailable, leave final
+  // decoding to the server rather than relying on an HTMLImageElement fallback
+  // that is not consistently supported by embedded/test browser environments.
+  if (typeof createImageBitmap !== "function") return undefined;
+  const bitmap = await createImageBitmap(file);
+  try {
+    return { width: bitmap.width, height: bitmap.height };
+  } finally {
+    bitmap.close();
+  }
+}
 
 export async function validateCampusImage(file: File): Promise<ImageUploadError | null> {
   if (file.size <= 0) return "empty";
@@ -35,5 +51,17 @@ export async function validateCampusImage(file: File): Promise<ImageUploadError 
   );
   if (!signature) return "invalid_image";
   if (file.type && file.type.toLowerCase() !== signature.mime) return "type_mismatch";
+
+  try {
+    const dimensions = await decodedDimensions(file);
+    if (dimensions === null) return "invalid_image";
+    if (dimensions && (
+      dimensions.width <= 0 ||
+      dimensions.height <= 0 ||
+      dimensions.width * dimensions.height > MAX_CAMPUS_IMAGE_PIXELS
+    )) return "invalid_image";
+  } catch {
+    return "invalid_image";
+  }
   return null;
 }

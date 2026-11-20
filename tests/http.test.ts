@@ -47,3 +47,23 @@ it.each(["SyntaxError", "EncodingError"])("a native response parse failure preve
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toBe("/api/v1/auth/csrf");
 });
+
+it("preserves the backend validation code so the UI can explain the failure", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: "invalid_upload" }), {
+    status: 400,
+    headers: { "Content-Type": "application/json" },
+  })));
+  const { api } = await import("../src/services/http");
+  await expect(api("/found"))
+    .rejects.toMatchObject({ code: "invalid", detail: "invalid_upload" });
+});
+
+it("preserves private-storage failures for actionable UI feedback", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: "storage_unavailable" }), {
+    status: 503,
+    headers: { "Content-Type": "application/json" },
+  })));
+  const { api } = await import("../src/services/http");
+  await expect(api("/found", { method: "POST", body: new FormData() }))
+    .rejects.toMatchObject({ code: "unavailable", detail: "storage_unavailable" });
+});

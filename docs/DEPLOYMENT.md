@@ -1,3 +1,13 @@
+# Deployment and release record
+
+## Current verified deployment — 18 November 2026
+
+The application is hosted at [smartcampus.tryasp.net](https://smartcampus.tryasp.net/). [MonsterASP deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) was manually dispatched against main commit b427e37b958d46d9f9348d63791a5e742cf8068f. The Windows build, pre-deployment HTTPS liveness check, WebDeploy dry-run, compiled application upload and post-deployment /health/live probe all succeeded.
+
+This confirms a successful code upload and API liveness at the time of the check. It does not prove complete worker continuity, real email delivery, external AI availability, hosted private-storage authorization, human acceptance or production suitability. The public MonsterASP Free plan is synthetic-data evaluation only; see [the provider's Terms clause 3.2](https://www.monsterasp.net/Terms/).
+
+The remaining sections below contain the original deployment preparation and database rollout notes. Statements in those historical notes that no deployment had occurred refer to the 10 November baseline and are superseded by the 18 November run above.
+
 # Deployment preparation
 
 The private application schema has now been deployed to the existing Supabase PostgreSQL project and verified, but **no API/worker/frontend production deployment or cutover** was performed. Final Release compilation and local publish succeeded; final evidence is in BACKEND_PROGRESS.md. Container execution and hosted integration remain unverified.

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { MAX_CAMPUS_IMAGE_BYTES, validateCampusImage } from "../src/services/imageUpload";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MAX_CAMPUS_IMAGE_BYTES, MAX_CAMPUS_IMAGE_PIXELS, validateCampusImage } from "../src/services/imageUpload";
+
+afterEach(() => vi.unstubAllGlobals());
 
 function imageFile(name: string, mime: string, bytes: number[], size = bytes.length) {
   const file = new File([new Uint8Array(size)], name, { type: mime });
@@ -45,4 +47,26 @@ describe("campus image upload validation", () => {
     Object.defineProperty(file, "slice", { value: () => { throw new Error("read failed"); } });
     expect(await validateCampusImage(file)).toBe("invalid_image");
   });
+});
+
+it("rejects a signature-valid file that the browser cannot actually decode", async () => {
+  const decode = vi.fn().mockRejectedValue(new Error("decode failed"));
+  vi.stubGlobal("createImageBitmap", decode);
+  expect(await validateCampusImage(imageFile("broken.png", "image/png", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe("invalid_image");
+  expect(decode).toHaveBeenCalledOnce();
+});
+
+it("rejects decoded images above the server pixel limit and closes the bitmap", async () => {
+  const close = vi.fn();
+  vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 5000, height: 4000, close }));
+  expect(MAX_CAMPUS_IMAGE_PIXELS).toBe(16_000_000);
+  expect(await validateCampusImage(imageFile("huge.png", "image/png", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe("invalid_image");
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("accepts a decoded image exactly at the server pixel limit", async () => {
+  const close = vi.fn();
+  vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 4000, height: 4000, close }));
+  expect(await validateCampusImage(imageFile("limit.png", "image/png", [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBeNull();
+  expect(close).toHaveBeenCalledOnce();
 });

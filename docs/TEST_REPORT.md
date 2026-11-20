@@ -1,3 +1,24 @@
+# Current test report — 20 November 2026
+
+## PR #19 CI — 18 November 2026
+
+[CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) passed on PR #19's head commit. Recorded results:
+- Backend: 280 passed, 4 skipped, 0 failed on isolated PostgreSQL 17/pgvector.
+- Frontend: 130 passed.
+- Browser regression: 51 passed; integrated journeys: 9 passed.
+- Database backup/isolated restore, media encryption/restore, backup safety and isolated storage-policy fixture checks passed.
+- NuGet advisory audit passed; production npm audit reported zero vulnerabilities.
+
+The four backend skips are opt-in external-provider/saved-vector checks. They are not live provider successes. npm installation also reported 11 high-severity development-dependency advisories; the production-only audit is clean, but the full development dependency tree is not.
+
+## Hosted deployment — 18 November 2026
+
+[Deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) used main commit b427e37b958d46d9f9348d63791a5e742cf8068f. The build and test steps succeeded, WebDeploy dry-run and upload succeeded, and the public HTTPS /health/live probe passed before and after upload. This proves the named package was uploaded and the API was live at probe time; it does not establish all hosted user journeys or external services.
+
+The 14 November and earlier sections below are retained as historical evidence and are not the latest test counts.
+
+---
+
 ## 10 November: latest executed evidence
 
 The current Resend evidence batch passed 97 backend cases, zero failed/skipped, in isolated PostgreSQL (`evidence/backend-resend-evidence.trx`). Targeted transport/outbox tests passed 20 cases. The eighth migration adds provider correlation and sanitized failure fields. Launcher preflight passed under Windows PowerShell 5.1 and PowerShell 7. Test doubles are restricted to the external provider HTTP boundary; actual delivery is not inferred.
