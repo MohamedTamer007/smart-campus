@@ -12,41 +12,16 @@ export type ImageUploadError = "empty" | "too_large" | "invalid_image" | "type_m
 type ImageDimensions = { width: number; height: number };
 
 async function decodedDimensions(file: File): Promise<ImageDimensions | null | undefined> {
-  if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file);
-    try {
-      return { width: bitmap.width, height: bitmap.height };
-    } finally {
-      bitmap.close();
-    }
+  // Modern browsers expose createImageBitmap. If unavailable, leave final
+  // decoding to the server rather than relying on an HTMLImageElement fallback
+  // that is not consistently supported by embedded/test browser environments.
+  if (typeof createImageBitmap !== "function") return undefined;
+  const bitmap = await createImageBitmap(file);
+  try {
+    return { width: bitmap.width, height: bitmap.height };
+  } finally {
+    bitmap.close();
   }
-
-  // Older browsers can still validate through the HTML image decoder.
-  if (typeof Image !== "undefined" && typeof URL.createObjectURL === "function") {
-    return new Promise((resolve) => {
-      let url: string;
-      try {
-        url = URL.createObjectURL(file);
-      } catch {
-        resolve(null);
-        return;
-      }
-      const image = new Image();
-      let settled = false;
-      const finish = (result: ImageDimensions | null) => {
-        if (settled) return;
-        settled = true;
-        URL.revokeObjectURL(url);
-        resolve(result);
-      };
-      image.onload = () => finish({ width: image.naturalWidth, height: image.naturalHeight });
-      image.onerror = () => finish(null);
-      image.src = url;
-    });
-  }
-
-  // Environments without a browser decoder leave final decoding to the server.
-  return undefined;
 }
 
 export async function validateCampusImage(file: File): Promise<ImageUploadError | null> {
