@@ -84,10 +84,13 @@ def maintenance(cases, predictions):
         raise ValueError("cross-split description leakage")
     def predicted(row, key):
         p = preds.get(row["case_id"])
-        return (p[key].strip() or ABSTAIN) if p and p["provider_status"].lower() == "ok" else ABSTAIN
+        if not p or p["provider_status"].lower() != "ok":
+            return ABSTAIN
+        value = p[key].strip()
+        return value if value and value != ABSTAIN else ABSTAIN
     completed = sum(bool(preds.get(r["case_id"])) and
                     preds[r["case_id"]]["provider_status"].lower() == "ok" and
-                    all(preds[r["case_id"]][key].strip() for key in
+                    all(predicted(r, key) != ABSTAIN for key in
                         ("pred_fault_type", "pred_priority", "pred_risk"))
                     for r in test)
     result = {"evaluation": "offline_after_external_run",
@@ -116,6 +119,21 @@ def retrieval(gallery, queries, decisions, ranks):
     test = [r for r in query_rows if r["split"] == "test"]
     if not test or set(dec) != {q["query_id"] for q in test}:
         raise ValueError("one decision required for every test query")
+    # Independent evaluation cannot reuse query photos anywhere in the gallery
+    # or across held-out queries/splits; an exact hash is necessary but not
+    # sufficient to exclude visually near-duplicate photos.
+    gallery_hashes = {r["image_sha256"].strip().lower() for r in items.values()
+                      if r["image_sha256"].strip()}
+    test_hashes = [q["query_image_sha256"].strip().lower() for q in test
+                   if q["query_image_sha256"].strip()]
+    if len(test_hashes) != len(set(test_hashes)):
+        raise ValueError("repeated query photo bytes in held-out test set")
+    if set(test_hashes) & gallery_hashes:
+        raise ValueError("identical query/gallery photo bytes")
+    other_hashes = {q["query_image_sha256"].strip().lower() for q in query_rows
+                    if q["split"] != "test" and q["query_image_sha256"].strip()}
+    if set(test_hashes) & other_hashes:
+        raise ValueError("cross-split query photo leakage")
     candidates = defaultdict(list)
     with Path(ranks).open(newline="", encoding="utf-8-sig") as file:
         reader = csv.DictReader(file)
@@ -130,6 +148,8 @@ def retrieval(gallery, queries, decisions, ranks):
                 raise ValueError("candidate not in gallery")
             if r["permission_allowed"].lower() != "true":
                 raise ValueError("unauthorized candidate displayed")
+            if r["provider_status"].strip().lower() != "ok":
+                raise ValueError("ranked candidate cannot come from failed provider")
             candidates[r["query_id"]].append(r)
     positives = absent = top1 = top5 = false_accept = correctly_rejected = errors = 0
     for q in test:
