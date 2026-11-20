@@ -80,6 +80,7 @@ The [Gemini retrieval report](docs/GEMINI_RETRIEVAL_RESULTS_2026-11-14.md) recor
 - [Deployment record](docs/DEPLOYMENT.md) and [MonsterASP deployment](docs/MONSTERASP_DEPLOYMENT.md)
 - [Hosting configuration](docs/HOSTING_CONFIGURATION.md)
 - [Progress](docs/BACKEND_PROGRESS.md), [acceptance evidence](docs/ACCEPTANCE.md), [release evidence matrix](docs/RELEASE_EVIDENCE_MATRIX_2026-11-20.md) and [security review](docs/SECURITY_REVIEW.md)
+- [Final academic documentation QA](docs/ACADEMIC_FINAL_QA_2026-11-20.md) and [AI evaluation/reproduction protocol](docs/AI_EVALUATION_REPRODUCTION_PROTOCOL.md)
 
 Run npm ci, then dotnet run --project backend/SmartCampus.Api --urls http://127.0.0.1:5080 with Development environment enabled. In another terminal run npm run dev -- --host 127.0.0.1. Vite proxies API requests; no backend secret belongs in frontend variables. scripts/publish.ps1 prepares the single-origin application.
 
