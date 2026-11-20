@@ -4,9 +4,9 @@ React/TypeScript frontend and ASP.NET Core 10 backend for university maintenance
 
 ## Current release status — 20 November 2026
 
-**Source baseline:** main at b427e37b958d46d9f9348d63791a5e742cf8068f (18 November 2026), including merged PR #19, which adds editable AI-drafted photo descriptions to found-item registration, maintenance reporting, and lost-item search.
+**Application-source baseline:** PR #20 merged into main on 20 November 2026 as `7df00ef18ab16e0781a659b15ce806033513f78c`. The preceding confirmed deployed application source was b427e37b958d46d9f9348d63791a5e742cf8068f (18 November, PR #19), which added editable photo-description drafts.
 
-**Latest full CI evidence:** [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) completed successfully on the PR head commit:
+**Earlier full CI evidence (PR #19):** [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) completed successfully on the PR head commit:
 - Backend: **280 passed, 4 skipped, 0 failed** against isolated PostgreSQL 17/pgvector.
 - Frontend: **130 passed**; typecheck, lint and production build passed.
 - Browser automation: **51 existing regression cases and 9 integrated journeys passed**.
@@ -15,7 +15,7 @@ React/TypeScript frontend and ASP.NET Core 10 backend for university maintenance
 
 **Latest hosted deployment evidence:** [MonsterASP deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) was manually dispatched against the same main commit. The Windows publish, WebDeploy upload and post-deployment public /health/live probe succeeded. This confirms a successful upload and API liveness check; it does not prove every authenticated workflow, email delivery, AI provider, storage policy or human acceptance test.
 
-Open PR #20 adds image decoding/dimension validation and actionable Arabic/English API error messages, and proposes restoring automatic deployment on pushes to main. Its full CI and Windows package checks passed on 20 November (280 backend passed, 4 skipped; 139 frontend passed; 51 browser regressions; 9 integrated journeys), but the PR is not yet merged or deployed. Until merge, main's automatic deployment trigger remains unchanged. The proposed workflow retains the existing MONSTERASP_AUTO_DEPLOY_DISABLED=true emergency stop.
+**PR #20 merged:** Browser image decoding/pixel validation, clearer Arabic/English upload-error messages and tests are in main. [CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) passed (280 backend, four skipped; 139 frontend; 51 browser regressions; nine integrated journeys), and [Windows package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) succeeded. Main-push automatic deployment is configured with the `MONSTERASP_AUTO_DEPLOY_DISABLED=true` emergency stop; a post-merge hosted deployment is not independently verified by these pre-merge checks.
 
 **The project is not certified as 100% complete or production-ready.** See [the current release status and open gates](docs/RELEASE_STATUS_2026-11-20.md) and [acceptance evidence](docs/ACCEPTANCE.md).
 
