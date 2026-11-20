@@ -42,6 +42,14 @@ Pre-register the ranking configuration and no-match threshold on validation case
 
 **Existing limits:** [14 November Gemini trial](GEMINI_RETRIEVAL_RESULTS_2026-11-14.md) reports 20 fictional requests and Top-1/Top-5 6/6 in six positive queries, but both positive image queries reused gallery pixels; no-match rejection was **Not Evaluated**. The older [30 October trial](https://docs.google.com/document/d/1D5m4sjIKWRyyNi9lzYtx7YRlCAtxPSvP/edit) tested a different SigLIP-based design, not the currently deployed Gemini model. Neither dataset result can be silently transferred to current release performance.
 
+### Scorer interpretation (21 November 2026 update)
+
+For maintenance, the offline scorer emits a **confusion matrix** for each of fault type, priority and risk, along with macro-F1, micro-precision, micro-recall and micro-F1. The matrix retains a `__ABSTAIN__` column for missing answers and provider failures. Micro-precision uses non-abstaining predictions as its denominator, while micro-recall uses *all* adjudicated test cases, so an unavailable provider cannot silently appear accurate. Report the separate run completion rate; never report the selective micro-precision alone as application accuracy.
+
+For retrieval, the scorer additionally emits mean reciprocal rank (**MRR**) across *all held-out positive queries* (zero for a missing, rejected or failed answer), positive miss@5 rate, positive false-rejection rate and provider-error rate. The no-match false-acceptance and correctly-rejected rates remain denominated by *all held-out absent queries*, including provider errors (which are not successful rejections). The scorer checks exact image SHA equality but cannot detect photographic near-duplicates, prove the calibration split was independent, or certify that the policy flag in the CSV reflects actual hosted permissions.
+
+**These additional metrics and tests change the evidence tool, not the evidence base.** A green unit-test run on synthetic fixtures does not establish real model performance. Do not mark calibration, search quality or campus approval PASS without the approved held-out dataset, actual model output, locked threshold and independent reviewer sign-off.
+
 ## 4. Hosted role-separated human acceptance
 
 Use a named authorized test environment/build with synthetic identities and a reviewer. Create a dated pass/fail matrix for each of the following flows, recording observed API status/visible UI state and sanitized trace ID: registration/verification/recovery and expiry, student maintenance reporting, staff assignment and transition, staff-scope denial, found-item upload and custody receipt/decline, competing recovery approvals, both orders of two-sided handover confirmation, private search and inaccessible images, session expiry and CSRF/negative access cases, email delivery and provider-offline fallback. The exact 20 November hosted release has not been independently certified across these flows.
@@ -75,7 +83,7 @@ Maintain this record in [ACCEPTANCE.md](ACCEPTANCE.md) or a new dated evidence f
 
 ## 7. Execute scores from independently captured CSVs
 
-The standard-library-only scorer is [scripts/score_ai_evaluation.py](../scripts/score_ai_evaluation.py), with **10 synthetic contract tests** in [scripts/tests/test_ai_evaluation.py](../scripts/tests/test_ai_evaluation.py). Both are run by the existing CI's scripts/tests unittest discovery. Perfect results on toy fixtures demonstrate arithmetic and input-validation behavior only, **not** deployed model accuracy.
+The standard-library-only scorer is [scripts/score_ai_evaluation.py](../scripts/score_ai_evaluation.py), with synthetic contract tests in [scripts/tests/test_ai_evaluation.py](../scripts/tests/test_ai_evaluation.py). Both are run by the existing CI's scripts/tests unittest discovery. Perfect results on toy fixtures demonstrate arithmetic and input-validation behavior only, **not** deployed model accuracy.
 
 After freezing adjudicated cases and actual inference outputs, run these commands from the repository root:
 
