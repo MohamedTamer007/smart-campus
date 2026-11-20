@@ -27,12 +27,14 @@ METADATA = {
 
 
 class CrossrefMetadataTests(unittest.TestCase):
-    def test_original_public_reference_register_has_91_entries_and_71_resolvable_dois(self):
+    def test_updated_reference_register_has_91_entries_and_72_resolvable_dois(self):
         root = Path(__file__).resolve().parents[2]
         path = root / "docs" / "REFERENCE_AUDIT_2026-11-20.md"
         rows = audit.parse_register(path.read_text(encoding="utf-8"))
         self.assertEqual(len(rows), 91)
-        self.assertEqual(sum(bool(x["doi"]) for x in rows), 71)
+        self.assertEqual(sum(bool(x["doi"]) for x in rows), 72)
+        # #83 now prints the publisher DOI verified against the Monash record.
+        self.assertEqual(rows[82]["doi"], "10.1007/s10664-014-9331-y")
         self.assertEqual(rows[0]["number"], 1)
         self.assertEqual(rows[-1]["number"], 91)
 
