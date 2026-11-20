@@ -70,3 +70,7 @@ Three distinct outcomes must be recorded for every requirement: **implemented in
 ## Institutional authorization provenance — 21 November 2026
 
 The team explicitly reports **university project approval already granted** and **campus security sponsorship secured**. The linked [authorization provenance register](APPROVAL_AND_SPONSORSHIP_EVIDENCE_2026-11-21.md) separates this direct team statement from documentary signatory/scope verification and independent operating requirements. Until signed scope is examined, keep the Free preview synthetic-only. Do not enable external AI, production personal data, authenticated role testing with real accounts or intrusive security testing solely on the basis of that statement.
+
+## Publisher metadata audit — 21 November 2026
+
+[Crossref full read-only run 44832035480](https://github.com/MohamedTamer007/smart-campus/actions/runs/44832035480) returned **66** likely author/year/title-aligned DOI records, **4** source metadata flags, **1** not present in Crossref, and **20** non-DOI cases. The five flagged records were reviewed against original publisher/arXiv/university sites, and 13 of the 20 non-Crossref entries have a primary-source title/author/year crosscheck. See [dated adjudication and unresolved edition-year decision](REFERENCE_PRIMARY_SOURCE_ADJUDICATION_2026-11-21.md). This is a source identity and metadata screen, not final APA 7 certification, correctness of reported experiments or formal faculty acceptance.
