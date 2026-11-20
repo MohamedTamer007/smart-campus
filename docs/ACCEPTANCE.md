@@ -1,4 +1,30 @@
-# Acceptance evidence — current local continuation 14 November 2026
+# Acceptance evidence — current verified release, 20 November 2026
+
+This is a release evidence record, not a production-readiness certificate. PASS applies only to the named check and commit. The older dated sections below are historical and remain useful for traceability; they must not be mistaken for the latest results.
+
+## Latest source and CI
+
+Source baseline: main commit b427e37b958d46d9f9348d63791a5e742cf8068f, including PR #19. [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) passed on its head commit with 280 backend tests passed, 4 opt-in tests skipped, 0 failed; 130 frontend tests passed; 51 browser regression cases and 9 integrated browser journeys passed. PostgreSQL 17/pgvector, encrypted database backup/isolated restore, media encryption/restore, backup safety, isolated storage-policy fixture checks and NuGet advisory checks passed. Production npm audit reported 0 vulnerabilities.
+
+The install log still reported 11 high-severity development-dependency advisories. The CI workflow audits production dependencies separately while the recorded picomatch advisory has no patched version. This is not a zero-advisory result for the full development toolchain.
+
+## Latest deployment
+
+[Deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) manually deployed main commit b427e37b958d46d9f9348d63791a5e742cf8068f on 18 November 2026. The log records a successful pre-deployment HTTPS liveness check, WebDeploy dry-run, application upload and post-deployment /health/live check. It does not establish complete hosted acceptance, real email delivery, AI-provider availability, private storage authorization or long-term worker availability.
+
+## Current acceptance boundary
+
+- The public MonsterASP Free site is for synthetic-data evaluation only. [Terms clause 3.2](https://www.monsterasp.net/Terms/) excludes production workloads and production processing of personal data; the provider does not back up Free plans.
+- AI external-processing/image approvals and the retrieval calibration approval remain false/empty in checked-in safe defaults. Source integration is not proof that external AI is enabled.
+- O-03's original found-item registration cause remains unconfirmed. This release improves image decoding checks and shows specific safe messages for known API validation codes; it does not retroactively identify the failed hosted request.
+- Retrieval calibration, no-match false acceptance, real campus-data evaluation, verified campus directory/staff scopes, human usability, screen-reader journeys and larger-scale load remain open.
+- The current dependency evidence is mixed: production npm audit and NuGet advisory checks passed, but 11 high-severity development-dependency advisories were printed by npm installation.
+
+See [RELEASE_STATUS_2026-11-20.md](RELEASE_STATUS_2026-11-20.md) for the complete source, deployment, privacy and release-gate record.
+
+---
+
+## Historical evidence — 14 November 2026
 
 This is a local verification report, not a production readiness certificate. PASS means the stated check actually ran. BLOCKED means the indicated external/environment requirement remains unresolved. Historical AI trial measurements are not results from this implementation.
 
