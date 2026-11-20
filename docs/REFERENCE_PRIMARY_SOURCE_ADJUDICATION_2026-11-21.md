@@ -43,7 +43,24 @@ The following **13** entries have source pages from the original publishing asso
 
 **Confirmed metadata gap:** Source #83 (Tian et al. 2015) contains original publisher DOI `10.1007/s10664-014-9331-y` on the Monash institutional record, but the team's registry cites the university repository URL rather than visibly printing this DOI. A final APA pass can add the verified DOI without removing the institutional citation trail. Do not confuse this with an unverified DOI.
 
-Of the initial 20 records outside the Crossref DOI workflow, **13 now have source-identity lookup receipts listed above**. The remaining seven require comparable primary-source inspection: #19 is **not** part of the 20 because its linked URL includes a DOI; do not mix automated Crossref categories with source-review categories.
+Of the initial 20 records outside the Crossref DOI workflow, **19 now have original-source identity lookup receipts** across the two tables below. The remaining case #53 has third-party copies but lacks independently authenticated Cal Poly Pomona institutional provenance; #19 is **not** part of these 20 because its source link includes a DOI.
+
+## Additional original-source confirmations and the one outstanding non-DOI item
+
+Six more non-Crossref records were checked against original publishers or an author-controlled source. Combined with the 13 above, **19/20 original non-DOI-source records** now have independent first-author/title/year source-identity support.
+
+| # | First author and year | Original source and result |
+| ---: | --- | --- |
+| 48 | Hmeidi et al. (2008), full-word Arabic KNN/SVM | [Elsevier / ScienceDirect publisher record](https://www.sciencedirect.com/science/article/abs/pii/S1474034607000742) confirms title, three authors, 2008, volume 22(1), pp. 106–111 |
+| 58 | Li et al. (2023), energy-vehicle online reviews and complaints | [Elsevier / ScienceDirect publisher record](https://www.sciencedirect.com/science/article/pii/S2352484723001464) confirms first author Qiaoxing Li, 2023 and title |
+| 78 | Singh, Bhatia & Saha (2024), financial complaint severity | [IEEE Xplore publisher record](https://ieeexplore.ieee.org/abstract/document/10047986) confirms title and 2024 issue of *IEEE Transactions on Computational Social Systems* |
+| 79 | Singh, Dey, Singha & Saha (2022), multimodal complaints | [AAAI primary proceedings](https://ojs.aaai.org/index.php/AAAI/article/view/21476) confirms authorship, title and 2022 |
+| 81 | Stadnicka, Antosz & Ratnayake (2014), machine maintenance priorities | [Elsevier / ScienceDirect publisher record](https://www.sciencedirect.com/science/article/pii/S0925753513002531) confirms title and author/year |
+| 86 | Xuan et al. (2015), software bug triage | [Original author-hosted IEEE paper](https://jifeng-xuan.com/page/paper/tkde_15.pdf) confirms Jifeng Xuan and coauthors, title, 2015 issue; bibliographic DOI `10.1109/TKDE.2014.2324590` is printed on the paper |
+
+**Remaining source-provenance gate — #53 (Harkamal Kaur, 2017):** A [publicly mirrored project report](https://www.scribd.com/document/428840626/KaurHarkamal-Project2017-pdf) has a 2017 Cal Poly Pomona master's-project title/signature page naming Kaur. Other third-party mirrors and academic references repeat the source, but an original **Cal Poly Pomona institutional repository record or authenticated submitted file** was not independently located in this check. The work appears real but must remain **SECONDARY-COPY CORROBORATED; INSTITUTIONAL PROVENANCE UNVERIFIED** rather than certified by a third-party upload.
+
+This raises first-source identity screening of non-Crossref records to **19/20**, with one original institutional-source verification still open. It does not validate experimental data or 91/91 APA 7 accuracy.
 
 ## Outstanding gates
 
