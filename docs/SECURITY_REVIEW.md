@@ -1,5 +1,7 @@
 # Security and quality review
 
+**Current evidence note (20 November 2026):** Latest independently completed main CI [44805517934](https://github.com/MohamedTamer007/smart-campus/actions/runs/44805517934) passed at source commit `75bcc637521050c72b5b6c42c27c8de836bab3f0` with 280 backend tests passed (four skipped), 140 frontend, 51 browser regressions and nine integrated journeys. Automated and source reviews are not a penetration test, do not verify actual hosted private-storage policy, and do not authorize real personal data on MonsterASP Free. Dated paragraphs below preserve historical findings rather than overwriting their chronology.
+
 Security-sensitive: YES. Reviewer: Codex primary agent. All ten OWASP categories were examined against changed authentication, API, persistence, upload, provider, worker and frontend-boundary code. This is a source review plus the tests in ACCEPTANCE.md, not a penetration test.
 
 | Category | Review result |
@@ -9,7 +11,7 @@ Security-sensitive: YES. Reviewer: Codex primary agent. All ten OWASP categories
 | A03 injection | Parameterized EF/Npgsql requests; vector catalog schema quoted in migration; React escapes displayed text; no user-controlled shell commands or HTML rendering. |
 | A04 design | Shared item lock and database uniqueness protect approval/transfer/closure; both confirmation orders and stale writes tested. |
 | A05 configuration | Loopback development/worker, same-origin API, CSRF, controlled proxy trust, no automatic migrations; local secrets and demo receipts excluded from publish/archive. |
-| A06 dependencies | CI NuGet advisory audit passed and production npm audit reported 0 vulnerabilities; npm installation still reported 11 high-severity development-dependency advisories, including the recorded unpatched picomatch issue. Full worker environment/transitive validation remains blocked. |
+| A06 dependencies | The historical PR #19 install reported 11 high-severity development-dependency advisories, while its production audit was clean. The later [20 November 2026 main CI 44805517934](https://github.com/MohamedTamer007/smart-campus/actions/runs/44805517934) passed NuGet checks and reported 0 npm installation and production-audit vulnerabilities. Source/dependency checks do not certify external worker or hosted operational security. |
 | A07 authentication | Verified email, lockout/rate limits, token validation, session expiry/revocation and reset replay tests. Expired-token validation passed using token-policy overrides. |
 | A08 integrity | Pinned model revision, safetensors-only loading, no remote model code, strict structured suggestions and vector metadata validation. Real pretrained execution unverified. |
 | A09 monitoring | Structured login/domain/grant audits; stable rejection/failure codes and trace IDs without passwords, tokens, images or provider payloads. Operational alerting is not deployed. |
