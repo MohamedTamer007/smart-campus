@@ -8,7 +8,7 @@ const integrated = process.env.SMART_CAMPUS_E2E === "1";
 // Keep local runs quick; retry only transient browser/test failures in CI.
 const browserLaunchTimeout = process.env.CI ? 60000 : 20000;
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./",
   testMatch: integrated ? "**/integrated.spec.ts" : /^(?!.*integrated).*\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
