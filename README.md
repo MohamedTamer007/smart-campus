@@ -22,6 +22,8 @@ React/TypeScript frontend and ASP.NET Core 10 backend for university maintenance
 
 **Academic thesis evidence:** The latest native Google Doc PDF export has **148 pages**, no wholly blank pages, 80/80 Table of Contents heading/page matches, 29 numbered figure captions, 34 native tables, and 91 linked bibliography entries. Its Chapter 2 has a mechanically detectable first-author/year proximity citation for all 91 entries after disambiguation of the two 2008 Coussement papers. This is **not** a publisher-level APA 7 citation/metadata certification, AI accuracy measurement or formal university approval. See the [academic QA](docs/ACADEMIC_FINAL_QA_2026-11-20.md) and [source-location audit](docs/CITATION_CROSSCHECK_2026-11-20.md).
 
+**Institutional support (team-reported 21 November 2026):** The team confirms approval from the university and a campus-security sponsor. This is treated as a positive team report, not a missing approval request; written identifiers/scope and any separate final-examiner acceptance are still pending independent inspection. See [the approval/sponsor receipt](docs/APPROVAL_AND_SPONSORSHIP_EVIDENCE_2026-11-21.md). This does not itself enable external personal-data processing on the synthetic-only preview.
+
 **The project is not certified as 100% complete or production-ready.** See [the current release status and open gates](docs/RELEASE_STATUS_2026-11-20.md) and [acceptance evidence](docs/ACCEPTANCE.md).
 
 ## Important hosting and privacy boundary
