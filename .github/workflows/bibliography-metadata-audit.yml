@@ -1,0 +1,44 @@
+name: Scholarly DOI metadata screen (non-certifying)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/audit_reference_metadata.py'
+      - 'scripts/tests/test_reference_metadata.py'
+      - '.github/workflows/bibliography-metadata-audit.yml'
+      - 'docs/REFERENCE_AUDIT_2026-11-20.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smart-campus-public-doi-metadata
+  cancel-in-progress: false
+
+jobs:
+  crossref:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Verify isolated parser and comparison contracts
+        run: python -m unittest discover -s scripts/tests -p test_reference_metadata.py -v
+      - name: Request public scholarly DOI publisher metadata from Crossref
+        run: |
+          python scripts/audit_reference_metadata.py \
+            --input docs/REFERENCE_AUDIT_2026-11-20.md \
+            --output test-results/reference-crossref-audit.json \
+            --timeout 12 --delay 0.30
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: crossref-metadata-screen
+          path: test-results/reference-crossref-audit.json
+          retention-days: 14
