@@ -5,7 +5,7 @@ Source: [Smart Campus native thesis](https://docs.google.com/document/d/1UWZoMqG
 - **91/91** have a parenthesized author–year publication marker. This does not establish complete source accuracy.
 - **91/91** have clickable source links in Google Docs, even if some links are on the title instead of visibly printed URLs.
 - **91/91** are alphabetized by first recorded author/title (ignoring leading English articles), using normal 11pt reference paragraphs with hanging indents rather than Heading 1 page breaks.
-- Verified source PDF export: **145 pages**; References start on page 117, Appendices start on page 126. The contents and List of Tables have been updated accordingly.
+- Verified current native PDF export: **144 pages**, with **no empty pages**; References begin on 117 and Appendices on 125 (A 125, B 130, C 136, D 140, E 141). The intentionally separate Appendix heading remains, but an unintended empty heading's duplicate page-break-before was repaired. Native contents and List of Tables B-1–B-5 were corrected to these pages.
 - Full APA7 field-by-field author/title/DOI/venue/page checks, matching Chapter 2 in-text citations, and formal university rubric/sign-off remain external review gates.
 
 ## Exact linked reference register
