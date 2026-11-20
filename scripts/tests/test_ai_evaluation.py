@@ -77,6 +77,18 @@ class AiEvidenceTests(unittest.TestCase):
         self.assertEqual(r["complete_count"], 1)
         self.assertEqual(r["risk"]["accuracy_including_failures"], .5)
 
+    def test_explicit_abstention_is_not_counted_as_completed(self):
+        predictions = [
+            {"run_id": "synthetic", "case_id": "a", "model_revision": "fixture",
+             "pred_fault_type": "electrical", "pred_priority": "high",
+             "pred_risk": "__ABSTAIN__", "provider_status": "ok"},
+            {"run_id": "synthetic", "case_id": "b", "model_revision": "fixture",
+             "pred_fault_type": "plumbing", "pred_priority": "low",
+             "pred_risk": "low", "provider_status": "ok"}]
+        result = self.maintenance(predictions=predictions)
+        self.assertEqual(result["complete_count"], 1)
+        self.assertEqual(result["risk"]["accuracy_including_failures"], .5)
+
     def test_unknown_predictions_rejected(self):
         p = [{"run_id": "x", "case_id": "unknown", "model_revision": "m",
               "pred_fault_type": "x", "pred_priority": "y",
@@ -103,6 +115,42 @@ class AiEvidenceTests(unittest.TestCase):
                    {"query_id": "q2", "split": "test", "expected_item_id_or_absent": "ABSENT",
                     "query_image_sha256": "", "language": "ar", "stratum": "absent"}]
         with self.assertRaisesRegex(ValueError, "identical"):
+            self.retrieval(queries=queries)
+
+    def test_same_photo_as_wrong_gallery_item_rejected(self):
+        queries = [
+            {"query_id": "q1", "split": "test", "expected_item_id_or_absent": "a",
+             "query_image_sha256": "bbb", "language": "ar", "stratum": "image"},
+            {"query_id": "q2", "split": "test", "expected_item_id_or_absent": "ABSENT",
+             "query_image_sha256": "", "language": "ar", "stratum": "absent"}]
+        with self.assertRaisesRegex(ValueError, "identical"):
+            self.retrieval(queries=queries)
+
+    def test_failed_provider_rank_is_rejected(self):
+        ranked = [{"run_id": "synthetic", "query_id": "q1", "rank": "1",
+                   "candidate_item_id": "a", "permission_allowed": "true",
+                   "provider_status": "failed"}]
+        with self.assertRaisesRegex(ValueError, "failed provider"):
+            self.retrieval(ranked=ranked)
+
+    def test_repeated_heldout_photo_rejected(self):
+        queries = [
+            {"query_id": "q1", "split": "test", "expected_item_id_or_absent": "a",
+             "query_image_sha256": "new-image", "language": "ar", "stratum": "image"},
+            {"query_id": "q2", "split": "test", "expected_item_id_or_absent": "ABSENT",
+             "query_image_sha256": "new-image", "language": "ar", "stratum": "absent"}]
+        with self.assertRaisesRegex(ValueError, "repeated"):
+            self.retrieval(queries=queries)
+
+    def test_cross_split_photo_leakage_rejected(self):
+        queries = [
+            {"query_id": "q1", "split": "test", "expected_item_id_or_absent": "a",
+             "query_image_sha256": "fresh-photo", "language": "ar", "stratum": "image"},
+            {"query_id": "q2", "split": "test", "expected_item_id_or_absent": "ABSENT",
+             "query_image_sha256": "", "language": "ar", "stratum": "absent"},
+            {"query_id": "q3", "split": "validation", "expected_item_id_or_absent": "a",
+             "query_image_sha256": "fresh-photo", "language": "ar", "stratum": "image"}]
+        with self.assertRaisesRegex(ValueError, "cross-split"):
             self.retrieval(queries=queries)
 
     def test_missing_retrieval_decision_rejected(self):
