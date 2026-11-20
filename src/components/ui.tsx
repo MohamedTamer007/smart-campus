@@ -67,6 +67,7 @@ export function useAction() {
   const [pending, setPending] = useState(false);
   const inFlight = useRef(false);
   const [errorCode, setErrorCode] = useState<ServiceError["code"] | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const messages = {
     unavailable: t(
       "الخدمة غير متاحة حالياً. احتُفظ بمدخلاتك.",
@@ -98,23 +99,38 @@ export function useAction() {
     internal: t("تعذر إكمال الطلب. حاول مجدداً.", "The request failed. Please retry."),
   };
 
+  const detailMessages: Record<string, string> = {
+    invalid_upload: t("الصورة غير صالحة أو تتجاوز حدود المعالجة. استخدم JPEG أو PNG أو WebP حتى 5 ميجابايت.", "The image is invalid or exceeds processing limits. Use JPEG, PNG or WebP up to 5 MiB."),
+    image_required: t("أرفق صورة صالحة للغرض قبل التسجيل.", "Attach a valid item photo before registering."),
+    invalid_date: t("تاريخ العثور غير صالح أو يقع في المستقبل.", "The found date is invalid or is in the future."),
+    invalid_input: t("راجع الحقول المطلوبة وتأكد من أن النصوص ضمن الحدود المسموح بها.", "Check required fields and ensure text is within the allowed limits."),
+    storage_unavailable: t("تعذر حفظ الصورة في التخزين الخاص حالياً. احتُفظ بمدخلاتك؛ حاول لاحقاً.", "Private image storage is temporarily unavailable. Your form details are kept; retry later."),
+    search_input_required: t("اكتب وصفاً للغرض أو أرفق صورته قبل البحث.", "Enter an item description or attach its photo before searching."),
+    search_calibration_required: t("البحث الدلالي غير متاح قبل اعتماد معايير المطابقة.", "Semantic search is unavailable until retrieval calibration is approved."),
+    assignee_required: t("عيّن موظفاً مسؤولاً قبل تحويل البلاغ إلى قيد الإصلاح.", "Assign a staff member before moving the report to repair."),
+    invalid_destination: t("اختر جهة استلام مسجلة وصالحة.", "Choose a valid registered receiving department."),
+    ai_not_configured: t("خدمة الذكاء الاصطناعي غير مفعّلة حالياً؛ يمكنك المتابعة يدوياً إذا كان ذلك متاحاً.", "AI is not enabled for this service; continue manually if the workflow allows it."),
+  };
+
   async function run(action: () => Promise<void>) {
     if (inFlight.current) return;
     inFlight.current = true;
     setPending(true);
     setErrorCode(null);
+    setErrorDetail(null);
     try {
       await action();
     } catch (error) {
       const code = error instanceof ServiceError ? error.code : "unavailable";
       setErrorCode(code);
+      setErrorDetail(error instanceof ServiceError ? error.detail ?? null : null);
       if (code === "expired") expireSession();
     } finally {
       inFlight.current = false;
       setPending(false);
     }
   }
-  return { pending, message: errorCode ? messages[errorCode] : "", run };
+  return { pending, message: errorDetail && detailMessages[errorDetail] ? detailMessages[errorDetail] : errorCode ? messages[errorCode] : "", run };
 }
 export function ActionForm({
   children,
