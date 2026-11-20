@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { AppProvider } from "../src/app/context";
 import { ActionForm } from "../src/components/ui";
+import { ServiceError } from "../src/services/contracts";
 import { AsyncView } from "../src/components/AsyncView";
 afterEach(cleanup);
 it("does not send duplicate requests when the form is submitted twice before rendering", () => {
@@ -56,4 +57,23 @@ it("offers retry after an unexpected data-loading failure", async () => {
   await userEvent.click(screen.getByRole("button", { name: "إعادة المحاولة" }));
   expect(await screen.findByText("Recovered")).toBeTruthy();
   expect(load).toHaveBeenCalledTimes(2);
+});
+
+it.each([
+  ["invalid_upload", "الصورة غير صالحة"],
+  ["image_required", "أرفق صورة"],
+  ["invalid_date", "تاريخ العثور"],
+  ["storage_unavailable", "تعذر حفظ الصورة"],
+] as const)("shows a useful safe message for the server validation code %s", async (detail, expected) => {
+  render(
+    <MemoryRouter>
+      <AppProvider>
+        <ActionForm label="Send" onSubmit={async () => { throw new ServiceError("invalid", detail); }}>
+          <span>Form content</span>
+        </ActionForm>
+      </AppProvider>
+    </MemoryRouter>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  expect((await screen.findByRole("alert")).textContent).toContain(expected);
 });
