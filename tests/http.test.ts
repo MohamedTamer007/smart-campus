@@ -54,7 +54,7 @@ it("preserves the backend validation code so the UI can explain the failure", as
     headers: { "Content-Type": "application/json" },
   })));
   const { api } = await import("../src/services/http");
-  await expect(api("/found", { method: "POST", body: new FormData() }))
+  await expect(api("/found"))
     .rejects.toMatchObject({ code: "invalid", detail: "invalid_upload" });
 });
 
