@@ -10,7 +10,7 @@
 
 The deployment log records: pre-deployment HTTPS liveness passed; WebDeploy dry-run passed; compiled application uploaded; post-deployment HTTPS /health/live passed. This is strong evidence that the named source was built and uploaded. It does not prove all authenticated workflows, email, AI, private media, storage policies, worker continuity or human acceptance.
 
-This release branch changes the MonsterASP push trigger to main, so a merge to main can deploy automatically. The existing MONSTERASP_AUTO_DEPLOY_DISABLED=true variable remains the emergency disable switch. The deployment script preserves hosted configuration/data, excludes local/production secret files, runs a dry-run and refuses to upload if the current public API liveness check fails.
+Open PR #20 proposes changing the MonsterASP push trigger to main and retaining MONSTERASP_AUTO_DEPLOY_DISABLED=true as the emergency disable switch. Its CI and Windows package checks passed on 20 November (280 backend passed, 4 skipped; 139 frontend passed; 51 browser regressions; 9 integrated journeys), but it is not yet merged or deployed at this snapshot. Until merge, the main-branch workflow trigger remains unchanged. After merge, the proposed deployment script preserves hosted configuration/data, excludes local/production secret files, runs a dry-run and refuses to upload if the current public API liveness check fails.
 
 ## Latest CI results
 
