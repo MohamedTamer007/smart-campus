@@ -1,3 +1,19 @@
+# MonsterASP.NET deployment record
+
+## Current verified deployment — 18 November 2026
+
+[Run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) successfully built and uploaded main commit b427e37b958d46d9f9348d63791a5e742cf8068f. Its log records a successful pre-deployment HTTPS /health/live probe, WebDeploy dry-run, compiled application upload and successful post-deployment HTTPS liveness probe. This is a deployment/liveness result, not full acceptance of every service.
+
+The automatic deployment workflow in this release is configured to trigger on pushes to main; set the existing repository variable MONSTERASP_AUTO_DEPLOY_DISABLED=true to disable it. The deployment script preserves hosted configuration and data, skips local/production configuration files, uses a non-destructive dry-run, and refuses deployment when the current public API liveness check fails.
+
+## Free-plan data boundary
+
+The current [MonsterASP Terms of Service, clause 3.2](https://www.monsterasp.net/Terms/) state that Free plans are for development, testing, learning and evaluation only and are not intended for production workloads or production processing of personal data. Free plans are not backed up by MonsterASP and carry no availability/service commitment. **Keep the public Free site synthetic-only.** Do not register real students or upload real student information, credentials, custody details or photos there. Paid plans have a data-processing agreement under clause 8.2, but university privacy/legal approval, a lawful basis, verified security and recovery remain necessary.
+
+No host environment variables, database credentials, storage keys, AI keys or private deployment credentials were read or changed during this release review. A successful WebDeploy run does not certify the hosted database/storage policies or external provider configuration.
+
+## Historical setup and release-gate notes
+
 # MonsterASP.NET: verified packaging and release gates (2026-11-10)
 
 ## Selected MonsterASP.NET website — 10 November 2026
