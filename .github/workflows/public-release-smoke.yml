@@ -1,4 +1,4 @@
-name: Public release identity and liveness (read-only)
+name: Public release identity, liveness and anonymous denial (read-only)
 
 on:
   push:
@@ -26,11 +26,12 @@ jobs:
           persist-credentials: false
       - name: Run the offline probe contract tests
         run: python -m unittest discover -s scripts/tests -p test_public_release.py -v
-      - name: Verify public HTTPS liveness and exact deployed application SHA
+      - name: Verify public HTTPS, exact source SHA and anonymous private API denial
         run: |
           python scripts/verify_public_release.py \
             --origin https://smartcampus.tryasp.net \
             --expected-commit eb3c62c2c743ce792a53f311ce97c3751d422437 \
+            --check-anonymous-private \
             --output test-results/public-release-check.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
