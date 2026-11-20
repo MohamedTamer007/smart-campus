@@ -33,7 +33,7 @@ def parse_register(text):
         if not match:
             continue
         number, citation, url = match.groups()
-        doi_match = DOI.search(citation)
+        doi_match = DOI.search(citation) or DOI.search(url)
         date = YEAR.search(citation)
         if not date:
             raise ValueError(f"reference {number}: publication year missing")
