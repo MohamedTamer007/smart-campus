@@ -1,6 +1,10 @@
 # Current test report — 20 November 2026
 
-## PR #19 CI — 18 November 2026
+## PR #20 CI — 20 November 2026
+
+[CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) passed on PR #20's head before its merge: backend 280 passed / four skipped, frontend 139 passed, 51 browser regressions and nine integrated journeys. [Windows publish/package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) passed. PR #20 merged into main as application-source commit `7df00ef18ab16e0781a659b15ce806033513f78c`. These checks do not demonstrate post-merge deployment success or real-user acceptance.
+
+## Earlier PR #19 CI — 18 November 2026
 
 [CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) passed on PR #19's head commit. Recorded results:
 - Backend: 280 passed, 4 skipped, 0 failed on isolated PostgreSQL 17/pgvector.
