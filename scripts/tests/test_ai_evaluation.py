@@ -184,5 +184,71 @@ class AiEvidenceTests(unittest.TestCase):
               "provider_status": "failed", "selected_item_id": ""}]
         self.assertEqual(self.retrieval(decisions=p)["absent_correct_rejection_rate"], 0)
 
+
+    def test_retrieval_mrr_counts_correct_item_at_rank_two(self):
+        decisions = [
+            {"run_id": "synthetic", "query_id": "q1", "decision": "match",
+             "provider_status": "ok", "selected_item_id": "b"},
+            {"run_id": "synthetic", "query_id": "q2", "decision": "no_match",
+             "provider_status": "ok", "selected_item_id": ""}]
+        ranked = [
+            {"run_id": "synthetic", "query_id": "q1", "rank": "1",
+             "candidate_item_id": "b", "permission_allowed": "true",
+             "provider_status": "ok"},
+            {"run_id": "synthetic", "query_id": "q1", "rank": "2",
+             "candidate_item_id": "a", "permission_allowed": "true",
+             "provider_status": "ok"}]
+        result = self.retrieval(decisions=decisions, ranked=ranked)
+        self.assertEqual(result["recall_at_1"], 0)
+        self.assertEqual(result["recall_at_5"], 1)
+        self.assertEqual(result["mean_reciprocal_rank"], .5)
+        self.assertEqual(result["positive_miss_at_5_rate"], 0)
+        self.assertEqual(result["positive_false_rejection_rate"], 0)
+
+    def test_positive_no_match_is_false_rejection_not_provider_error(self):
+        decisions = [
+            {"run_id": "synthetic", "query_id": "q1", "decision": "no_match",
+             "provider_status": "ok", "selected_item_id": ""},
+            {"run_id": "synthetic", "query_id": "q2", "decision": "match",
+             "provider_status": "ok", "selected_item_id": "b"}]
+        ranked = [
+            {"run_id": "synthetic", "query_id": "q2", "rank": "1",
+             "candidate_item_id": "b", "permission_allowed": "true",
+             "provider_status": "ok"}]
+        result = self.retrieval(decisions=decisions, ranked=ranked)
+        self.assertEqual(result["positive_false_rejection_rate"], 1)
+        self.assertEqual(result["positive_miss_at_5_rate"], 1)
+        self.assertEqual(result["mean_reciprocal_rank"], 0)
+        self.assertEqual(result["provider_error_rate"], 0)
+        self.assertEqual(result["absent_false_acceptance_rate"], 1)
+
+    def test_provider_error_rate_is_reported_separately_from_no_match(self):
+        decisions = [
+            {"run_id": "synthetic", "query_id": "q1", "decision": "match",
+             "provider_status": "ok", "selected_item_id": "a"},
+            {"run_id": "synthetic", "query_id": "q2", "decision": "error",
+             "provider_status": "failed", "selected_item_id": ""}]
+        result = self.retrieval(decisions=decisions)
+        self.assertEqual(result["provider_errors_in_denominators"], 1)
+        self.assertEqual(result["provider_error_rate"], .5)
+        self.assertEqual(result["absent_correct_rejection_rate"], 0)
+
+
+    def test_classification_confusion_and_micro_scores_keep_abstentions(self):
+        predictions = [
+            {"run_id": "synthetic", "case_id": "a", "model_revision": "fixture",
+             "pred_fault_type": "electrical", "pred_priority": "high",
+             "pred_risk": "high", "provider_status": "ok"},
+            {"run_id": "synthetic", "case_id": "b", "model_revision": "fixture",
+             "pred_fault_type": "plumbing", "pred_priority": "low",
+             "pred_risk": "low", "provider_status": "offline"}]
+        result = self.maintenance(predictions=predictions)
+        m = result["fault_type"]
+        self.assertEqual(m["micro_precision"], 1)
+        self.assertEqual(m["micro_recall"], .5)
+        self.assertAlmostEqual(m["micro_f1"], 2 / 3)
+        self.assertEqual(m["confusion_matrix"]["plumbing"]["__ABSTAIN__"], 1)
+        self.assertEqual(m["confusion_matrix"]["electrical"]["electrical"], 1)
+
 if __name__ == "__main__":
     unittest.main()
