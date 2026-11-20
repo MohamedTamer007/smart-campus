@@ -10,10 +10,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Backend publish failed' }
 $webRoot = Join-Path $Destination 'wwwroot'
 New-Item -ItemType Directory -Force -Path $webRoot | Out-Null
 Copy-Item -Path dist/* -Destination $webRoot -Recurse -Force
-# Record the exact public source commit in the package without exposing secrets.
+# Record the exact source commit in the public package, without secrets.
 $sourceCommit = (& git rev-parse --verify HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}if (Test-Path (Join-Path $Destination 'appsettings.Local.json')) { throw 'Local configuration must never be published' }
-) {
+if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
   throw 'Cannot identify the source commit for this release.'
 }
 $buildInfoPath = Join-Path $webRoot 'build-info.json'
