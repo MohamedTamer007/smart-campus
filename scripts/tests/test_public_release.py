@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from urllib.error import HTTPError
 import unittest
 from unittest.mock import patch
 
@@ -77,6 +78,69 @@ class PublicReleaseProbeTests(unittest.TestCase):
         mock.return_value = FakeResponse("https://other.example/health/live", b"Healthy")
         r = probe.probe(probe.DEFAULT_ORIGIN, COMMIT, 5)
         self.assertEqual(r["result"], "FAIL")
+
+
+    @patch.object(probe, "urlopen")
+    def test_private_gets_require_authentication_without_reading_data(self, mock):
+        requested = []
+
+        def deny_unauthenticated(request, timeout):
+            url = request.full_url
+            if "/health/live" in url or "/build-info.json" in url:
+                return good_urlopen(request, timeout)
+            requested.append(url)
+            self.assertEqual(request.get_method(), "GET")
+            self.assertIsNone(request.get_header("Cookie"))
+            self.assertIsNone(request.get_header("Authorization"))
+            raise HTTPError(url, 401, "Unauthorized", {}, None)
+
+        mock.side_effect = deny_unauthenticated
+        r = probe.probe(probe.DEFAULT_ORIGIN, COMMIT, 5, check_anonymous_private=True)
+        self.assertEqual(r["result"], "PASS")
+        self.assertEqual(r["anonymous_private_access"], "PASS")
+        self.assertEqual(len(requested), len(probe.PRIVATE_GET_ROUTES))
+        self.assertTrue(all(x["http_status"] == 401 for x in
+                            r["anonymous_private_routes"].values()))
+        self.assertEqual(r["authenticated_user_flows"], "NOT_EVALUATED")
+
+    @patch.object(probe, "urlopen")
+    def test_unexpected_anonymous_200_is_failure_without_body_read(self, mock):
+        def allows(request, timeout):
+            if "/health/live" in request.full_url or "/build-info.json" in request.full_url:
+                return good_urlopen(request, timeout)
+            return FakeResponse(request.full_url, b'{"private":"do not read"}')
+
+        mock.side_effect = allows
+        r = probe.probe(probe.DEFAULT_ORIGIN, COMMIT, 5, check_anonymous_private=True)
+        self.assertEqual(r["result"], "FAIL")
+        self.assertEqual(r["anonymous_private_access"], "FAIL")
+        self.assertEqual(r["anonymous_private_routes"][probe.PRIVATE_GET_ROUTES[0]]
+                         ["http_status"], 200)
+        self.assertNotIn("private", json.dumps(r))
+
+    @patch.object(probe, "urlopen")
+    def test_private_get_redirect_or_network_error_fails_closed(self, mock):
+        def mixed(request, timeout):
+            if "/health/live" in request.full_url or "/build-info.json" in request.full_url:
+                return good_urlopen(request, timeout)
+            if "/api/v1/maintenance" in request.full_url:
+                return FakeResponse("https://example.org/login", b"")
+            raise TimeoutError("synthetic timeout")
+
+        mock.side_effect = mixed
+        r = probe.probe(probe.DEFAULT_ORIGIN, COMMIT, 5, check_anonymous_private=True)
+        self.assertEqual(r["result"], "FAIL")
+        self.assertEqual(r["anonymous_private_access"], "FAIL")
+        self.assertEqual(r["anonymous_private_routes"][probe.PRIVATE_GET_ROUTES[0]]
+                         ["same_url"], False)
+
+    @patch.object(probe, "urlopen")
+    def test_health_failure_skips_anonymous_private_probes(self, mock):
+        mock.side_effect = OSError("synthetic failure")
+        r = probe.probe(probe.DEFAULT_ORIGIN, COMMIT, 5, check_anonymous_private=True)
+        self.assertEqual(r["result"], "FAIL")
+        self.assertEqual(r["anonymous_private_access"], "NOT_RUN")
+        self.assertNotIn("anonymous_private_routes", r)
 
 
 if __name__ == "__main__":
