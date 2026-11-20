@@ -72,3 +72,23 @@ Limitation / follow-up:
 ```
 
 Maintain this record in [ACCEPTANCE.md](ACCEPTANCE.md) or a new dated evidence file. Do not change the historical record in place or claim `100% accuracy` from a small/non-independent sample.
+
+## 7. Execute scores from independently captured CSVs
+
+The standard-library-only scorer is [scripts/score_ai_evaluation.py](../scripts/score_ai_evaluation.py), with **10 synthetic contract tests** in [scripts/tests/test_ai_evaluation.py](../scripts/tests/test_ai_evaluation.py). Both are run by the existing CI's scripts/tests unittest discovery. Perfect results on toy fixtures demonstrate arithmetic and input-validation behavior only, **not** deployed model accuracy.
+
+After freezing adjudicated cases and actual inference outputs, run these commands from the repository root:
+
+    python scripts/score_ai_evaluation.py maintenance --cases maintenance_cases.csv --predictions maintenance_predictions.csv
+
+For retrieval the visible-ranked-results CSV contains only **post-policy displayed** candidates. Add the per-query decision file (header below), so that no match is not confused with a provider error:
+
+    run_id,query_id,decision,provider_status,selected_item_id
+
+Set decision to match, no_match, or error. Every held-out query must have exactly one decision; match must select displayed rank 1; no_match and error expose no candidate rows. An absent target is the literal ABSENT. Score with:
+
+    python scripts/score_ai_evaluation.py retrieval --gallery gallery.csv --queries retrieval_queries.csv --decisions retrieval_decisions.csv --ranks retrieval_results.csv
+
+Outputs include numerator/denominator context, macro-F1 and per-class scores for fault/priority/risk, retrieval Recall@1/@5 and absent false-acceptance/rejection rates, and input-file SHA-256 fingerprints. Unavailable predictions and errors are not counted as success. Cross-split duplicate descriptions, identical query/gallery photo hashes, missing independent annotations and displayed unauthorized candidates are refused. Byte inequality does **not** establish different physical photos: manual near-duplicate review is still required.
+
+**Current status:** scorer implemented in source, live Gemini and OpenRouter quality on a new approved independent case set **NOT RUN**. Never substitute synthetic scorer unit-test output for live inference data or institutional consent.

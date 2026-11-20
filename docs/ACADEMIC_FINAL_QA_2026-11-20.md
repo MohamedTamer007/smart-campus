@@ -7,7 +7,7 @@
 - The native Google Doc has **six numbered chapters**, **five appendices (A–E)**, **39 inline images**, **34 native tables** and **91 linked bibliographic entries**.
 - The current native PDF export contains **142 pages**. Chapter starts verified against extracted PDF pages: Chapter 1 page **11**, Chapter 2 **17**, Chapter 3 **29**, Chapter 4 **75**, Chapter 5 **96**, Chapter 6 **108**, References **117**, Appendices **123** (A 123, B 128, C 134, D 138, E 139). The existing contents page agrees at these landmarks. Page numbering must be rechecked after subsequent content changes.
 - Representative diagram-only PDF pages 50, 54, 58 and 67–70 were visually inspected; they contain diagrams rather than accidental blank pages. This spot check cannot certify every figure's readability at print scale or accessibility.
-- All 91 bibliography entries retain at least one clickable source link. Six additional references were replaced with source-verified author/year/publication details and link styling in the native thesis. The remaining entries are **not certified as APA 7**: a source link does not prove accurate authorship, bibliographic metadata, matching in-text attribution, DOI, or APA formatting. See [APA reference list guidance](https://apastyle.apa.org/style-grammar-guidelines/references/basic-principles).
+- All 91 bibliography entries retain at least one clickable source link. Fourteen additional references were corrected using primary publication metadata across two reviews. All 91 entries were then re-sorted alphabetically and retained clickable links. [Entry-by-entry reference audit](REFERENCE_AUDIT_2026-11-20.md) records the remaining author–year/APA gaps. The remaining entries are **not certified as APA 7**: a source link does not prove accurate authorship, bibliographic metadata, matching in-text attribution, DOI, or APA formatting. See [APA reference list guidance](https://apastyle.apa.org/style-grammar-guidelines/references/basic-principles).
 
 ## Evidence ledger — three different claims
 
@@ -47,6 +47,12 @@ These are **external evidence gates**, not missing paragraphs that can safely be
 - Evidence and limits: [acceptance](ACCEPTANCE.md), [release matrix](RELEASE_EVIDENCE_MATRIX_2026-11-20.md), [release status](RELEASE_STATUS_2026-11-20.md), [security review](SECURITY_REVIEW.md)
 - AI protocol: [AI evaluation reproduction](AI_EVALUATION_REPRODUCTION_PROTOCOL.md)
 - Current verification versus hosted acceptance: [PR #21 deployment](https://github.com/MohamedTamer007/smart-campus/actions/runs/44783186261) and [last independently inspected passing full CI](https://github.com/MohamedTamer007/smart-campus/actions/runs/44805517934)
+
+## Executable AI scoring and reference register
+
+- [Offline scoring script](../scripts/score_ai_evaluation.py) and [ten synthetic unit tests](../scripts/tests/test_ai_evaluation.py) have been added. The repository's Python unittest discovery includes the test file; the newly triggered CI result must be checked before asserting a pass on this new source.
+- [Bibliography register](REFERENCE_AUDIT_2026-11-20.md): **29/91** entries have an APA-like publication-year pattern, **62/91** still need source-grounded author/date correction. This is a formatting heuristic, not APA 7 certification. All 91 entries were re-sorted and retain clickable links.
+- The next independent AI metrics are **NOT RUN** until adjudicated input CSVs, corresponding outputs, locked model versions and authorized approvals actually exist. The scorer only validates real captured data or synthetic unit fixtures.
 
 ## Quality-control rule
 
