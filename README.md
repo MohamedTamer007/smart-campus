@@ -4,7 +4,9 @@ React/TypeScript frontend and ASP.NET Core 10 backend for university maintenance
 
 ## Current release status — 20 November 2026
 
-**Application-source baseline:** PR #20 merged into main on 20 November 2026 as `7df00ef18ab16e0781a659b15ce806033513f78c`. The preceding confirmed deployed application source was b427e37b958d46d9f9348d63791a5e742cf8068f (18 November, PR #19), which added editable photo-description drafts.
+**Application-source baseline:** PR #21 merged on 20 November 2026 as `eb3c62c2c743ce792a53f311ce97c3751d422437`, correcting private search feedback and adding release-commit verification after Windows deployment. PR #20 (`7df00ef18ab16e0781a659b15ce806033513f78c`) previously improved image validation and enabled main-push deployment. The last independently verified hosted upload here remains 18 November main commit `b427e37b958d46d9f9348d63791a5e742cf8068f`.
+
+**Latest verified source checks (PR #21):** [CI run 44781998454](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998454) passed 280 backend tests (four skipped), 140 frontend tests, 51 browser regressions and nine integrated journeys. [Windows package run 44781998433](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998433) also passed. The new build-info.json check is in main, but a successful post-merge hosted deployment has not been independently verified here.
 
 **Earlier full CI evidence (PR #19):** [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) completed successfully on the PR head commit:
 - Backend: **280 passed, 4 skipped, 0 failed** against isolated PostgreSQL 17/pgvector.
