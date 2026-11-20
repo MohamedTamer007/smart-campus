@@ -4,7 +4,7 @@
 
 [Run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) successfully built and uploaded main commit b427e37b958d46d9f9348d63791a5e742cf8068f. Its log records a successful pre-deployment HTTPS /health/live probe, WebDeploy dry-run, compiled application upload and successful post-deployment HTTPS liveness probe. This is a deployment/liveness result, not full acceptance of every service.
 
-The automatic deployment workflow in this release is configured to trigger on pushes to main; set the existing repository variable MONSTERASP_AUTO_DEPLOY_DISABLED=true to disable it. The deployment script preserves hosted configuration and data, skips local/production configuration files, uses a non-destructive dry-run, and refuses deployment when the current public API liveness check fails.
+Open PR #20 proposes changing the automatic deployment workflow to trigger on pushes to main and retains the existing MONSTERASP_AUTO_DEPLOY_DISABLED=true emergency stop. Its CI and Windows package checks passed on 20 November, but the PR is not yet merged or deployed at this snapshot; the current main workflow still listens to the earlier release branch and manual dispatch. After merge, the proposed main-branch workflow will preserve hosted configuration and data, skip local/production configuration files, use a non-destructive dry-run, and refuse deployment when the current public API liveness check fails.
 
 ## Free-plan data boundary
 
