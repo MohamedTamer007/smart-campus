@@ -12,3 +12,8 @@ All figures 3.4–3.29 and their original editable source archive are maintained
 
 ## Maintenance and correctness
 Render the Mermaid diagrams using a trusted Mermaid renderer, then visually compare them to the signed-off thesis figure before substituting images. Any changed workflow must first be confirmed against the source requirements, API state/authorization rules and current tests. No diagram constitutes evidence of actual application behavior on the hosted release.
+
+
+## Accessibility / print review assistance
+
+[Long-form reviewer descriptions for thesis Figures 3.1–3.3 and the private-search screenshot](ACCESSIBLE_DESCRIPTIONS_2026-11-21.md) have been source-checked against the rendered 148-page PDF. They are **proposed** text alternatives and do not count as native image alt text, approved diagram replacement or human accessibility certification. Four images on printed pages 30, 31, 33 and 92 remain below 150 effective DPI in the source PDF; retain the human/vector replacement gate.
