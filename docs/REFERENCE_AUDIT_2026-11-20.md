@@ -5,8 +5,8 @@ Source: [Smart Campus native thesis](https://docs.google.com/document/d/1UWZoMqG
 - **91/91** have a parenthesized author–year publication marker. This does not establish complete source accuracy.
 - **91/91** have clickable source links in Google Docs, even if some links are on the title instead of visibly printed URLs.
 - **91/91** are alphabetized by first recorded author/title (ignoring leading English articles), using normal 11pt reference paragraphs with hanging indents rather than Heading 1 page breaks.
-- Verified current native PDF export: **144 pages**, with **no empty pages**; References begin on 117 and Appendices on 125 (A 125, B 130, C 136, D 140, E 141). The intentionally separate Appendix heading remains, but an unintended empty heading's duplicate page-break-before was repaired. Native contents and List of Tables B-1–B-5 were corrected to these pages.
-- Full APA7 field-by-field author/title/DOI/venue/page checks, matching Chapter 2 in-text citations, and formal university rubric/sign-off remain external review gates.
+- A subsequent native PDF export after Appendix E.8 contains **148 pages**, with **no wholly empty text-and-image pages** in the automated page audit; References begin on 117 and Appendices A–E on 125, 130, 136, 140 and 141, respectively. E.8 starts on 145. The previous 144-page check preceded E.8, and its correction of the unintended duplicate appendix page break remains historical. Native chapter/appendix landmarks were checked; this does not constitute a full print-scale, linked-DOI or APA 7 audit.
+- Full APA 7 field-by-field author/title/DOI/venue/page checks, bidirectional matching of in-text citations and reference-list entries, and formal university rubric/sign-off remain review gates. The thesis now consistently uses Gunay et al. (2019) and García et al. (2020) where the registered citations require those exact author/year forms; a few corrected citations do not certify the other 91 records.
 
 ## Exact linked reference register
 
