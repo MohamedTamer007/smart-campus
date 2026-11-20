@@ -151,7 +151,8 @@ def retrieval(gallery, queries, decisions, ranks):
             if r["provider_status"].strip().lower() != "ok":
                 raise ValueError("ranked candidate cannot come from failed provider")
             candidates[r["query_id"]].append(r)
-    positives = absent = top1 = top5 = false_accept = correctly_rejected = errors = 0
+    positives = absent = top1 = top5 = false_accept = correctly_rejected = errors = false_reject = 0
+    reciprocal_rank_sum = 0.0
     for q in test:
         expected = q["expected_item_id_or_absent"].strip()
         if expected != "ABSENT":
@@ -187,12 +188,19 @@ def retrieval(gallery, queries, decisions, ranks):
                          if r["candidate_item_id"] == expected), None)
             top1 += action == "match" and rank == 1
             top5 += action == "match" and rank is not None and rank <= 5
+            # Missing, rejected and provider-error answers all contribute zero to MRR.
+            reciprocal_rank_sum += 1 / rank if action == "match" and rank is not None else 0.0
+            false_reject += action == "no_match"
     if positives == 0 or absent == 0:
         raise ValueError("both positive and absent held-out cases are required")
     return {"evaluation": "offline_after_external_run",
             "test_count": len(test), "positive_count": positives, "absent_count": absent,
             "provider_errors_in_denominators": errors,
             "recall_at_1": top1 / positives, "recall_at_5": top5 / positives,
+            "mean_reciprocal_rank": reciprocal_rank_sum / positives,
+            "positive_miss_at_5_rate": 1 - top5 / positives,
+            "positive_false_rejection_rate": false_reject / positives,
+            "provider_error_rate": errors / len(test),
             "absent_false_acceptance_rate": false_accept / absent,
             "absent_correct_rejection_rate": correctly_rejected / absent,
             "input_sha256": {x: digest(y) for x, y in
