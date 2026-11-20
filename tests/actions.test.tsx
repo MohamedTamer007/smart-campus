@@ -77,3 +77,21 @@ it.each([
   await userEvent.click(screen.getByRole("button", { name: "Send" }));
   expect((await screen.findByRole("alert")).textContent).toContain(expected);
 });
+
+it("explains that lost-item search requires text and that a photo is optional", async () => {
+  render(
+    <MemoryRouter>
+      <AppProvider>
+        <ActionForm label="Search" onSubmit={async () => {
+          throw new ServiceError("invalid", "search_input_required");
+        }}>
+          <span>Search content</span>
+        </ActionForm>
+      </AppProvider>
+    </MemoryRouter>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Search" }));
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("وصفاً للغرض قبل البحث");
+  expect(alert.textContent).toContain("الصورة اختيارية");
+});

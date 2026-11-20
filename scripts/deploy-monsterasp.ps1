@@ -18,10 +18,16 @@ if ($site -notmatch '^site[A-Za-z0-9-]+$') {
 if (-not (Test-Path -LiteralPath $PublishDirectory -PathType Container)) {
   throw 'Compiled publish directory does not exist.'
 }
-foreach ($required in @('SmartCampus.Api.dll','web.config','wwwroot/index.html','smartcampus.defaults.json')) {
+foreach ($required in @('SmartCampus.Api.dll','web.config','wwwroot/index.html','wwwroot/build-info.json','smartcampus.defaults.json')) {
   if (-not (Test-Path -LiteralPath (Join-Path $PublishDirectory $required) -PathType Leaf)) {
     throw "Publish package incomplete: $required"
   }
+}
+# Only publish a package with a valid, non-secret Git source marker.
+$buildInfo = Get-Content -LiteralPath (Join-Path $PublishDirectory 'wwwroot/build-info.json') -Raw | ConvertFrom-Json
+$expectedCommit = [string]$buildInfo.commit
+if ($expectedCommit -cnotmatch '^[0-9a-f]{40}$') {
+  throw 'Publish package has no valid source commit marker.'
 }
 if ((Get-Content -LiteralPath (Join-Path $PublishDirectory 'web.config') -Raw) -notmatch 'AspNetCoreModuleV2') {
   throw 'ASP.NET Core IIS entrypoint is invalid.'
@@ -140,3 +146,37 @@ Write-Output 'Compiled SmartCampus application uploaded to MonsterASP.'
 Start-Sleep -Seconds 8
 Test-CurrentApi
 Write-Output 'Post-deployment public HTTPS API liveness probe passed.'
+
+# An older healthy process can respond to /health/live. Check that the
+# target serves the exact commit marker shipped with this package.
+function Test-DeployedCommit {
+  $lastFailureType = 'Unknown'
+  foreach ($attempt in 1..8) {
+    $client = [System.Net.Http.HttpClient]::new()
+    $client.Timeout = [TimeSpan]::FromSeconds(20)
+    try {
+      $url = "https://smartcampus.tryasp.net/build-info.json?verify=$expectedCommit"
+      $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
+      $request.Headers.CacheControl = [System.Net.Http.Headers.CacheControlHeaderValue]::new()
+      $request.Headers.CacheControl.NoCache = $true
+      try {
+        $response = $client.SendAsync($request).GetAwaiter().GetResult()
+        try {
+          if (-not $response.IsSuccessStatusCode) { throw 'Release marker endpoint unavailable.' }
+          $liveInfo = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+          if ([string]$liveInfo.commit -cne $expectedCommit) { throw 'Site is still serving a different release commit.' }
+          Write-Output "Public release commit verified: $expectedCommit."
+          return
+        } finally { $response.Dispose() }
+      } finally { $request.Dispose() }
+    } catch {
+      $lastFailureType = $_.Exception.GetBaseException().GetType().Name
+      if ($attempt -lt 8) {
+        Write-Output "Release identity not yet verified ($lastFailureType); retrying."
+        Start-Sleep -Seconds 6
+      }
+    } finally { $client.Dispose() }
+  }
+  throw "Deployment could not prove that the expected source commit is live ($expectedCommit; last failure: $lastFailureType). Do not mark this release verified."
+}
+Test-DeployedCommit
