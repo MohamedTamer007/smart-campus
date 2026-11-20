@@ -3,7 +3,7 @@
 ## Source and deployment identity
 
 - Repository: [MohamedTamer007/smart-campus](https://github.com/MohamedTamer007/smart-campus)
-- Latest application-source merge: PR #20, main commit 7df00ef18ab16e0781a659b15ce806033513f78c (20 November 2026). The last independently verified hosted upload in this record remains 18 November main commit b427e37b958d46d9f9348d63791a5e742cf8068f.
+- Latest application-source merge: PR #21, main commit `eb3c62c2c743ce792a53f311ce97c3751d422437` (20 November 2026). PR #20 was merged earlier the same day. The last independently verified hosted upload here remains 18 November main commit `b427e37b958d46d9f9348d63791a5e742cf8068f`.
 - PR #19 merged the editable photo-description draft flow for found-item registration, maintenance reporting and lost-item search.
 - [CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) on PR #19's head commit completed successfully.
 - [Deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) was manually dispatched against the same main commit and completed successfully on 18 November 2026.
@@ -14,7 +14,7 @@ PR #20 was merged on 20 November as main commit `7df00ef18ab16e0781a659b15ce8060
 
 ## CI results and evidence boundaries
 
-Latest reviewed application change: [PR #20 CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) passed 280 backend tests (four skipped), 139 frontend tests, 51 existing browser regression cases and nine integrated browser journeys; [Windows package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) passed. This was tested before merging, not against a verified new hosted release.
+Latest reviewed application change: PR #21 [CI run 44781998454](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998454) passed 280 backend (four skipped), 140 frontend, 51 browser regressions and nine integrated journeys. Its [Windows package run 44781998433](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998433) passed, and PR #21 merged as `eb3c62c2c743ce792a53f311ce97c3751d422437`. The release-commit marker is implemented in source, but no independent post-merge hosted verification has been recorded. Historical PR #20 [CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) and [package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) also passed before their merge.
 
 Historical [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370):
 
