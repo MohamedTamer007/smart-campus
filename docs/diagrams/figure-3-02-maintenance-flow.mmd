@@ -1,0 +1,10 @@
+flowchart LR
+  %% Editable semantic reconstruction of thesis Figure 3.2, NOT the original artwork.
+  A["Reporter<br/>1. Submit report<br/>Description and location<br/>Image optional"]
+  B["System<br/>2. Store report<br/>Reference and tracking link"]
+  C["System<br/>3. Analyse report<br/>Advisory fault type / priority / risk<br/>Staff-only"]
+  D["Authorized staff<br/>4. Review and assign<br/>Scope and assignee checks"]
+  E["Authorized staff<br/>5. Update status<br/>Reject with reason"]
+  F["Reporter<br/>6. Track report<br/>Edit/cancel before handling"]
+  A --> B --> C --> D --> E --> F
+  B -.->|"Own-report status tracking"| F

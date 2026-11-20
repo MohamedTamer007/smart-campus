@@ -1,0 +1,11 @@
+flowchart LR
+  %% Editable semantic reconstruction of thesis Figure 3.3, NOT the original artwork.
+  A["Verified finder<br/>1. Register found item<br/>Image, description, place,<br/>date, custody"]
+  B["Verified user (owner)<br/>2. Search privately<br/>Required description;<br/>optional photo"]
+  C["Verified requester<br/>3. Request recovery<br/>Optional message"]
+  D["Confirmed custodian<br/>4. Approve one request<br/>Reserves the item"]
+  E["Custodian + requester<br/>5. Both confirm<br/>Separate delivery/receipt"]
+  F["System<br/>6. Close item<br/>Pending claims closed"]
+  A --> B --> C --> D --> E --> F
+  D -.->|"One reservation only"| D
+  E -.->|"One confirmation alone does not close"| E
