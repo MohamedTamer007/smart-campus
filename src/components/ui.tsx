@@ -105,7 +105,7 @@ export function useAction() {
     invalid_date: t("تاريخ العثور غير صالح أو يقع في المستقبل.", "The found date is invalid or is in the future."),
     invalid_input: t("راجع الحقول المطلوبة وتأكد من أن النصوص ضمن الحدود المسموح بها.", "Check required fields and ensure text is within the allowed limits."),
     storage_unavailable: t("تعذر حفظ الصورة في التخزين الخاص حالياً. احتُفظ بمدخلاتك؛ حاول لاحقاً.", "Private image storage is temporarily unavailable. Your form details are kept; retry later."),
-    search_input_required: t("اكتب وصفاً للغرض أو أرفق صورته قبل البحث.", "Enter an item description or attach its photo before searching."),
+    search_input_required: t("اكتب وصفاً للغرض قبل البحث. الصورة اختيارية.", "Enter an item description before searching. A photo is optional."),
     search_calibration_required: t("البحث الدلالي غير متاح قبل اعتماد معايير المطابقة.", "Semantic search is unavailable until retrieval calibration is approved."),
     assignee_required: t("عيّن موظفاً مسؤولاً قبل تحويل البلاغ إلى قيد الإصلاح.", "Assign a staff member before moving the report to repair."),
     invalid_destination: t("اختر جهة استلام مسجلة وصالحة.", "Choose a valid registered receiving department."),
