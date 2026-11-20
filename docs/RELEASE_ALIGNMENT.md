@@ -1,4 +1,12 @@
-# 12 November release alignment
+# Current release alignment — 20 November 2026
+
+This section supersedes the 12 November baseline below. The current source is main commit b427e37b958d46d9f9348d63791a5e742cf8068f. PR #19 adds editable photo-description drafts to the found-item registration, maintenance report and lost-item search screens. CI run 44342975370 passed 280 backend tests (4 skipped), 130 frontend tests, 51 browser regressions and 9 integrated journeys. Deployment run 44348910144 uploaded the same main commit and passed post-deployment public API liveness.
+
+The current implementation is suitable for a controlled synthetic-data evaluation demo only. MonsterASP Free clause 3.2 prohibits production workloads and production processing of personal data. External AI processing/image approvals and retrieval calibration remain off in safe defaults. The old matrix below is a historical 12 November comparison, not the latest acceptance report. See [RELEASE_STATUS_2026-11-20.md](RELEASE_STATUS_2026-11-20.md).
+
+---
+
+## Historical release alignment — 12 November 2026
 
 This matrix maps the approved non-AI release request to code and recorded acceptance evidence. The 18 design boards in the supplied project document were reviewed as visual references. They contain illustrative data; this implementation does not present illustrative values as live operational records. AI analysis and matching remain deferred.
 
