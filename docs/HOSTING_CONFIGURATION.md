@@ -8,7 +8,7 @@ The Windows IIS application reads:
 
 ## Routine changes: just push code
 
-Edit `backend/SmartCampus.Api/smartcampus.defaults.json` for **non-secret** defaults such as rate limits and safe feature defaults, then push to `main`. The GitHub Actions workflow compiles both applications and deploys the file through WebDeploy. No separate Environment variables screen edit is needed for these settings **unless the same setting was already overridden by a host environment variable**.
+Edit `backend/SmartCampus.Api/smartcampus.defaults.json` for **non-secret** defaults such as rate limits and safe feature defaults. After PR #20 is merged, push to `main` to trigger the GitHub Actions build and WebDeploy workflow. Until that merge, the current `main` workflow still listens to the earlier release branch and manual dispatch, so a main push alone does not deploy. No separate Environment variables screen edit is needed for these settings **unless the same setting was already overridden by a host environment variable**.
 
 The deployment script rejects known secret-style key names in the committed defaults. Do not add university email lists, passwords, certificates, API keys, connection strings or approval references here. New features should read `IConfiguration` with sensible fail-closed defaults where they can.
 
