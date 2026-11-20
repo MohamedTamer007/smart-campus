@@ -12,6 +12,8 @@ Edit `backend/SmartCampus.Api/smartcampus.defaults.json` for **non-secret** defa
 
 The deployment script rejects known secret-style key names in the committed defaults. Do not add university email lists, passwords, certificates, API keys, connection strings or approval references here. New features should read `IConfiguration` with sensible fail-closed defaults where they can.
 
+PR #21 adds a public, non-secret source SHA file and a post-WebDeploy identity check. The workflow must fail rather than report verified deployment if the live SHA mismatches the package. This does not require another host environment variable, and it does not bypass the emergency disable flag.
+
 ## Credentials that cannot be guessed or committed
 
 Keep the existing MonsterASP environment variables for the database connection, private storage key, authenticated email sender/provider credentials, Data Protection secrets when applicable, and provider API keys. These do not disappear when the code changes. New external providers and rotated credentials still require secure configuration; GitHub's four WebDeploy secrets authenticate the deployment and do **not** automatically become runtime environment variables.
