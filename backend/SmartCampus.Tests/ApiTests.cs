@@ -317,6 +317,37 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
+    public async Task Found_registration_missing_receiving_office_fails_before_private_media_upload()
+    {
+        using var client = await campus.Login(campus.Student);
+        using var scope = campus.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+        var itemsBefore = await db.Items.CountAsync();
+        var mediaBefore = await db.Media.CountAsync();
+
+        using var bitmap = new SkiaSharp.SKBitmap(4, 4);
+        bitmap.Erase(SkiaSharp.SKColors.Blue);
+        using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+        using var bytes = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        using var form = new MultipartFormDataContent
+        {
+            { new StringContent("TEST ONLY blue bottle"), "description" },
+            { new StringContent("TEST ONLY courtyard"), "place" },
+            { new StringContent("2026-01-01"), "date" },
+            { new StringContent("TEST ONLY user custody"), "storage" },
+            { new StringContent(campus.Department.ToString()), "destination" },
+            { new ByteArrayContent(bytes.ToArray()), "photo", "synthetic-bottle.png" }
+        };
+        // The selected receiving department requires an office. Even though the
+        // PNG is valid, bad metadata must be rejected before writing any media.
+        using var response = await client.PostAsync("/api/v1/found", form);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("invalid_input", await response.Content.ReadAsStringAsync());
+        Assert.Equal(itemsBefore, await db.Items.CountAsync());
+        Assert.Equal(mediaBefore, await db.Media.CountAsync());
+    }
+
+    [DatabaseFact]
     public async Task Invalid_upload_and_inconsistent_location_are_rejected()
     {
         using var client = await campus.Login(campus.Student);
