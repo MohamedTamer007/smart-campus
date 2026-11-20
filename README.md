@@ -15,7 +15,7 @@ React/TypeScript frontend and ASP.NET Core 10 backend for university maintenance
 
 **Latest hosted deployment evidence:** [MonsterASP deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) was manually dispatched against the same main commit. The Windows publish, WebDeploy upload and post-deployment public /health/live probe succeeded. This confirms a successful upload and API liveness check; it does not prove every authenticated workflow, email delivery, AI provider, storage policy or human acceptance test.
 
-This branch also improves image validation and user-facing API error messages, and restores the automatic deployment trigger to main. The deployment workflow can be disabled with the existing MONSTERASP_AUTO_DEPLOY_DISABLED=true repository variable.
+Open PR #20 adds image decoding/dimension validation and actionable Arabic/English API error messages, and proposes restoring automatic deployment on pushes to main. Its full CI and Windows package checks passed on 20 November (280 backend passed, 4 skipped; 139 frontend passed; 51 browser regressions; 9 integrated journeys), but the PR is not yet merged or deployed. Until merge, main's automatic deployment trigger remains unchanged. The proposed workflow retains the existing MONSTERASP_AUTO_DEPLOY_DISABLED=true emergency stop.
 
 **The project is not certified as 100% complete or production-ready.** See [the current release status and open gates](docs/RELEASE_STATUS_2026-11-20.md) and [acceptance evidence](docs/ACCEPTANCE.md).
 
