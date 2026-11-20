@@ -9,7 +9,7 @@ Security-sensitive: YES. Reviewer: Codex primary agent. All ten OWASP categories
 | A03 injection | Parameterized EF/Npgsql requests; vector catalog schema quoted in migration; React escapes displayed text; no user-controlled shell commands or HTML rendering. |
 | A04 design | Shared item lock and database uniqueness protect approval/transfer/closure; both confirmation orders and stale writes tested. |
 | A05 configuration | Loopback development/worker, same-origin API, CSRF, controlled proxy trust, no automatic migrations; local secrets and demo receipts excluded from publish/archive. |
-| A06 dependencies | npm/NuGet audits clear. Worker direct pins updated to advisory-free metadata versions; actual full worker environment and transitive validation remain blocked. |
+| A06 dependencies | CI NuGet advisory audit passed and production npm audit reported 0 vulnerabilities; npm installation still reported 11 high-severity development-dependency advisories, including the recorded unpatched picomatch issue. Full worker environment/transitive validation remains blocked. |
 | A07 authentication | Verified email, lockout/rate limits, token validation, session expiry/revocation and reset replay tests. Expired-token validation passed using token-policy overrides. |
 | A08 integrity | Pinned model revision, safetensors-only loading, no remote model code, strict structured suggestions and vector metadata validation. Real pretrained execution unverified. |
 | A09 monitoring | Structured login/domain/grant audits; stable rejection/failure codes and trace IDs without passwords, tokens, images or provider payloads. Operational alerting is not deployed. |
@@ -42,7 +42,7 @@ Security-sensitive: YES. Reviewed by Codex using security-review (10/10 checklis
 
 | Finding | Severity | Resolution |
 |---|---|---|
-| Existing hosted authenticated storage SELECT bypasses private matching for new prefix objects | HIGH external deployment gate | Guarded policy correction prepared; isolated proof pending CI; hosted application uploads/deployment blocked until reviewed approval and correction. Legacy objects/trials untouched. |
+| Existing hosted authenticated storage SELECT bypasses private matching for new prefix objects | HIGH external deployment gate | Isolated storage-policy fixture checks passed in CI; the actual hosted bucket policy has not been independently inspected or corrected/approved, so real-data use remains blocked until hosted verification. Legacy objects/trials untouched. |
 | Global inference permission alone could forward arbitrary report content | HIGH, FIXED in source | Scoped staff must explicitly approve each content version and separately approve the exact image. Owner edits invalidate approval; stale results cannot populate the new version. Six PostgreSQL-backed privacy scenarios pass. |
 | Unbounded application inference attempts could exhaust free quota | FIXED | Transactional UTC minute/day reservations before network requests; concurrency/reset/rollback tests pass; NVIDIA disabled without explicit daily allowance. No automatic paid fallback. |
 | Account access must match project-wide university-domain eligibility | REVIEWED | Deployment templates now use `Release:Mode=university`: exact `@o6u.edu.eg` only, mandatory verification before sign-in, and no self-service role grants. The optional `controlled` allowlist remains available for deployments explicitly requiring restricted tests. |
