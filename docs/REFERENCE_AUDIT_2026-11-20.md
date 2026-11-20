@@ -107,3 +107,7 @@ Source: [Smart Campus native thesis](https://docs.google.com/document/d/1UWZoMqG
 ## Remaining bibliographic verification
 
 Independently compare each reference's full ordered authors, year, spelling, venue, pagination and identifier with its original publisher, and compare every cited Chapter 2 surname/year with an exact bibliography record. Confirm 2026–2027 official faculty style, then re-export after edits and recheck page numbers. Never fabricate unverified metadata.
+
+## Independent DOI and publisher-source screen — 21 November 2026
+
+[Crossref workflow run 44832035480](https://github.com/MohamedTamer007/smart-campus/actions/runs/44832035480) checked all 91 bibliography registry rows: 71 linked DOI entries (including one DOI existing only in a source link), 20 not matched by that method. Automated statuses were **66 likely aligned**, **4 requiring metadata review**, **1 not verified by Crossref**, and **20 non-DOI primary-source review**. The original records for the five flagged works were further investigated using the actual publisher, arXiv, CVF, Abu Dhabi University, ARC Journals and University of Strathclyde sources. **13 of the 20 non-Crossref sources** were also checked at original association/university pages. Full details, flags and unresolved 2019/2020 edition-year choice are in [the adjudication ledger](REFERENCE_PRIMARY_SOURCE_ADJUDICATION_2026-11-21.md). This does not imply that every source supports every substantive thesis claim or that APA 7 formatting has passed.
