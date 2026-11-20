@@ -233,5 +233,22 @@ class AiEvidenceTests(unittest.TestCase):
         self.assertEqual(result["provider_error_rate"], .5)
         self.assertEqual(result["absent_correct_rejection_rate"], 0)
 
+
+    def test_classification_confusion_and_micro_scores_keep_abstentions(self):
+        predictions = [
+            {"run_id": "synthetic", "case_id": "a", "model_revision": "fixture",
+             "pred_fault_type": "electrical", "pred_priority": "high",
+             "pred_risk": "high", "provider_status": "ok"},
+            {"run_id": "synthetic", "case_id": "b", "model_revision": "fixture",
+             "pred_fault_type": "plumbing", "pred_priority": "low",
+             "pred_risk": "low", "provider_status": "offline"}]
+        result = self.maintenance(predictions=predictions)
+        m = result["fault_type"]
+        self.assertEqual(m["micro_precision"], 1)
+        self.assertEqual(m["micro_recall"], .5)
+        self.assertAlmostEqual(m["micro_f1"], 2 / 3)
+        self.assertEqual(m["confusion_matrix"]["plumbing"]["__ABSTAIN__"], 1)
+        self.assertEqual(m["confusion_matrix"]["electrical"]["electrical"], 1)
+
 if __name__ == "__main__":
     unittest.main()
