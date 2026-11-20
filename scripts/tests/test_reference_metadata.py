@@ -27,12 +27,12 @@ METADATA = {
 
 
 class CrossrefMetadataTests(unittest.TestCase):
-    def test_original_public_reference_register_has_91_entries_and_70_dois(self):
+    def test_original_public_reference_register_has_91_entries_and_71_resolvable_dois(self):
         root = Path(__file__).resolve().parents[2]
         path = root / "docs" / "REFERENCE_AUDIT_2026-11-20.md"
         rows = audit.parse_register(path.read_text(encoding="utf-8"))
         self.assertEqual(len(rows), 91)
-        self.assertEqual(sum(bool(x["doi"]) for x in rows), 70)
+        self.assertEqual(sum(bool(x["doi"]) for x in rows), 71)
         self.assertEqual(rows[0]["number"], 1)
         self.assertEqual(rows[-1]["number"], 91)
 
