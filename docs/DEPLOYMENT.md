@@ -6,6 +6,12 @@ The application is hosted at [smartcampus.tryasp.net](https://smartcampus.tryasp
 
 This confirms a successful code upload and API liveness at the time of the check. It does not prove complete worker continuity, real email delivery, external AI availability, hosted private-storage authorization, human acceptance or production suitability. The public MonsterASP Free plan is synthetic-data evaluation only; see [the provider's Terms clause 3.2](https://www.monsterasp.net/Terms/).
 
+## Source-commit verification on future Windows deployments
+
+A release-readiness improvement adds a public, non-secret `/build-info.json` marker containing only the source Git commit SHA. `scripts/publish.ps1` writes it into the compiled `wwwroot` bundle, and `scripts/deploy-monsterasp.ps1` requires its presence, completes the guarded WebDeploy upload, tests `/health/live`, then requests the published marker with a cache-busting query. The deployment workflow must fail if the live SHA does not match the uploaded package, instead of mistaking an older healthy process for the new release.
+
+**Evidence boundary:** this check establishes that the target host serves the expected release marker, in addition to API liveness. It does not independently prove all static/server code paths, secret configuration, role authorization, email, storage policy, human acceptance or AI accuracy. It applies only once the updated scripts are merged and a deployment run demonstrably succeeds. A successful PR package build by itself does not establish live deployment.
+
 The remaining sections below contain the original deployment preparation and database rollout notes. Statements in those historical notes that no deployment had occurred refer to the 10 November baseline and are superseded by the 18 November run above.
 
 # Deployment preparation
