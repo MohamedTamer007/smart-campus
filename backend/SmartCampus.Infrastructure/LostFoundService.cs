@@ -21,6 +21,9 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
         if (input.Date > today || input.Date == default) throw new RuleException("invalid_date");
         var found = new FoundItem { UploaderId = actor.Id, CustodianId = actor.Id, Description = Rules.Required(input.Description),
             Place = Rules.Required(input.Place, 1000), Date = input.Date, Storage = Rules.Required(input.Storage, 1000) };
+        // Validate all mandatory handover fields before touching private storage.
+        // A missing office must fail with invalid_input, not upload first and roll back.
+        var office = input.Destination.HasValue ? Rules.Required(input.Office, 1000) : null;
         if (input.Destination.HasValue) await ReceivingDepartment(input.Destination.Value);
         var image = await media.Upload(photo, new() { ItemId = found.Id, Bucket = "lost-found-images" });
         try
@@ -29,7 +32,7 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
             db.Media.Add(image);
             if (input.Destination.HasValue)
                 db.Handovers.Add(new() { ItemId = found.Id, FromUserId = actor.Id, DepartmentId = input.Destination.Value,
-                    Office = Rules.Required(input.Office, 1000) });
+                    Office = office! });
             // With photo descriptions enabled the AI reads the photo first and its
             // completion queues indexing; otherwise index the finder's text right away.
             if (AiProviders.CanDescribeItems(config))
