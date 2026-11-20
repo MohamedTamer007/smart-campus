@@ -1,0 +1,40 @@
+name: Public release identity and liveness (read-only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/public-release-smoke.yml'
+      - 'scripts/verify_public_release.py'
+      - 'scripts/tests/test_public_release.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-release-smoke
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Run the offline probe contract tests
+        run: python -m unittest discover -s scripts/tests -p test_public_release.py -v
+      - name: Verify public HTTPS liveness and exact deployed application SHA
+        run: |
+          python scripts/verify_public_release.py \
+            --origin https://smartcampus.tryasp.net \
+            --expected-commit eb3c62c2c743ce792a53f311ce97c3751d422437 \
+            --output test-results/public-release-check.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: public-release-check
+          path: test-results/public-release-check.json
+          retention-days: 7
