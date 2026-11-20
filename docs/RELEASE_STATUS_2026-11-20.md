@@ -67,3 +67,7 @@ Still open: verified campus directory/staff scopes, hosted private-storage polic
 ## Release conclusion
 
 The evidence supports a **controlled synthetic-data academic evaluation demo**: the inspected main source passed full CI, PR #21's merged commit was deployed and matched the public release SHA, and public API liveness passed after deployment. It does **not** support a claim of 10/10 production readiness, live AI quality, or authorization to process real student personal data on MonsterASP Free.
+
+## Additional live security receipt — 21 November 2026
+
+On the synthetic-only public preview, [GitHub run 44827616271](https://github.com/MohamedTamer007/smart-campus/actions/runs/44827616271) passed a new anonymous-access denial smoke against the deployed application SHA `eb3c62c2c743ce792a53f311ce97c3751d422437`. Four read-only private endpoints (maintenance, found-items, claims and administrative accounts) each responded **401 Unauthorized** with no redirect; public liveness and build marker passed. The [new check](https://github.com/MohamedTamer007/smart-campus/pull/25) is repeatable on approved future releases. This closes **only guest-read denial for those four routes at that probe time**, not signed-in permission boundaries, private media, inbox delivery, full-host acceptance, AI model quality, privacy, backup or university certification. Do not call it permission for real student data on MonsterASP Free.
