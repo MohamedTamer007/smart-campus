@@ -4,18 +4,18 @@ React/TypeScript frontend and ASP.NET Core 10 backend for university maintenance
 
 ## Current release status — 20 November 2026
 
-**Application-source baseline:** PR #21 merged on 20 November 2026 as `eb3c62c2c743ce792a53f311ce97c3751d422437`, correcting private search feedback and adding release-commit verification after Windows deployment. PR #20 (`7df00ef18ab16e0781a659b15ce806033513f78c`) previously improved image validation and enabled main-push deployment. The last independently verified hosted upload here remains 18 November main commit `b427e37b958d46d9f9348d63791a5e742cf8068f`.
+**Application-source and hosted baseline:** PR #21 merged on 20 November 2026 as `eb3c62c2c743ce792a53f311ce97c3751d422437`, correcting search-validation feedback and adding public release-commit verification. The main-push [automatic deployment run 44783186261](https://github.com/MohamedTamer007/smart-campus/actions/runs/44783186261) **succeeded for exactly that commit**, including WebDeploy upload, public API liveness and a matching `build-info.json` source SHA. PR #20 earlier improved browser image validation and enabled main-push deployment. The latest inspected subsequent documentation-only main commit `84c3fca9393b1b52d6623a25db0660ccff5209f9` does not represent a different deployed application build.
 
-**Latest verified source checks (PR #21):** [CI run 44781998454](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998454) passed 280 backend tests (four skipped), 140 frontend tests, 51 browser regressions and nine integrated journeys. [Windows package run 44781998433](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998433) also passed. The new build-info.json check is in main, but a successful post-merge hosted deployment has not been independently verified here.
+**Latest verified checks:** Full main [CI run 44784051657](https://github.com/MohamedTamer007/smart-campus/actions/runs/44784051657) passed for documentation-only commit `84c3fca9393b1b52d6623a25db0660ccff5209f9`: **280 backend passed (four skipped), 140 frontend passed, 51 browser regressions and nine integrated journeys passed**. Its isolated PostgreSQL, backup/restore, media, storage-policy fixture and security checks passed. This does not replace the application PR #21's [passing pre-merge CI](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998454) and [Windows package verification](https://github.com/MohamedTamer007/smart-campus/actions/runs/44781998433), nor prove live authenticated acceptance.
 
 **Earlier full CI evidence (PR #19):** [PR #19 CI run 44342975370](https://github.com/MohamedTamer007/smart-campus/actions/runs/44342975370) completed successfully on the PR head commit:
 - Backend: **280 passed, 4 skipped, 0 failed** against isolated PostgreSQL 17/pgvector.
 - Frontend: **130 passed**; typecheck, lint and production build passed.
 - Browser automation: **51 existing regression cases and 9 integrated journeys passed**.
 - Encrypted database backup/isolated restore, media encryption/restore, backup safety, isolated storage-policy checks and NuGet advisory checks passed.
-- Production dependency audit: **0 vulnerabilities**. npm installation still reports **11 high-severity development-dependency advisories**; the CI audit is intentionally limited to production dependencies while the reported picomatch advisory has no patched version in the recorded run.
+- Production dependency audit: **0 vulnerabilities**. the historical PR #19 npm installation reported **11 high-severity development-dependency advisories**; the newer 20 November main CI run 44784051657 reported **0 vulnerabilities** at installation and for production audit. The older picomatch note belongs to that dated baseline.
 
-**Latest hosted deployment evidence:** [MonsterASP deployment run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) was manually dispatched against the same main commit. The Windows publish, WebDeploy upload and post-deployment public /health/live probe succeeded. This confirms a successful upload and API liveness check; it does not prove every authenticated workflow, email delivery, AI provider, storage policy or human acceptance test.
+**Latest hosted deployment evidence:** [Automatic MonsterASP deployment run 44783186261](https://github.com/MohamedTamer007/smart-campus/actions/runs/44783186261) (20 November 2026) passed for main application commit `eb3c62c2c743ce792a53f311ce97c3751d422437`. Its log explicitly says `Public release commit verified: eb3c62c2c743ce792a53f311ce97c3751d422437` after a successful WebDeploy dry-run/upload and public `/health/live` check. The earlier [manual run 44348910144](https://github.com/MohamedTamer007/smart-campus/actions/runs/44348910144) remains historical evidence for 18 November. These checks verify upload, release identity and API liveness, **not** authenticated workflows, real email, AI inference, hosted private-storage authorization or university acceptance.
 
 **PR #20 merged:** Browser image decoding/pixel validation, clearer Arabic/English upload-error messages and tests are in main. [CI run 44767019024](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019024) passed (280 backend, four skipped; 139 frontend; 51 browser regressions; nine integrated journeys), and [Windows package run 44767019137](https://github.com/MohamedTamer007/smart-campus/actions/runs/44767019137) succeeded. Main-push automatic deployment is configured with the `MONSTERASP_AUTO_DEPLOY_DISABLED=true` emergency stop; a post-merge hosted deployment is not independently verified by these pre-merge checks.
 
@@ -70,7 +70,7 @@ The [Gemini retrieval report](docs/GEMINI_RETRIEVAL_RESULTS_2026-11-14.md) recor
 4. **Privacy and hosting:** the Free host must remain synthetic-only. Hosted storage authorization/policy and real backup/recovery must be verified before any real data is processed.
 5. **External services:** real email/provider delivery, quota handling and current provider availability need acceptance in the approved environment. AI external-processing flags remain off by default.
 6. **Human acceptance:** real users, screen readers, keyboard-only journeys, responsive visual review and larger-scale load tests have not been completed.
-7. **Dependencies:** 11 high-severity development-dependency advisories were reported by npm installation; production audit returned zero vulnerabilities. Reassess when a patched dependency is available; do not use npm audit fix --force without compatibility testing.
+7. **Dependencies:** The historical PR #19 install reported 11 high-severity development-dependency advisories. The newer main CI run 44784051657 reported zero npm install and production audit vulnerabilities; continue scanning on each change and avoid forced dependency upgrades without compatibility tests.
 
 ## Setup and checks
 
@@ -79,7 +79,7 @@ The [Gemini retrieval report](docs/GEMINI_RETRIEVAL_RESULTS_2026-11-14.md) recor
 - [Architecture](docs/ARCHITECTURE.md)
 - [Deployment record](docs/DEPLOYMENT.md) and [MonsterASP deployment](docs/MONSTERASP_DEPLOYMENT.md)
 - [Hosting configuration](docs/HOSTING_CONFIGURATION.md)
-- [Progress](docs/BACKEND_PROGRESS.md), [acceptance evidence](docs/ACCEPTANCE.md) and [security review](docs/SECURITY_REVIEW.md)
+- [Progress](docs/BACKEND_PROGRESS.md), [acceptance evidence](docs/ACCEPTANCE.md), [release evidence matrix](docs/RELEASE_EVIDENCE_MATRIX_2026-11-20.md) and [security review](docs/SECURITY_REVIEW.md)
 
 Run npm ci, then dotnet run --project backend/SmartCampus.Api --urls http://127.0.0.1:5080 with Development environment enabled. In another terminal run npm run dev -- --host 127.0.0.1. Vite proxies API requests; no backend secret belongs in frontend variables. scripts/publish.ps1 prepares the single-origin application.
 
