@@ -54,9 +54,24 @@ def metrics(actual, predicted):
                           "precision": precision, "recall": recall,
                           "f1": 2 * precision * recall / (precision + recall)
                           if precision + recall else 0.0}
+    correct = sum(a == p for a, p in zip(actual, predicted))
+    returned = sum(p != ABSTAIN for p in predicted)
+    micro_precision = correct / returned if returned else 0.0
+    micro_recall = correct / len(actual)
+    micro_f1 = (2 * micro_precision * micro_recall / (micro_precision + micro_recall)
+                if micro_precision + micro_recall else 0.0)
     return {"count": len(actual),
-            "accuracy_including_failures": sum(a == p for a, p in zip(actual, predicted)) / len(actual),
+            "accuracy_including_failures": correct / len(actual),
             "macro_f1": sum(m["f1"] for m in summary.values()) / len(summary),
+            "micro_precision": micro_precision,
+            "micro_recall": micro_recall,
+            "micro_f1": micro_f1,
+            # Rows are adjudicated classes; columns include prediction-only classes
+            # and an explicit abstention column so provider failures stay visible.
+            "confusion_matrix": {
+                gold: {guess: sum(a == gold and p == guess for a, p in zip(actual, predicted))
+                       for guess in [*labels, ABSTAIN]}
+                for gold in sorted(set(actual))},
             "per_class": summary}
 
 
