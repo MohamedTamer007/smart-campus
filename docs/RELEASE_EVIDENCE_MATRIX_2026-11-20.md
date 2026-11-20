@@ -51,3 +51,18 @@ Three distinct outcomes must be recorded for every requirement: **implemented in
 | Public release read-only smoke | [Run 44816040794](https://github.com/MohamedTamer007/smart-campus/actions/runs/44816040794) passed at its probe time for application SHA eb3c62c2c743ce792a53f311ce97c3751d422437 | Liveness and release marker identity only, not production personal data-processing permission, inbox mail, AI quality or live host security |
 
 **Academic status:** Document structure and citation discovery now have reproducible evidence. **Final university acceptance remains unissued**: the 2026–2027 Faculty rubric/template and a dated authorized signature have not been independently established; no unsigned or implied approval should be added to the thesis. The prior institutional-template comparison used a historical 2023–2024 version, not a current-year ruling. The updated 91-entry source-location ledger is [CITATION_CROSSCHECK_2026-11-20.md](CITATION_CROSSCHECK_2026-11-20.md). All open hosted/AI/security/privacy/human-test gates listed above remain open until their primary evidence is captured.
+
+## Post-merge public anonymous-access evidence — 21 November 2026 (UTC log 20 November 22:16:58)
+
+**Independently executed on the public synthetic-only preview:** [read-only GitHub Actions run 44827616271](https://github.com/MohamedTamer007/smart-campus/actions/runs/44827616271), triggered by merged [PR #25](https://github.com/MohamedTamer007/smart-campus/pull/25), source commit `c0d2a9ee1e92dbef86dd0ecb30888aa54b12df3d`. The probe reported `PASS`: public `/health/live`, `build-info.json` deployed application SHA `eb3c62c2c743ce792a53f311ce97c3751d422437`, and **all four unauthenticated, read-only private GETs responded HTTP 401 with no redirect**.
+
+| Unauthenticated GET at `https://smartcampus.tryasp.net` | Observed HTTP | Status |
+|---|---:|---|
+| `/api/v1/maintenance?page=1&pageSize=1` | 401 | PASS for anonymous denial |
+| `/api/v1/found?page=1&pageSize=1` | 401 | PASS for anonymous denial |
+| `/api/v1/claims?page=1&pageSize=1` | 401 | PASS for anonymous denial |
+| `/api/v1/admin/accounts?page=1&pageSize=1` | 401 | PASS for anonymous denial |
+
+**Safety/evidence boundary:** The probe sends no cookies, credentials or write requests; it neither reads private response bodies nor creates test records. It checks only the listed route/method/status contracts for a guest against the recorded deployed application. It does **not** prove cross-role or cross-department authorization for signed-in users, media access policies, authenticated workflow completion, actual email inbox delivery, AI calibration, external processor approvals, privacy/retention, backup/restore on the hosted service, accessibility/load, or any official university release decision. All those remain open as previously recorded.
+
+**Test reproducibility:** `.github/workflows/public-release-smoke.yml`, `scripts/verify_public_release.py --check-anonymous-private` and `scripts/tests/test_public_release.py` (the new test includes a fail-closed path for accidental HTTP 200). [PR #25 CI 44826774508](https://github.com/MohamedTamer007/smart-campus/actions/runs/44826774508) passed. The public probe artifact is retained by GitHub for seven days; run logs remain the direct audit record.
