@@ -16,6 +16,58 @@ namespace SmartCampus.Tests;
 public sealed class PrivateMediaRoleMatrixTests(CampusFixture campus) : IClassFixture<CampusFixture>
 {
     [DatabaseFact]
+    public async Task Rejected_claim_retains_history_without_permanent_private_image_access()
+    {
+        using var owner = await campus.Login(campus.Student);
+        using var requester = await campus.Login(campus.Other);
+        using var admin = await campus.Login(campus.Admin);
+        var itemId = await campus.Item(owner);
+        var ownerView = await owner.GetFromJsonAsync<JsonElement>($"/api/v1/found/{itemId}");
+        var mediaUrl = ownerView.GetProperty("mediaUrl").GetString()!;
+        var claimId = await campus.Claim(requester, itemId, campus.Other);
+
+        // End the original search grant. A pending claim itself is a reason to
+        // keep showing the item, including its photo, until the decision.
+        using (var scope = campus.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CampusDb>();
+            var grant = await db.SearchGrants.SingleAsync(g => g.ItemId == itemId && g.UserId == campus.Other);
+            grant.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-10);
+            await db.SaveChangesAsync();
+        }
+        using (var pendingPhoto = await requester.GetAsync(mediaUrl))
+            Assert.Equal(HttpStatusCode.OK, pendingPhoto.StatusCode);
+        var claimBefore = await requester.GetFromJsonAsync<JsonElement>($"/api/v1/claims/{claimId}");
+        var version = claimBefore.GetProperty("claim").GetProperty("version").GetInt32();
+
+        using var rejected = await owner.PostAsJsonAsync($"/api/v1/claims/{claimId}/reject",
+            new { version, reason = "TEST ONLY: insufficient ownership evidence" });
+        Assert.Equal(HttpStatusCode.OK, rejected.StatusCode);
+
+        // The requester can still track the decision and read its reason.
+        var claimAfter = await requester.GetFromJsonAsync<JsonElement>($"/api/v1/claims/{claimId}");
+        Assert.Equal("rejected", claimAfter.GetProperty("claim").GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, claimAfter.GetProperty("item").GetProperty("mediaUrl").ValueKind);
+        var itemAfter = await requester.GetFromJsonAsync<JsonElement>($"/api/v1/found/{itemId}");
+        Assert.Equal(JsonValueKind.Null, itemAfter.GetProperty("mediaUrl").ValueKind);
+        using var listResponse = await requester.GetAsync("/api/v1/found?page=1&pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        using var listDocument = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        var historyItem = listDocument.RootElement.GetProperty("items").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetGuid() == itemId);
+        Assert.Equal(JsonValueKind.Null, historyItem.GetProperty("mediaUrl").ValueKind);
+
+        // A previously copied direct image URL must be denied independently of
+        // whether the user can still see the historical claim or item details.
+        using (var requesterPhoto = await requester.GetAsync(mediaUrl))
+            Assert.Equal(HttpStatusCode.Forbidden, requesterPhoto.StatusCode);
+        using (var ownerPhoto = await owner.GetAsync(mediaUrl))
+            Assert.Equal(HttpStatusCode.OK, ownerPhoto.StatusCode);
+        using (var adminPhoto = await admin.GetAsync(mediaUrl))
+            Assert.Equal(HttpStatusCode.OK, adminPhoto.StatusCode);
+    }
+
+    [DatabaseFact]
     public async Task Found_image_visibility_follows_owner_admin_temporary_grant_and_department_handover()
     {
         using var owner = await campus.Login(campus.Student);

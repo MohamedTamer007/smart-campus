@@ -39,11 +39,27 @@ public sealed class Access(CampusDb db, IHttpContextAccessor http, UserManager<C
 
     public async Task<bool> ItemReadable(Actor actor, FoundItem found)
     {
+        // Claim history remains readable to its requester, even when rejected or
+        // closed, so they can follow the decision and view its reason.
         return actor.Admin || found.UploaderId == actor.Id || actor.Custodian(found) ||
             await db.Handovers.AnyAsync(h => h.ItemId == found.Id && actor.Scopes.Contains(h.DepartmentId) &&
                 actor.Roles.Contains("department") && (h.Status == "pending" || h.Status == "not-received")) ||
             await db.Claims.AnyAsync(c => c.ItemId == found.Id && c.RequesterId == actor.Id) ||
             (found.State == "available" && await db.SearchGrants.AnyAsync(g => g.UserId == actor.Id && g.ItemId == found.Id && g.ExpiresAt > DateTimeOffset.UtcNow));
+    }
+
+    public async Task<bool> ItemMediaReadable(Actor actor, FoundItem found)
+    {
+        // A past rejected/closed claim is NOT a permanent grant to the private
+        // image. Keep requester history available through ItemReadable, but
+        // require a currently actionable claim, live search grant, or custody.
+        return actor.Admin || found.UploaderId == actor.Id || actor.Custodian(found) ||
+            await db.Handovers.AnyAsync(h => h.ItemId == found.Id && actor.Scopes.Contains(h.DepartmentId) &&
+                actor.Roles.Contains("department") && (h.Status == "pending" || h.Status == "not-received")) ||
+            await db.Claims.AnyAsync(c => c.ItemId == found.Id && c.RequesterId == actor.Id &&
+                (c.Status == "pending" || c.Status == "approved")) ||
+            (found.State == "available" && await db.SearchGrants.AnyAsync(g => g.UserId == actor.Id &&
+                g.ItemId == found.Id && g.ExpiresAt > DateTimeOffset.UtcNow));
     }
 }
 

@@ -104,7 +104,14 @@ public sealed class LostFoundService(CampusDb db, Access access, Events events, 
             ? destinationCode : null;
         var canClaim = found.State == "available" && !actor.Custodian(found) && related.GrantedItems.Contains(found.Id) &&
             !related.ActiveClaimItems.Contains(found.Id);
-        var mediaUrl = related.MediaIds.TryGetValue(found.Id, out var mediaId) ? $"/api/v1/media/{mediaId}" : null;
+        // Claim history may remain readable after rejection or closure, but the
+        // private image must not be advertised without a current image grant.
+        var canReadMedia = actor.Admin || found.UploaderId == actor.Id || actor.Custodian(found) ||
+            related.ActiveClaimItems.Contains(found.Id) ||
+            (found.State == "available" && related.GrantedItems.Contains(found.Id)) ||
+            (handover is not null && actor.Department(handover.DepartmentId) &&
+                handover.Status is ("pending" or "not-received"));
+        var mediaUrl = canReadMedia && related.MediaIds.TryGetValue(found.Id, out var mediaId) ? $"/api/v1/media/{mediaId}" : null;
         var handoverVisible = handover is not null && (actor.Admin || actor.Custodian(found) || actor.Department(handover.DepartmentId));
         return new { found.Id, uploaderId = found.UploaderId, custodianId = found.CustodianId, custodianDepartment = department,
             found.Description, found.Place, found.Date, storage = actor.Admin || actor.Custodian(found) ? found.Storage : null,
