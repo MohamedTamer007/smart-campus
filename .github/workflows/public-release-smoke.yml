@@ -30,7 +30,7 @@ jobs:
         run: |
           python scripts/verify_public_release.py \
             --origin https://smartcampus.tryasp.net \
-            --expected-commit eb3c62c2c743ce792a53f311ce97c3751d422437 \
+            --expected-commit f94a6d324bcf367d12799c691d10629de1d8aa0c \
             --check-anonymous-private \
             --output test-results/public-release-check.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
