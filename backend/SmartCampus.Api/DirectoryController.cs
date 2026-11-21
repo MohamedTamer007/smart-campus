@@ -67,7 +67,7 @@ public sealed class MediaController(CampusDb db, Access access, PrivateMedia med
             var report = (await db.Reports.FindAsync(metadata.ReportId))!;
             Access.Require(actor.Id == report.ReporterId || actor.Admin || actor.Maintenance(report.DepartmentId));
         }
-        else Access.Require(await access.ItemReadable(actor, (await db.Items.FindAsync(metadata.ItemId))!));
+        else Access.Require(await access.ItemMediaReadable(actor, (await db.Items.FindAsync(metadata.ItemId))!));
         return File(await media.Read(metadata), "image/jpeg");
     }
 }
