@@ -155,6 +155,13 @@ jobs:
         env:
           SMART_CAMPUS_E2E: '1'
         run: npm run test:e2e
+      - name: Ten-session isolated authenticated API load (not hosted acceptance)
+        run: |
+          python scripts/measure_isolated_auth_load.py \
+            --origin http://127.0.0.1:5080 \
+            --fixture backend/SmartCampus.Api/local-data/demo-accounts.json \
+            --sessions 10 --requests-per-session 20 --p95-limit-ms 2000 \
+            --output test-results/isolated-authenticated-load.json
       - name: Build production API image
         run: docker build --tag smart-campus:ci .
       - name: Validate VM packaging
