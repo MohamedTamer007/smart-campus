@@ -530,6 +530,46 @@ public sealed class ApiTests(CampusFixture campus) : IClassFixture<CampusFixture
     }
 
     [DatabaseFact]
+    public async Task Reset_and_verification_links_cannot_be_redeemed_for_another_identity()
+    {
+        using var guest = campus.CreateClient();
+        await CampusFixture.Csrf(guest);
+        using var otherSession = await campus.Login(campus.Other);
+        using var scope = campus.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<CampusUser>>();
+        var source = (await users.FindByIdAsync(campus.Student.ToString()))!;
+        var other = (await users.FindByIdAsync(campus.Other.ToString()))!;
+        var unverified = (await users.FindByIdAsync(campus.Unverified.ToString()))!;
+        var resetToken = await users.GeneratePasswordResetTokenAsync(source);
+        var verificationToken = await users.GenerateEmailConfirmationTokenAsync(unverified);
+        static string Encode(string token) =>
+            Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(token));
+
+        // A correctly formed reset link belongs to its original identity only.
+        var changedPassword = campus.Password + "cross-account-denied";
+        using var wrongReset = await guest.PostAsJsonAsync("/api/v1/auth/reset",
+            new { userId = campus.Other, token = Encode(resetToken),
+                password = changedPassword, confirmation = changedPassword });
+        Assert.Equal(HttpStatusCode.BadRequest, wrongReset.StatusCode);
+        Assert.Contains("invalid_token", await wrongReset.Content.ReadAsStringAsync());
+
+        // The invalid cross-account reset must neither change the victim's
+        // password nor invalidate an already authenticated victim session.
+        Assert.True(await users.CheckPasswordAsync(other, campus.Password));
+        Assert.False(await users.CheckPasswordAsync(other, changedPassword));
+        using var stillLoggedIn = await otherSession.GetAsync("/api/v1/auth/me");
+        Assert.Equal(HttpStatusCode.OK, stillLoggedIn.StatusCode);
+
+        // A verification link generated for a different student cannot be
+        // presented as proof of email ownership for an already verified user.
+        using var wrongVerification = await guest.PostAsJsonAsync("/api/v1/auth/verify",
+            new { userId = campus.Student, token = Encode(verificationToken) });
+        Assert.Equal(HttpStatusCode.BadRequest, wrongVerification.StatusCode);
+        Assert.Contains("invalid_token", await wrongVerification.Content.ReadAsStringAsync());
+        Assert.False(unverified.EmailConfirmed);
+    }
+
+    [DatabaseFact]
     public async Task Expired_verification_and_reset_tokens_are_rejected()
     {
         using var guest = campus.CreateClient();
